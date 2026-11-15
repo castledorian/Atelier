@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import App from './App';
 import { useInstall } from './install';
-import MathGame from './games/MathGame';
+import Course from './games/Course';
 import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -86,7 +86,7 @@ export default function Shell() {
   }
 
   if (view === 'typing') return <App account={student} onHome={home} onSessionLost={sessionLost} install={install} />;
-  if (view === 'math') return <MathGame account={student} onHome={home} onSessionLost={sessionLost} />;
+  if (view === 'math') return <Course account={student} onHome={home} onSessionLost={sessionLost} />;
 
   return (
     <Home

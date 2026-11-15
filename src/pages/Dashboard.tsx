@@ -421,7 +421,7 @@ function ClassPanel({
   const exportRuns = async () => {
     const runs = await act(() => T.classRuns(cls.id));
     if (!runs) return;
-    const GAME: Record<string, string> = { typing: 'Frappe !', math: 'Calcul éclair' };
+    const GAME: Record<string, string> = { typing: 'Frappe !', math: 'Course à l’encre' };
     downloadText(
       `resultats-${cls.name.replace(/[^\w-]+/g, '_')}.csv`,
       toCsv(

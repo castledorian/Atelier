@@ -16,7 +16,7 @@ const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g
 
 // ───────────────────────── Options ─────────────────────────
 
-function Check({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
+export function Check({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <button type="button" role="switch" aria-checked={on} className="opt" onClick={onClick}>
       <span aria-hidden="true" className="opt-box">

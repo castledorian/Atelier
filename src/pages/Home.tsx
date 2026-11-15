@@ -84,9 +84,9 @@ export default function Home({ student, teacher, onPlay, onLogin, onDashboard, o
           <span className="gcard-go">Jouer →</span>
         </button>
         <button type="button" className="gcard" onClick={() => onPlay('math')}>
-          <span className="gcard-tag">Maths · version provisoire</span>
-          <span className="gcard-name">Calcul éclair</span>
-          <span className="gcard-text">60 secondes pour résoudre le plus de calculs possible.</span>
+          <span className="gcard-tag">Maths</span>
+          <span className="gcard-name">Course à l’encre</span>
+          <span className="gcard-text">Place la plume sur la bonne réponse et fuis la tache d’encre !</span>
           <span className="gcard-go">Jouer →</span>
         </button>
         <div className="gcard gcard-soon" aria-label="Autres jeux à venir">

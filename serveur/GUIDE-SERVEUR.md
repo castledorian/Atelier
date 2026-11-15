@@ -113,7 +113,7 @@ Adresse du site : `https://votrenom.github.io/nom-du-depot/` (c'est cette adress
 1. Ouvrez votre site → **Je suis enseignant → Créer un compte** → email + mot de passe.
 2. Cliquez le lien reçu par email (vérifiez les courriers indésirables) → vous arrivez dans l'espace enseignant.
 3. **Créer mon école**, **Créer la classe**, ajoutez 3 prénoms → 3 codes apparaissent.
-4. Sur un autre appareil (ou fenêtre privée) : **Je suis élève** → tapez un code → jouez à **Frappe !** et à **Calcul éclair**.
+4. Sur un autre appareil (ou fenêtre privée) : **Je suis élève** → tapez un code → jouez à **Frappe !** et à **Course à l’encre**.
 5. Retour enseignant → **Actualiser** : les parties apparaissent. Essayez **Exporter (CSV)** et **Imprimer les codes**.
 6. Créez une 2ᵉ école avec un autre email, vérifiez qu'elle ne voit rien de la première.
 7. Mode avion sur le téléphone de l'élève : jouez, remettez le réseau : le score doit arriver tout seul.

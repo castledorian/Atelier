@@ -1119,62 +1119,6 @@ button.gcard:active {
   border: 2px dashed var(--color-ribbon);
 }
 
-.math-top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 16px;
-}
-.math-time {
-  font-family: var(--font-display);
-  font-size: clamp(26px, 6vh, 34px);
-}
-.math-bar {
-  height: 10px;
-  margin-top: 8px;
-  border: 2px solid var(--color-ink);
-  background: var(--color-paper-hi);
-}
-.math-bar i {
-  display: block;
-  height: 100%;
-  background: var(--color-ribbon);
-  transform-origin: left;
-  transition: transform 0.25s linear;
-}
-.page-in {
-  container-type: inline-size;
-}
-.math-q {
-  margin-top: clamp(10px, 6vh, 64px);
-  text-align: center;
-  font-family: var(--font-display);
-  /* une seule ligne, même pour « 8999 + 999 = ? » */
-  font-size: clamp(30px, min(10vw, 12vh), 96px);
-  font-size: clamp(30px, min(10.5cqw, 12vh), 96px);
-  line-height: 1.1;
-  white-space: nowrap;
-}
-.math-q.is-ok {
-  color: #2f6b2f;
-}
-.math-q.is-ko {
-  color: var(--color-ribbon);
-}
-.math-form {
-  display: flex;
-  justify-content: center;
-  margin-top: var(--sp);
-}
-.math-input {
-  width: min(280px, 80%);
-  text-align: center;
-  font-family: var(--font-display);
-  font-size: clamp(28px, 7vh, 40px);
-  letter-spacing: 0.08em;
-}
-
 .print-only {
   display: none;
 }
@@ -1558,4 +1502,63 @@ html[data-text='xlarge'] .card .rule {
 }
 html[data-text='xlarge'] .card .title {
   font-size: clamp(32px, min(13vw, 9vh), 80px);
+}
+
+/* Course à l'encre : 3 outils et 2 niveaux */
+.tools[data-n='3'] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 560px) {
+  .tools[data-n='3'] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .tools[data-n='3'] .tool {
+    font-size: 13px;
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+.games-levels[data-n='2'] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Course : écrans courts (petits PC, téléphones) — rien ne dépasse, rien ne défile */
+@media (max-height: 660px) {
+  .card-cover .cover-missed {
+    display: none;
+  }
+  .card-cover .score-big {
+    font-size: 36px;
+  }
+}
+@media (max-height: 460px) {
+  .card-cover .rule,
+  .howto-opt {
+    display: none;
+  }
+  .card-cover .btn {
+    min-height: 40px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+}
+@media (max-height: 460px) {
+  .card-cover .cover-long {
+    display: none;
+  }
+  .card-cover .btn {
+    font-size: 14px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .card-cover .score-big {
+    font-size: 30px;
+  }
+  .card-cover dl > div {
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+  .card-cover .title-sm {
+    font-size: 26px;
+  }
 }
