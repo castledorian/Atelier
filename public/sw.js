@@ -1,7 +1,7 @@
 /* Frappe ! — service worker : le jeu fonctionne sans réseau après la première visite.
  * Stratégie « cache d'abord, mise à jour en arrière-plan » : une nouvelle version publiée
  * est récupérée en silence et s'affiche à l'ouverture suivante. */
-const CACHE = 'frappe-v1';
+const CACHE = 'frappe-v2';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (event) => {
@@ -22,7 +22,7 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  // Seulement notre propre site : le classement de la classe (script.google.com) passe toujours par le réseau.
+  // Seulement notre propre site : les données des comptes (serveur) ne sont jamais mises en cache.
   if (url.origin !== self.location.origin) return;
 
   event.respondWith(

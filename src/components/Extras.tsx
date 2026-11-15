@@ -1,37 +1,23 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { cloudCsv, fetchAll, fetchTop, isCloudReady, isScriptUrl, normCode } from '../game/cloud';
-import type { CloudConfig, CloudScore } from '../game/cloud';
+import { useEffect, useMemo, useState } from 'react';
 import { DIFFICULTIES } from '../game/difficulty';
 import type { Difficulty } from '../game/difficulty';
-import { downloadText, historyCsv } from '../game/history';
 import type { RunRecord } from '../game/history';
-import { buildLink } from '../game/storage';
-import type { ScoreEntry, Settings } from '../game/storage';
+import type { ScoreEntry } from '../game/storage';
+import { explain } from '../server/api';
+import { fetchBoard } from '../server/student';
+import type { BoardRow, Scope, StudentAccount } from '../server/types';
 import { ScoreTable } from './Screens';
 
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
 
-// ───────────────────────── Classement de la classe ─────────────────────────
+// ───────────────────────── Classement de la classe / de l'école ─────────────────────────
 
-function ClassTable({
-  rows,
-  limit,
-  highlightId,
-  name,
-  onName,
-}: {
-  rows: CloudScore[];
-  limit: number;
-  highlightId?: string | null;
-  name?: string;
-  onName?: (name: string) => void;
-}) {
-  const all = rows.map((s, i) => ({ s, rank: i + 1 }));
-  const mine = highlightId ? all.findIndex((r) => r.s.id === highlightId) : -1;
-  const shown = mine >= limit ? [...all.slice(0, limit - 1), all[mine]] : all.slice(0, limit);
+function BoardTable({ rows, limit, label }: { rows: BoardRow[]; limit: number; label: string }) {
+  const mine = rows.findIndex((r) => r.is_me);
+  const shown = mine >= limit ? [...rows.slice(0, limit - 1), rows[mine]] : rows.slice(0, limit);
   return (
     <table className="scores">
-      <caption className="sr-only">Meilleurs scores de la classe</caption>
+      <caption className="sr-only">{label}</caption>
       <thead>
         <tr>
           <th scope="col">#</th>
@@ -48,35 +34,10 @@ function ClassTable({
         </tr>
       </thead>
       <tbody>
-        {shown.map(({ s, rank }) => (
-          <tr key={s.id} className={s.id === highlightId ? 'me' : undefined}>
-            <td>{rank}.</td>
-            <td>
-              {s.id === highlightId && onName ? (
-                <input
-                  className="name-input"
-                  value={name ?? ''}
-                  maxLength={12}
-                  size={9}
-                  placeholder="TON PRÉNOM"
-                  aria-label="Ton prénom pour le classement de la classe"
-                  autoComplete="off"
-                  autoCapitalize="characters"
-                  spellCheck={false}
-                  enterKeyHint="done"
-                  onChange={(e) => onName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === 'Escape') {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      e.currentTarget.blur();
-                    }
-                  }}
-                />
-              ) : (
-                s.name
-              )}
-            </td>
+        {shown.map((s) => (
+          <tr key={s.rank + s.name} className={s.is_me ? 'me' : undefined}>
+            <td>{s.rank}.</td>
+            <td>{s.name}</td>
             <td className="num">{fmt(s.score)}</td>
             <td className="num">{s.wave}</td>
             <td className="num">{Math.round(s.wpm)}</td>
@@ -91,48 +52,51 @@ interface ScoresPanelProps {
   diff: Difficulty;
   /** scores de cet appareil, déjà filtrés par mode */
   local: ScoreEntry[];
-  cloud: CloudConfig;
+  /** élève connecté : active les classements Classe et École */
+  account: StudentAccount | null;
   limit: number;
   highlightId?: string | null;
-  /** identifiant de la partie dans le classement partagé */
-  cloudId?: string | null;
   /** change quand un nouveau score vient d'être envoyé : le classement est rechargé */
   refreshKey?: string | number;
+  /** saisie du prénom (appareil sans compte uniquement) */
   name?: string;
   onName?: (name: string) => void;
   onClear?: () => void;
 }
 
-export function ScoresPanel({ diff, local, cloud, limit, highlightId, cloudId, refreshKey, name, onName, onClear }: ScoresPanelProps) {
-  const ready = isCloudReady(cloud);
-  const [tab, setTab] = useState<'class' | 'local'>(ready ? 'class' : 'local');
-  const [rows, setRows] = useState<CloudScore[] | null>(null);
-  const [error, setError] = useState(false);
+export function ScoresPanel({ diff, local, account, limit, highlightId, refreshKey, name, onName, onClear }: ScoresPanelProps) {
+  const token = account?.token ?? null;
+  const [tab, setTab] = useState<'class' | 'school' | 'local'>(token ? 'class' : 'local');
+  const [rows, setRows] = useState<BoardRow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const [confirm, setConfirm] = useState(false);
 
   useEffect(() => {
-    if (!ready || tab !== 'class') return;
+    if (!token || tab === 'local') return;
     let alive = true;
-    setError(false);
+    setError(null);
     setRows(null);
-    fetchTop(cloud, diff, 10)
+    fetchBoard(token, 'typing', diff, tab as Scope, 10)
       .then((r) => alive && setRows(r))
-      .catch(() => alive && setError(true));
+      .catch((e) => alive && setError(explain(e)));
     return () => {
       alive = false;
     };
-  }, [ready, tab, cloud, diff, refreshKey, tick]);
+  }, [token, tab, diff, refreshKey, tick]);
 
   const label = DIFFICULTIES[diff].label;
   return (
     <div className="mt-6">
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="subhead">Meilleurs scores · {label}</h2>
-        {ready && (
+        {token && (
           <div className="seg" role="tablist" aria-label="Classement">
             <button type="button" role="tab" aria-selected={tab === 'class'} className="seg-b" onClick={() => setTab('class')}>
               Classe
+            </button>
+            <button type="button" role="tab" aria-selected={tab === 'school'} className="seg-b" onClick={() => setTab('school')}>
+              École
             </button>
             <button type="button" role="tab" aria-selected={tab === 'local'} className="seg-b" onClick={() => setTab('local')}>
               Appareil
@@ -141,10 +105,10 @@ export function ScoresPanel({ diff, local, cloud, limit, highlightId, cloudId, r
         )}
       </div>
 
-      {tab === 'class' && ready ? (
+      {token && tab !== 'local' ? (
         error ? (
           <p className="text-[15px] leading-snug text-ink/75">
-            Classement indisponible pour l’instant (pas de réseau ?).{' '}
+            Classement indisponible pour l’instant.{' '}
             <button type="button" className="link" onClick={() => setTick((t) => t + 1)}>
               Réessayer
             </button>
@@ -154,9 +118,11 @@ export function ScoresPanel({ diff, local, cloud, limit, highlightId, cloudId, r
             Chargement du classement…
           </p>
         ) : rows.length === 0 ? (
-          <p className="text-[15px] leading-snug text-ink/75">Personne dans la classe n’a encore joué ce mode.</p>
+          <p className="text-[15px] leading-snug text-ink/75">
+            Personne {tab === 'class' ? 'dans la classe' : 'dans l’école'} n’a encore joué ce mode.
+          </p>
         ) : (
-          <ClassTable rows={rows} limit={limit} highlightId={cloudId} name={name} onName={onName} />
+          <BoardTable rows={rows} limit={limit} label={tab === 'class' ? 'Meilleurs scores de la classe' : 'Meilleurs scores de l’école'} />
         )
       ) : (
         <>
@@ -238,7 +204,7 @@ function LineChart({
 
 const avg = (a: number[]) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0);
 
-export function Progress({ runs, currentName, onBack }: { runs: RunRecord[]; currentName: string; onBack: () => void }) {
+export function Progress({ runs, loading, currentName, onBack }: { runs: RunRecord[]; loading?: boolean; currentName: string; onBack: () => void }) {
   const real = useMemo(() => runs.filter((r) => r.kind === 'game' && r.correct >= 10), [runs]);
   const names = useMemo(() => [...new Set(real.map((r) => r.name || 'ANONYME'))], [real]);
   const [who, setWho] = useState(() => (names.includes(currentName || 'ANONYME') ? currentName || 'ANONYME' : (names[0] ?? '')));
@@ -259,9 +225,13 @@ export function Progress({ runs, currentName, onBack }: { runs: RunRecord[]; cur
         </h2>
         <div className="rule" aria-hidden="true" />
 
-        {real.length === 0 ? (
+        {loading ? (
+          <p className="mt-4 text-[15px]" aria-live="polite">
+            Chargement de tes parties…
+          </p>
+        ) : real.length === 0 ? (
           <p className="mt-4 text-[15px] leading-snug">
-            Pas encore de partie enregistrée sur cet appareil. Joue quelques parties : la courbe apparaîtra ici.
+            Pas encore de partie enregistrée. Joue quelques parties : la courbe apparaîtra ici.
           </p>
         ) : (
           <>
@@ -311,208 +281,6 @@ export function Progress({ runs, currentName, onBack }: { runs: RunRecord[]; cur
             )}
           </>
         )}
-
-        <div className="mt-5">
-          <button type="button" className="btn btn-primary" autoFocus onClick={onBack}>
-            Retour
-          </button>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-// ───────────────────────── Espace enseignant ─────────────────────────
-
-interface TeacherProps {
-  settings: Settings;
-  runs: RunRecord[];
-  onChange: (patch: Partial<Settings>) => void;
-  onClearHistory: () => void;
-  onBack: () => void;
-}
-
-export function Teacher({ settings, runs, onChange, onClearHistory, onBack }: TeacherProps) {
-  const [url, setUrl] = useState(settings.cloud.url);
-  const [code, setCode] = useState(settings.cloud.code);
-  const [withCustom, setWithCustom] = useState(settings.difficulty === 'perso');
-  const [test, setTest] = useState<string>('');
-  const [copied, setCopied] = useState(false);
-  const [confirm, setConfirm] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  const urlOk = isScriptUrl(url);
-  const codeNorm = normCode(code);
-  const draft: CloudConfig = { url: url.trim(), code: codeNorm };
-  const ready = isCloudReady(draft);
-  const saved = isCloudReady(settings.cloud) && settings.cloud.url === draft.url && settings.cloud.code === draft.code;
-
-  const save = useCallback(() => {
-    onChange({ cloud: ready ? draft : { url: '', code: '' } });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onChange, ready, draft.url, draft.code]);
-
-  const link = buildLink({ ...settings, cloud: ready ? draft : settings.cloud }, withCustom);
-
-  const runTest = async () => {
-    setBusy(true);
-    setTest('Test en cours…');
-    try {
-      const rows = await fetchTop(draft, 'standard', 3);
-      setTest(`Connexion réussie (${rows.length} score${rows.length > 1 ? 's' : ''} en Standard pour cette classe).`);
-    } catch {
-      setTest('Échec : vérifie l’adresse, le déploiement du script (accès « Tout le monde ») et ta connexion.');
-    }
-    setBusy(false);
-  };
-
-  const exportClass = async () => {
-    setBusy(true);
-    try {
-      const rows = await fetchAll(draft);
-      downloadText(`frappe-classe-${codeNorm}.csv`, cloudCsv(rows));
-      setTest(`${rows.length} partie${rows.length > 1 ? 's' : ''} exportée${rows.length > 1 ? 's' : ''}.`);
-    } catch {
-      setTest('Export impossible pour l’instant (pas de réseau ou script mal déployé).');
-    }
-    setBusy(false);
-  };
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(link);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* le lien reste sélectionnable à la main */
-    }
-  };
-
-  return (
-    <div className="overlay">
-      <section className="card w-full max-w-[560px]" role="dialog" aria-modal="true" aria-labelledby="teach-title">
-        <p className="eyebrow">Espace enseignant</p>
-        <h2 id="teach-title" className="title-sm">
-          Classe et résultats
-        </h2>
-        <div className="rule" aria-hidden="true" />
-
-        <div className="cfg mt-4">
-          <h3 className="subhead mb-2">Classement partagé</h3>
-          <p className="text-[13px] leading-snug text-ink/75">
-            Les élèves se comparent dans une même classe. Il faut un petit script Google gratuit, créé une seule fois
-            (voir <strong>enseignant/GUIDE-ENSEIGNANT.md</strong>). Les scores arrivent dans ta feuille Google Sheets.
-          </p>
-          <div className="cfg-row cfg-col">
-            <label className="cfg-label" htmlFor="t-url">
-              Adresse du script
-            </label>
-            <input
-              id="t-url"
-              className="cfg-link"
-              placeholder="https://script.google.com/macros/s/…/exec"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              autoComplete="off"
-              spellCheck={false}
-            />
-            {url && !urlOk && <p className="text-[13px] text-ribbon">L’adresse doit ressembler à https://script.google.com/macros/s/…/exec</p>}
-          </div>
-          <div className="cfg-row cfg-col">
-            <label className="cfg-label" htmlFor="t-code">
-              Code de la classe (2 à 24 lettres, chiffres ou tirets)
-            </label>
-            <input
-              id="t-code"
-              className="cfg-link"
-              placeholder="CM2-DURAND"
-              value={code}
-              maxLength={24}
-              onChange={(e) => setCode(e.target.value)}
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </div>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <button type="button" className="btn btn-ghost" disabled={!ready && !!(url || code)} onClick={save}>
-              {saved ? 'Enregistré' : 'Enregistrer'}
-            </button>
-            <button type="button" className="btn btn-ghost" disabled={!ready || busy} onClick={runTest}>
-              Tester la connexion
-            </button>
-            {(settings.cloud.url || url) && (
-              <button
-                type="button"
-                className="link"
-                onClick={() => {
-                  setUrl('');
-                  setCode('');
-                  onChange({ cloud: { url: '', code: '' } });
-                }}
-              >
-                Désactiver
-              </button>
-            )}
-          </div>
-          {test && (
-            <p className="mt-2 text-[14px] leading-snug" aria-live="polite">
-              {test}
-            </p>
-          )}
-        </div>
-
-        <div className="cfg mt-4">
-          <h3 className="subhead mb-2">Lien pour les élèves</h3>
-          <p className="text-[13px] leading-snug text-ink/75">
-            Les élèves qui ouvrent ce lien rejoignent la classe sans rien régler.
-          </p>
-          <div className="mt-1">
-            <label className="opt" style={{ cursor: 'pointer' }}>
-              <input type="checkbox" checked={withCustom} onChange={(e) => setWithCustom(e.target.checked)} />
-              &nbsp;Inclure les réglages de la séance « Perso »
-            </label>
-          </div>
-          <div className="mt-2 flex gap-2">
-            <input className="cfg-link" readOnly value={link} aria-label="Lien pour les élèves" onFocus={(e) => e.currentTarget.select()} />
-            <button type="button" className="btn btn-ghost" onClick={copy}>
-              {copied ? 'Copié' : 'Copier'}
-            </button>
-          </div>
-        </div>
-
-        <div className="cfg mt-4">
-          <h3 className="subhead mb-2">Résultats</h3>
-          <div className="flex flex-col items-start gap-2">
-            <button type="button" className="btn btn-ghost" disabled={!ready || busy} onClick={exportClass}>
-              Télécharger les résultats de la classe (CSV)
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              disabled={runs.length === 0}
-              onClick={() => downloadText('frappe-historique-appareil.csv', historyCsv(runs))}
-            >
-              Historique de cet appareil (CSV)
-            </button>
-            <button
-              type="button"
-              className="link"
-              disabled={runs.length === 0}
-              onClick={() => {
-                if (confirm) {
-                  onClearHistory();
-                  setConfirm(false);
-                } else setConfirm(true);
-              }}
-              onBlur={() => setConfirm(false)}
-            >
-              {confirm ? 'Confirmer : tout effacer sur cet appareil' : 'Effacer l’historique de cet appareil'}
-            </button>
-          </div>
-          <p className="mt-2 text-[13px] leading-snug text-ink/75">
-            Les fichiers CSV s’ouvrent dans Excel ou LibreOffice. Utilise des prénoms ou des pseudos, jamais de noms complets.
-          </p>
-        </div>
 
         <div className="mt-5">
           <button type="button" className="btn btn-primary" autoFocus onClick={onBack}>

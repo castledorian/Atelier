@@ -20,6 +20,8 @@ export interface DiffConfig {
   cross: { base: number; decay: number; min: number };
   gap: { start: number; decay: number; min: number };
   countMul: number;
+  /** ennemis ajoutés à chaque vague (1,5 = rythme d'origine) */
+  growth: number;
   /** nombre minimal d'ennemis à l'écran (vague 1 / ensuite) */
   floor1: number;
   floor: number;
@@ -76,6 +78,7 @@ const BASE: Record<Exclude<Difficulty, 'perso'>, DiffConfig> = {
     cross: { base: 22, decay: 0.985, min: 14 },
     gap: { start: 2.6, decay: 0.98, min: 1.4 },
     countMul: 0.6,
+    growth: 1.5,
     floor1: 1,
     floor: 1,
     clusterP: 0,
@@ -110,20 +113,23 @@ const BASE: Record<Exclude<Difficulty, 'perso'>, DiffConfig> = {
     lives: 3,
     maxLives: MAX_LIVES,
     bossLife: true,
-    cross: { base: 14, decay: 0.965, min: 5.5 },
-    gap: { start: 1.8, decay: 0.965, min: 0.6 },
+    // progression deux fois plus lente qu'avant : parties plus longues, courbe plus douce
+    cross: { base: 16, decay: 0.984, min: 6 },
+    gap: { start: 2.4, decay: 0.982, min: 0.7 },
     countMul: 1,
+    growth: 0.75,
     floor1: 1,
     floor: 2,
-    clusterP: 0.45,
-    tache: (n) => [3, Math.min(7, 3 + Math.ceil(n / 2))],
+    clusterP: 0.35,
+    tache: (n) => [3, Math.min(7, 3 + Math.ceil(n / 4))],
     pateFrom: 3,
-    pateEvery: 3,
-    pate: (n) => [7, Math.min(12, 8 + Math.floor(n / 3))],
+    pateEvery: 6,
+    pate: (n) => [7, Math.min(12, 8 + Math.floor(n / 6))],
+    // les lettres isolées sont le point dur (on cherche la touche du regard) : moins nombreuses et moins rapides
     goutteFrom: 2,
-    goutteBase: 2,
-    goutteDiv: 2,
-    goutteMul: 1.55,
+    goutteBase: 1,
+    goutteDiv: 4,
+    goutteMul: 1.3,
     bossBase: 4,
     bossDiv: 10,
     bossMax: 6,
@@ -150,6 +156,7 @@ const BASE: Record<Exclude<Difficulty, 'perso'>, DiffConfig> = {
     cross: { base: 12, decay: 0.95, min: 3.8 },
     gap: { start: 1.6, decay: 0.955, min: 0.45 },
     countMul: 1.15,
+    growth: 1.5,
     floor1: 2,
     floor: 3,
     clusterP: 0.55,

@@ -607,28 +607,97 @@ body {
 }
 
 /* ───────── Accessibilité ───────── */
-/* Police adaptée à la dyslexie : lettres bien distinctes, espacement plus aéré */
+/* Police de lecture facile (EasyReading PRO) : placer les fichiers dans public/fonts/ (voir LISEZ-MOI.txt).
+   Sans eux, le navigateur utilise Verdana ou une police système lisible. */
+@font-face {
+  font-family: 'EasyReading PRO';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    local('EasyReading PRO'),
+    local('EasyReadingPRO'),
+    url('/fonts/EasyReadingPRO-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'EasyReading PRO';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src:
+    local('EasyReading PRO Bold'),
+    local('EasyReadingPRO-Bold'),
+    url('/fonts/EasyReadingPRO-Bold.woff2') format('woff2');
+}
 html[data-font='dys'] {
-  --font-display: 'OpenDyslexic', 'Atkinson Hyperlegible', Verdana, 'Trebuchet MS', 'Comic Sans MS', sans-serif;
-  --font-body: 'OpenDyslexic', 'Atkinson Hyperlegible', Verdana, 'Trebuchet MS', 'Comic Sans MS', sans-serif;
+  --font-display: 'EasyReading PRO', Verdana, 'Trebuchet MS', 'Comic Sans MS', sans-serif;
+  --font-body: 'EasyReading PRO', Verdana, 'Trebuchet MS', 'Comic Sans MS', sans-serif;
 }
 html[data-font='dys'] .card,
 html[data-font='dys'] .kb {
-  letter-spacing: 0.03em;
-  word-spacing: 0.12em;
-  line-height: 1.6;
+  letter-spacing: 0.02em;
+  word-spacing: 0.1em;
+  line-height: 1.55;
 }
 html[data-font='dys'] .title,
 html[data-font='dys'] .title-sm {
   letter-spacing: 0;
 }
 
-/* Taille du texte des écrans (menu, pause, bilan) */
+/* Taille du texte des écrans : agrandissement léger, le titre garde sa taille pour ne jamais déborder */
 html[data-text='large'] .card {
-  zoom: 1.15;
+  zoom: 1.08;
 }
 html[data-text='xlarge'] .card {
-  zoom: 1.3;
+  zoom: 1.16;
+}
+html[data-text='large'] .card .title,
+html[data-text='large'] .card .title-sm {
+  zoom: 0.926;
+}
+html[data-text='xlarge'] .card .title,
+html[data-text='xlarge'] .card .title-sm {
+  zoom: 0.862;
+}
+
+/* Volets repliables, sections, liens de l'accueil */
+.fold > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  list-style: none;
+}
+.fold > summary::-webkit-details-marker {
+  display: none;
+}
+.fold > summary::before {
+  content: '+';
+  display: inline-block;
+  width: 1.3em;
+  height: 1.3em;
+  line-height: 1.1em;
+  text-align: center;
+  border: 2px solid var(--color-ink);
+  letter-spacing: 0;
+}
+.fold[open] > summary::before {
+  content: '–';
+}
+.sec {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 2px dashed rgba(27, 25, 21, 0.25);
+}
+.menu-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
 }
 
 /* Doigts : points en plus de la couleur (lisible aussi sans voir les couleurs) */
@@ -718,17 +787,20 @@ html[data-text='xlarge'] .card {
 .cfg-keys {
   display: grid;
   gap: 4px;
-  justify-items: start;
+  width: 100%;
 }
 .cfg-keyrow {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 3px;
+  width: 100%;
 }
 .cfg .opt {
   text-align: left;
 }
 .cfg-key {
-  width: 26px;
+  width: 100%;
+  min-width: 0;
   height: 30px;
   border: 2px solid var(--color-ink);
   font-size: 14px;
@@ -780,4 +852,332 @@ html[data-text='xlarge'] .card {
 .link:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* trois niveaux : une seule ligne */
+.diff-grid[data-n='3'] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.diff-grid[data-n='3'] .diff {
+  padding: 8px 2px 7px;
+  font-size: 15px;
+}
+@media (max-width: 360px) {
+  .diff-grid[data-n='3'] .diff {
+    font-size: 13px;
+  }
+}
+
+/* ───────── Pages hors jeu : accueil, connexion, espace enseignant ───────── */
+
+.page {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: clamp(16px, 4vw, 32px) clamp(14px, 4vw, 30px) max(28px, env(safe-area-inset-bottom));
+}
+.page-in {
+  max-width: 600px;
+  margin: 0 auto;
+}
+.page-in.page-wide {
+  max-width: 820px;
+}
+.page .title {
+  font-size: clamp(40px, 13vw, 84px);
+}
+
+.who {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+  font-size: 15px;
+  line-height: 1.35;
+}
+.who-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.games {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  margin-top: 8px;
+}
+.gcard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 150px;
+  padding: 14px 14px 12px;
+  text-align: left;
+  color: var(--color-ink);
+  background: var(--color-paper-hi);
+  border: 2px solid var(--color-ink);
+  box-shadow: 4px 4px 0 var(--color-ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+button.gcard:hover {
+  background: #fff;
+}
+button.gcard:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--color-ink);
+}
+.gcard-soon {
+  cursor: default;
+  opacity: 0.6;
+  box-shadow: none;
+  border-style: dashed;
+}
+.gcard-tag {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ribbon);
+  font-weight: 700;
+}
+.gcard-name {
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1.05;
+}
+.gcard-text {
+  font-size: 14px;
+  line-height: 1.3;
+  flex: 1;
+}
+.gcard-go {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+}
+.form .field {
+  width: 100%;
+  max-width: 360px;
+}
+.form-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+.code-input {
+  font-family: var(--font-display);
+  font-size: 28px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.names-area {
+  max-width: 420px;
+  resize: vertical;
+}
+
+.notice {
+  margin-top: 12px;
+  padding: 9px 12px;
+  border: 2px solid var(--color-ink);
+  font-size: 14px;
+  line-height: 1.35;
+  background: var(--color-paper-hi);
+}
+.notice-error {
+  border-color: var(--color-ribbon);
+  color: var(--color-ribbon);
+  font-weight: 700;
+}
+
+.dash-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.dash-who {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.sec-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.class-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+.class-tab {
+  min-height: 40px;
+  padding: 6px 14px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+  color: var(--color-ink);
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.class-tab[aria-selected='true'] {
+  background: var(--color-ink);
+  color: var(--color-paper-hi);
+}
+.class-add {
+  border-style: dashed;
+  font-weight: 400;
+}
+.tbl-wrap {
+  overflow-x: auto;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+}
+.tbl {
+  min-width: 700px;
+  font-size: 14px;
+}
+.mono {
+  font-family: var(--font-display);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.row-actions {
+  white-space: nowrap;
+}
+.row-actions .link {
+  margin-right: 10px;
+}
+.code-list {
+  display: grid;
+  gap: 4px;
+  max-width: 360px;
+  padding: 0;
+  list-style: none;
+}
+.code-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 8px;
+  border-bottom: 1px dashed var(--color-ink);
+}
+.danger {
+  padding: 10px 12px;
+  border: 2px dashed var(--color-ribbon);
+}
+
+.math-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 16px;
+}
+.math-time {
+  font-family: var(--font-display);
+  font-size: 34px;
+}
+.math-bar {
+  height: 10px;
+  margin-top: 8px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+}
+.math-bar i {
+  display: block;
+  height: 100%;
+  background: var(--color-ribbon);
+  transition: width 0.25s linear;
+}
+.math-q {
+  margin-top: clamp(24px, 8vh, 64px);
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: clamp(44px, 14vw, 96px);
+  line-height: 1.1;
+}
+.math-q.is-ok {
+  color: #2f6b2f;
+}
+.math-q.is-ko {
+  color: var(--color-ribbon);
+}
+.math-form {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+.math-input {
+  width: min(280px, 80%);
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 40px;
+  letter-spacing: 0.08em;
+}
+
+.print-only {
+  display: none;
+}
+@media print {
+  .page-in > *:not(.print-only) {
+    display: none !important;
+  }
+  .desk,
+  .sheet,
+  .page {
+    display: block;
+    height: auto;
+    overflow: visible;
+    background: #fff;
+    box-shadow: none;
+  }
+  .print-only {
+    display: block;
+    color: #000;
+  }
+  .print-only h2 {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+  .print-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .print-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px;
+    border: 1px dashed #000;
+    break-inside: avoid;
+    font-size: 14px;
+  }
+  .print-card .mono {
+    font-size: 22px;
+  }
 }

@@ -1,7 +1,5 @@
-import { DEFAULT_CUSTOM, decodeCustom, encodeCustom, isDifficulty, sanitizeCustom } from './difficulty';
+import { DEFAULT_CUSTOM, decodeCustom, isDifficulty, sanitizeCustom } from './difficulty';
 import type { CustomConfig, Difficulty } from './difficulty';
-import { NO_CLOUD, sanitizeCloud } from './cloud';
-import type { CloudConfig } from './cloud';
 
 export interface ScoreEntry {
   id: string;
@@ -31,8 +29,6 @@ export interface Settings {
   textSize: TextSize;
   /** réglages de la séance « Perso » */
   custom: CustomConfig;
-  /** classement partagé de la classe (script de l'enseignant + code de classe) */
-  cloud: CloudConfig;
 }
 
 export type FontChoice = 'normal' | 'dys';
@@ -114,33 +110,13 @@ export function clearScores(diff: Difficulty): ScoreEntry[] {
   return kept;
 }
 
-/**
- * Lien de l'enseignant : #c=… (séance « Perso »), #u=…&k=… (classement de la classe).
- * Le lien remplace les réglages concernés sur l'appareil de l'élève.
- */
+/** Ancien lien d'enseignant : #c=… (séance « Perso ») reste accepté. */
 export function settingsFromLink(s: Settings): Settings {
   if (typeof window === 'undefined') return s;
   const p = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-  let out = s;
   const code = p.get('c');
   const c = code ? decodeCustom(code) : null;
-  if (c) out = { ...out, difficulty: 'perso', custom: c };
-  const cloud = sanitizeCloud({ url: p.get('u'), code: p.get('k') });
-  if (cloud.url) out = { ...out, cloud };
-  return out;
-}
-
-/** Lien à donner aux élèves : séance « Perso » (facultatif) et classement de la classe (si configuré). */
-export function buildLink(s: Settings, withCustom: boolean): string {
-  const p = new URLSearchParams();
-  if (withCustom) p.set('c', encodeCustom(s.custom));
-  if (s.cloud.url) {
-    p.set('u', s.cloud.url);
-    p.set('k', s.cloud.code);
-  }
-  const base = window.location.href.split('#')[0];
-  const qs = p.toString();
-  return qs ? `${base}#${qs}` : base;
+  return c ? { ...s, difficulty: 'perso', custom: c } : s;
 }
 
 export function loadSettings(): Settings {
@@ -158,7 +134,6 @@ export function loadSettings(): Settings {
     font: 'normal',
     textSize: 'normal',
     custom: DEFAULT_CUSTOM,
-    cloud: NO_CLOUD,
   };
   const saved = read<Partial<Settings>>(SETTINGS_KEY);
   if (!saved || typeof saved !== 'object') return base;
@@ -172,7 +147,6 @@ export function loadSettings(): Settings {
     font: saved.font === 'dys' ? 'dys' : 'normal',
     textSize: saved.textSize === 'large' || saved.textSize === 'xlarge' ? saved.textSize : 'normal',
     custom: sanitizeCustom(saved.custom),
-    cloud: sanitizeCloud(saved.cloud),
   };
 }
 

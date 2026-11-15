@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Progress, Teacher } from './components/Extras';
+import { Progress } from './components/Extras';
 import { Keyboard } from './components/Keyboard';
 import { GameOver, Menu, Pause } from './components/Screens';
 import type { InstallInfo } from './components/Screens';
 import { Sfx } from './game/audio';
-import { flushOutbox, isCloudReady, submitScore } from './game/cloud';
-import type { CloudScore } from './game/cloud';
+import { sanitizeCustom } from './game/difficulty';
 import type { Difficulty } from './game/difficulty';
 import { Game } from './game/engine';
 import type { RunStats } from './game/engine';
-import { addRun, clearHistory, loadHistory, newRunId, renameRun } from './game/history';
+import { addRun, loadHistory, newRunId, renameRun } from './game/history';
 import type { RunRecord } from './game/history';
 import {
   addScore,
@@ -21,16 +20,13 @@ import {
   saveSettings,
 } from './game/storage';
 import type { ScoreEntry, Settings } from './game/storage';
+import { enqueue, flush } from './server/outbox';
+import { fetchMyRuns, sendRun } from './server/student';
+import type { RunPayload, StudentAccount } from './server/types';
 
-type Screen = 'menu' | 'play' | 'pause' | 'over' | 'progress' | 'teacher';
+type Screen = 'menu' | 'play' | 'pause' | 'over' | 'progress';
 
 type CloudStatus = 'off' | 'sending' | 'sent' | 'queued';
-
-/** Événement non standard des navigateurs Chromium : propose d'installer l'application. */
-interface InstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: string }>;
-}
 
 interface RunResult {
   stats: RunStats;
@@ -42,7 +38,7 @@ interface RunResult {
   recId: string;
 }
 
-const TEXT_SCALE = { normal: 1, large: 1.2, xlarge: 1.4 } as const;
+const TEXT_SCALE = { normal: 1, large: 1.1, xlarge: 1.2 } as const;
 
 function detectTouch() {
   if (typeof window === 'undefined') return false;
@@ -50,7 +46,16 @@ function detectTouch() {
   return coarse && navigator.maxTouchPoints > 0;
 }
 
-export default function App() {
+export interface TypingProps {
+  /** élève connecté (null = mode local, sans compte) */
+  account: StudentAccount | null;
+  onHome: () => void;
+  /** la session de l'élève n'est plus valable : retour à la connexion */
+  onSessionLost: () => void;
+  install: InstallInfo;
+}
+
+export default function App({ account, onHome, onSessionLost, install }: TypingProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<Game | null>(null);
   const [sfx] = useState(() => new Sfx());
@@ -64,28 +69,63 @@ export default function App() {
   const [drill, setDrill] = useState<string | null>(null);
   const [runs, setRuns] = useState<RunRecord[]>(loadHistory);
   const [cloudStatus, setCloudStatus] = useState<CloudStatus>('off');
-  const [installEvt, setInstallEvt] = useState<InstallPromptEvent | null>(null);
-  const cloudEntry = useRef<CloudScore | null>(null);
-  const renameTimer = useRef<number | undefined>(undefined);
+  const [serverRuns, setServerRuns] = useState<RunRecord[] | null>(null);
+  const lost = useRef(false);
+  const accountRef = useRef(account);
+  accountRef.current = account;
 
   // Mode Apprenti : le clavier à l'écran (touche à frapper en surbrillance) est affiché par défaut.
   const persoAssist = settings.difficulty === 'perso' && settings.custom.autoTarget;
   const kbOn = settings.keyboard ?? (touch || settings.difficulty === 'apprenti' || persoAssist || drill !== null);
 
   // Valeurs « vivantes » pour les écouteurs globaux
-  const live = useRef({ screen, settings, overAt: 0, diff: settings.difficulty as Difficulty, drill: null as string | null });
+  const live = useRef({ screen, settings, overAt: 0, diff: settings.difficulty as Difficulty, drill: null as string | null, recId: '' });
   live.current.screen = screen;
   live.current.settings = settings;
+  const accName = account ? account.student.name.slice(0, 12).toUpperCase() : null;
 
   const onGameOver = useRef<(s: RunStats) => void>(() => {});
   onGameOver.current = (stats) => {
     const { diff, settings: st } = live.current;
     const isDrill = live.current.drill !== null;
     const ranked = !isDrill && diff !== 'perso';
-    const name = st.name || 'ANONYME';
+    const acct = accountRef.current;
+    const name = (acct ? acct.student.name.slice(0, 12).toUpperCase() : st.name) || 'ANONYME';
     const recId = newRunId();
     const acc = Math.round(stats.accuracy * 100);
-    cloudEntry.current = null;
+    const payload: RunPayload = {
+      clientId: recId,
+      game: 'typing',
+      mode: diff,
+      kind: isDrill ? 'drill' : 'game',
+      score: stats.score,
+      wave: stats.wave,
+      wpm: stats.wpm,
+      acc,
+      correct: stats.correct,
+      duration: Math.round(stats.time),
+      playedMs: Date.now(),
+    };
+    // Compte élève : toute partie (même entraînement) est envoyée au serveur ; seules les parties classées comptent au classement.
+    const sendToServer = () => {
+      if (!acct || stats.correct === 0) return false;
+      setCloudStatus('sending');
+      void sendRun(acct.token, payload)
+        .then((r) => {
+          if (r === 'invalid_session') {
+            enqueue(acct.student.id, payload);
+            lost.current = true;
+          }
+          setServerRuns(null);
+          if (recId === live.current.recId) setCloudStatus(r === 'ok' ? 'sent' : r === 'invalid_session' ? 'queued' : 'off');
+        })
+        .catch(() => {
+          enqueue(acct.student.id, payload);
+          if (recId === live.current.recId) setCloudStatus('queued');
+        });
+      return true;
+    };
+    live.current.recId = recId;
 
     // historique de l'appareil (courbe de progression, export)
     setRuns(
@@ -106,7 +146,7 @@ export default function App() {
 
     if (!ranked) {
       // entraînement ou séance personnalisée : pas de classement
-      setCloudStatus('off');
+      if (!sendToServer()) setCloudStatus('off');
       setRun({ stats, diff, drill: isDrill, id: null, rank: -1, recId });
       live.current.overAt = performance.now();
       setScreen('over');
@@ -116,17 +156,7 @@ export default function App() {
     const res = addScore({ diff, name, score: stats.score, wave: stats.wave, wpm: stats.wpm, acc });
     setScores(res.scores);
 
-    // classement de la classe (si l'enseignant en a configuré un)
-    if (isCloudReady(st.cloud) && stats.score > 0) {
-      const entry: CloudScore = { id: recId, name, diff, score: stats.score, wave: stats.wave, wpm: stats.wpm, acc, date: Date.now() };
-      cloudEntry.current = entry;
-      setCloudStatus('sending');
-      void submitScore(st.cloud, entry).then((ok) => {
-        if (cloudEntry.current?.id === recId) setCloudStatus(ok ? 'sent' : 'queued');
-      });
-    } else {
-      setCloudStatus('off');
-    }
+    if (!sendToServer()) setCloudStatus('off');
 
     setRun({ stats, diff, drill: false, id: res.id, rank: res.rank, recId });
     live.current.overAt = performance.now();
@@ -208,7 +238,8 @@ export default function App() {
     setDrill(null);
     gameRef.current?.startDemo();
     setScreen('menu');
-  }, []);
+    if (lost.current) onSessionLost();
+  }, [onSessionLost]);
 
   // Clavier physique
   useEffect(() => {
@@ -315,56 +346,58 @@ export default function App() {
     setSettings((s) => ({ ...s, name }));
     if (runId.current) setScores(renameScore(runId.current, name || 'ANONYME'));
     if (recId.current) setRuns(renameRun(recId.current, name || 'ANONYME'));
-    // le prénom saisi après la partie met à jour la ligne de la classe (après une courte pause de frappe)
-    if (cloudEntry.current) {
-      cloudEntry.current = { ...cloudEntry.current, name: name || 'ANONYME' };
-      window.clearTimeout(renameTimer.current);
-      renameTimer.current = window.setTimeout(() => {
-        const entry = cloudEntry.current;
-        const cfg = live.current.settings.cloud;
-        if (!entry || !isCloudReady(cfg)) return;
-        setCloudStatus('sending');
-        void submitScore(cfg, entry).then((ok) => {
-          if (cloudEntry.current?.id === entry.id) setCloudStatus(ok ? 'sent' : 'queued');
-        });
-      }, 1200);
-    }
   }, []);
 
-  // Scores en attente (envoyés hors ligne) : on réessaie au démarrage et au retour du réseau
+  // Séance de la classe : si l'enseignant en a réglé une, elle est proposée d'emblée (mode « Perso »)
+  const classId = account?.class.id ?? null;
   useEffect(() => {
-    void flushOutbox();
-    const onOnline = () => void flushOutbox();
-    window.addEventListener('online', onOnline);
-    return () => window.removeEventListener('online', onOnline);
-  }, []);
+    const cfg = accountRef.current?.class.session_config;
+    if (!cfg || typeof cfg !== 'object') return;
+    setSettings((s) => ({ ...s, difficulty: 'perso', custom: sanitizeCustom(cfg) }));
+  }, [classId]);
 
-  // Installation de l'application (Chrome, Edge, Android) ou consigne pour iPhone / iPad
+  // Parties jouées sans réseau : on réessaie au démarrage et au retour du réseau
+  const studentId = account?.student.id ?? null;
+  const token = account?.token ?? null;
   useEffect(() => {
-    const onPrompt = (e: Event) => {
-      e.preventDefault();
-      setInstallEvt(e as InstallPromptEvent);
-    };
-    const onInstalled = () => setInstallEvt(null);
-    window.addEventListener('beforeinstallprompt', onPrompt);
-    window.addEventListener('appinstalled', onInstalled);
+    if (!studentId || !token) return;
+    const go = () => void flush(studentId, token);
+    go();
+    window.addEventListener('online', go);
+    return () => window.removeEventListener('online', go);
+  }, [studentId, token]);
+
+  // Courbe de progression de l'élève connecté : lue sur le serveur (toutes ses parties, sur tous ses appareils)
+  useEffect(() => {
+    if (screen !== 'progress' || !token || serverRuns) return;
+    let alive = true;
+    fetchMyRuns(token, 'typing')
+      .then((rows) => {
+        if (!alive) return;
+        setServerRuns(
+          rows
+            .filter((r) => r.mode === 'apprenti' || r.mode === 'standard' || r.mode === 'expert' || r.mode === 'perso')
+            .map((r) => ({
+              id: r.id,
+              date: r.date,
+              name: accName ?? 'ANONYME',
+              diff: r.mode as Difficulty,
+              kind: r.kind,
+              score: r.score,
+              wave: r.wave,
+              wpm: r.wpm,
+              acc: r.acc,
+              correct: r.correct,
+              time: r.duration,
+            }))
+            .reverse(), // le serveur renvoie les plus récentes d'abord
+        );
+      })
+      .catch(() => alive && setServerRuns([]));
     return () => {
-      window.removeEventListener('beforeinstallprompt', onPrompt);
-      window.removeEventListener('appinstalled', onInstalled);
+      alive = false;
     };
-  }, []);
-  const standalone =
-    (typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true;
-  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const install: InstallInfo = installEvt
-    ? {
-        mode: 'prompt',
-        onInstall: () => {
-          void installEvt.prompt().then(() => installEvt.userChoice).finally(() => setInstallEvt(null));
-        },
-      }
-    : { mode: isIos && !standalone ? 'ios' : null, onInstall: () => {} };
+  }, [screen, token, serverRuns, accName]);
 
   const status =
     screen === 'pause'
@@ -415,16 +448,15 @@ export default function App() {
             onChange={changeSettings}
             onClear={() => setScores(clearScores(settings.difficulty))}
             onProgress={() => setScreen('progress')}
-            onTeacher={() => setScreen('teacher')}
+            account={account}
+            onHome={onHome}
           />
         )}
-        {screen === 'progress' && <Progress runs={runs} currentName={settings.name} onBack={() => setScreen('menu')} />}
-        {screen === 'teacher' && (
-          <Teacher
-            settings={settings}
-            runs={runs}
-            onChange={changeSettings}
-            onClearHistory={() => setRuns(clearHistory())}
+        {screen === 'progress' && (
+          <Progress
+            runs={account ? (serverRuns ?? []) : runs}
+            loading={!!account && serverRuns === null}
+            currentName={accName ?? settings.name}
             onBack={() => setScreen('menu')}
           />
         )}
@@ -445,8 +477,7 @@ export default function App() {
             drill={run.drill}
             layout={settings.layout}
             scores={scores}
-            cloud={settings.cloud}
-            cloudId={cloudStatus === 'off' ? null : run.recId}
+            account={account}
             cloudStatus={cloudStatus}
             entryId={run.id}
             rank={run.rank}

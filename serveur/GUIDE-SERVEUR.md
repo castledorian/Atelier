@@ -1,0 +1,186 @@
+# Guide serveur — comptes d'école, élèves et classements partagés
+
+Ce guide explique **exactement** comment mettre en place le serveur qui garde les comptes, les élèves et les scores, et répond à vos deux questions : *« un serveur stable à vie ? »* et *« puis-je garder le site sur GitHub ? »*.
+
+---
+
+## 0. Les réponses courtes
+
+**Peut-on garder le site sur GitHub ? Oui, pour le site. Non, pour les données.**
+GitHub Pages ne sait servir que des fichiers (le jeu). Il ne peut pas enregistrer de scores ni de comptes. Les données vivent donc ailleurs, sur un petit serveur de base de données. Le site reste sur GitHub (comme aujourd'hui), le serveur est **Supabase**.
+
+**Un serveur « stable à vie » ? Aucun service gratuit ne peut le promettre, mais on peut s'en rapprocher honnêtement :**
+
+| | Gratuit (test) | Payant (usage réel en classe) |
+|---|---|---|
+| Offre Supabase | Free | Pro (≈ 25 $ / mois, soit ≈ 23 €) |
+| Mise en pause | **Oui : le projet s'endort après 1 semaine sans activité** (vacances scolaires !) | Non, jamais |
+| Sauvegardes automatiques | **Non** | Oui, quotidiennes (7 jours) |
+| Nombre de projets actifs | 2 | selon l'organisation |
+| À utiliser pour | essayer avec quelques élèves | une vraie école, toute l'année |
+
+Ce qui rend le projet **durable malgré tout** :
+- tout le « cerveau » du serveur tient dans **un seul fichier SQL** (`serveur/schema.sql`) : du Postgres standard, sans verrou propriétaire ;
+- vos données s'exportent en un clic (CSV) ou en une commande (`pg_dump`, §9) ;
+- si Supabase disparaissait ou changeait ses prix, vous pouvez recréer la même base ailleurs (autre hébergeur Postgres, ou Supabase auto-hébergé) et changer **deux lignes** dans `src/server/config.ts`.
+
+Recommandation : **gratuit pour tester, Pro dès que de vraies classes s'en servent** (vous ne voulez pas qu'un serveur s'endorme pendant les vacances de la Toussaint et que les élèves trouvent un site cassé à la rentrée).
+
+---
+
+## 1. Comment ça marche (schéma)
+
+```
+Élèves / enseignants (navigateur, PC, tablette, téléphone)
+        │  le jeu = fichiers statiques
+        ▼
+   GitHub Pages ───────────────  (gratuit, déjà en place)
+
+        │  comptes, scores, classements (HTTPS)
+        ▼
+     Supabase  (base de données Postgres, région Europe)
+```
+
+- **Enseignants** : vrai compte (email + mot de passe), géré par le service d'authentification de Supabase. Un enseignant crée une **école**, des **classes**, des **élèves**.
+- **Élèves** : pas d'email, pas de mot de passe. Chacun reçoit un **code personnel de 8 caractères** (imprimable). Aucune donnée personnelle sauf un prénom ou pseudo.
+- **Cloisonnement** : une école ne voit jamais les données d'une autre. C'est garanti par la base elle-même (règles « RLS »), pas seulement par l'application. Ces règles sont couvertes par ~50 tests automatiques (voir §11).
+- Plusieurs écoles, plusieurs enseignants par école : chaque enseignant crée son compte et son école. (Inviter un collègue dans la même école n'est pas encore dans l'interface : voir §11.)
+
+---
+
+## 2. Créer le projet Supabase (10 minutes)
+
+1. Allez sur **supabase.com** → **Start your project** → connectez-vous avec votre compte GitHub (le plus simple).
+2. Créez une **organisation** (nom libre, type « Personal » ou « Education », plan **Free** pour commencer).
+3. **New project** :
+   - *Name* : `atelier` (libre) ;
+   - *Database password* : cliquez **Generate a password**, **copiez-le dans un gestionnaire de mots de passe** (vous en aurez besoin pour les sauvegardes, §9) ;
+   - *Region* : **Europe — Paris (eu-west-3)** si proposée, sinon **Frankfurt (eu-central-1)**. Important pour le RGPD : les données d'élèves doivent rester dans l'Union européenne. **La région ne peut plus être changée après la création.**
+4. Attendez 1 à 2 minutes que le projet soit prêt.
+
+## 3. Installer la base (2 minutes)
+
+1. Menu de gauche → **SQL Editor** → **New query**.
+2. Ouvrez le fichier **`serveur/schema.sql`** de ce projet, copiez **tout** son contenu, collez-le dans l'éditeur, cliquez **Run**.
+3. Vous devez voir **« Success. No rows returned »**. Si une erreur apparaît, ne relancez pas à moitié : envoyez-moi le message.
+4. Vérification : **Table Editor** → vous voyez les tables `schools`, `school_members`, `classes`, `students`, `student_sessions`, `runs`, chacune marquée **RLS enabled**.
+
+> Ce script se lance **une seule fois** (il crée les tables). Si vous voulez tout recommencer sur un projet de test : SQL Editor → `drop schema public cascade; create schema public;` puis relancez `schema.sql`. **N'utilisez jamais cette commande sur un projet avec de vraies données.**
+
+## 4. Régler l'authentification des enseignants (10 minutes)
+
+Menu **Authentication**.
+
+1. **URL Configuration**
+   - *Site URL* : l'adresse publique de votre site, par exemple `https://votrenom.github.io/votre-depot/`.
+   - *Redirect URLs* : ajoutez la même adresse (avec `/**` à la fin si demandé). Pendant vos essais, ajoutez aussi `http://localhost:5173/**`.
+   Sans cela, les liens des emails de confirmation renvoient vers une mauvaise adresse.
+2. **Sign In / Providers → Email** : *Enable Email provider* activé ; *Confirm email* **activé** (recommandé : ainsi, il faut posséder l'adresse pour créer un compte) ; longueur minimale du mot de passe : **8**.
+3. **Emails — serveur d'envoi (SMTP personnalisé)** : *Authentication → Emails → SMTP Settings* (ou *Project Settings → Authentication*).
+   Le serveur d'envoi par défaut de Supabase est **fait pour les tests** : très peu d'emails par heure, et il peut se limiter aux membres de votre projet. **Dès que d'autres enseignants s'inscrivent, il faut votre propre service d'envoi.** Options gratuites ou peu chères (offre gratuite suffisante) : Brevo, Resend, Mailjet… Créez un compte, validez votre domaine ou votre adresse d'expéditeur, puis recopiez *hôte, port, identifiant, mot de passe, adresse d'expéditeur* dans Supabase.
+4. **Email Templates** (facultatif mais utile) : traduisez en français les modèles « Confirm signup » et « Reset password ». Gardez la variable `{{ .ConfirmationURL }}` : c'est le lien.
+5. **Ne pas activer pour l'instant** : « Enable CAPTCHA protection » (le site ne sait pas encore le gérer : les inscriptions échoueraient) ni « Disable sign ups ».
+
+## 5. Relier le site au serveur (2 minutes)
+
+1. Supabase → **Project Settings → API** (ou *API Keys*).
+2. Copiez :
+   - **Project URL** (`https://xxxxxxxx.supabase.co`) ;
+   - la clé **publishable** (`sb_publishable_…`). Si votre projet n'en propose pas, utilisez la clé **anon** (longue, commence par `eyJ`).
+3. Ouvrez **`src/server/config.ts`** et collez-les :
+   ```ts
+   export const SERVER_URL: string = 'https://xxxxxxxx.supabase.co';
+   export const SERVER_KEY: string = 'sb_publishable_xxxxxxxxxxxxxxxx';
+   ```
+4. **Ces deux valeurs ne sont pas secrètes** : elles sont faites pour être dans le site (tout le monde peut les lire dans le navigateur). La sécurité vient des règles de la base.
+5. 🚫 **Ne collez JAMAIS** la clé **secret** ou **service_role** : elle ouvre toutes les données.
+
+## 6. Publier le site sur GitHub Pages
+
+Vous l'avez déjà fait une fois ; c'est la même chose. Deux options.
+
+**Option A — comme avant (manuelle)** : `npm install` puis `npm run build` ; le dossier `dist/` contient le site ; envoyez son contenu sur la branche de publication.
+
+**Option B — automatique (recommandée)** : le fichier `.github/workflows/deploy.yml` est fourni.
+1. Envoyez tout le projet sur GitHub (branche `main`).
+2. Dépôt → **Settings → Pages → Build and deployment → Source : GitHub Actions**.
+3. À chaque envoi sur `main`, le site est reconstruit et publié (onglet **Actions** pour suivre).
+
+Adresse du site : `https://votrenom.github.io/nom-du-depot/` (c'est cette adresse qu'il faut mettre dans *Site URL*, §4).
+
+## 7. Test de bout en bout (10 minutes) — à faire avant de l'annoncer
+
+1. Ouvrez votre site → **Je suis enseignant → Créer un compte** → email + mot de passe.
+2. Cliquez le lien reçu par email (vérifiez les courriers indésirables) → vous arrivez dans l'espace enseignant.
+3. **Créer mon école**, **Créer la classe**, ajoutez 3 prénoms → 3 codes apparaissent.
+4. Sur un autre appareil (ou fenêtre privée) : **Je suis élève** → tapez un code → jouez à **Frappe !** et à **Calcul éclair**.
+5. Retour enseignant → **Actualiser** : les parties apparaissent. Essayez **Exporter (CSV)** et **Imprimer les codes**.
+6. Créez une 2ᵉ école avec un autre email, vérifiez qu'elle ne voit rien de la première.
+7. Mode avion sur le téléphone de l'élève : jouez, remettez le réseau : le score doit arriver tout seul.
+
+## 8. Installer sur PC et téléphone
+
+Le site est une **application installable (PWA)**, sans magasin d'applications :
+- **PC / Mac / Android (Chrome, Edge)** : bouton **« Installer l'application sur cet appareil »** sur l'accueil (ou icône d'installation dans la barre d'adresse).
+- **iPhone / iPad (Safari)** : **Partager → Sur l'écran d'accueil**.
+- Elle s'ouvre ensuite en plein écran avec son icône, et le jeu fonctionne **sans réseau** ; les scores joués hors ligne partent au retour du réseau.
+
+Une vraie application des **magasins** (App Store, Google Play) est possible plus tard (emballage Capacitor), mais coûte : compte Apple Developer ≈ 99 $/an, Google Play ≈ 25 $ une fois, et passage en validation. Ce n'est pas nécessaire pour l'usage en classe ; je ne l'ai pas fait.
+
+## 9. Sauvegardes et sortie de secours
+
+- **Free** : aucune sauvegarde automatique → faites la vôtre ci-dessous.
+- **Pro** : sauvegardes quotidiennes conservées 7 jours (*Database → Backups*).
+- **Sauvegarde à vous (recommandée, 1 fois par mois)** : *Project Settings → Database → Connection string* (mode « Session pooler ») puis, sur un ordinateur où PostgreSQL est installé :
+  ```
+  pg_dump "postgresql://postgres.xxxx:MOTDEPASSE@aws-0-eu-west-3.pooler.supabase.com:5432/postgres" --schema=public --no-owner -f sauvegarde-AAAA-MM.sql
+  ```
+  Gardez le fichier hors de Supabase (disque, cloud personnel). Il contient des données d'élèves : traitez-le comme tel.
+- **Export enseignant** : bouton *Exporter (CSV)* de chaque classe.
+- **Changer d'hébergeur** : créez un nouveau projet, relancez `schema.sql`, importez la sauvegarde, changez `config.ts`. Les codes élèves et les scores sont conservés.
+
+## 10. Protection des données (RGPD) — à lire si le site sert à de vraies écoles
+
+*Je ne suis pas juriste : ceci est une liste de contrôle, pas un avis juridique.*
+
+- **Données collectées** : prénom ou pseudo de l'élève, scores, dates. Email de l'enseignant. **Aucun nom de famille, aucun email d'élève, aucun suivi publicitaire, aucun cookie de traçage.**
+- **Consigne aux enseignants** (déjà rappelée dans l'espace école) : prénoms ou pseudos uniquement.
+- **Hébergement dans l'UE** : région Paris ou Francfort (§2). Supabase propose un **accord de traitement des données (DPA)** à signer en ligne : *supabase.com/legal/dpa*. Faites-le.
+- **Mineurs** : les données d'enfants demandent une vigilance particulière. Informez les familles (courte note : quoi, pourquoi, qui y accède, durée) et, pour une école publique, rapprochez-vous du **délégué à la protection des données** de votre rectorat / collectivité avant un déploiement officiel.
+- **Si vous faites payer des écoles** : vous devenez *sous-traitant* ; il faudra une entité légale, des CGU, un DPA avec chaque école et un registre des traitements.
+- **Conservation** : un enseignant peut supprimer un élève, une classe ou toute l'école (suppression définitive en cascade). Prévoyez un nettoyage annuel (nouvelle année = nouvelles classes).
+- **Droit d'accès / d'effacement** : l'enseignant (responsable côté école) peut exporter ou supprimer les données d'un élève.
+
+## 11. Ce qui est protégé, et ce qui a été vérifié
+
+**Vérifié automatiquement (sur un vrai PostgreSQL 16)** : ~50 contrôles — un enseignant ne voit que ses écoles ; un visiteur anonyme ne peut lire aucune table ni appeler les fonctions réservées ; un code élève s'accepte en minuscules/avec espace, les essais ratés sont freinés ; une partie envoyée deux fois n'est comptée qu'une fois ; les valeurs absurdes (score négatif…) sont refusées ; les classements ne mélangent pas les classes/écoles ; changer un code coupe les anciennes connexions ; supprimer une école efface tout.
+
+**Vérifié dans un navigateur, avec un faux serveur** : inscription et connexion enseignant, création école/classe/élèves, connexion élève, deux jeux, classements classe/école, file d'attente hors ligne sans doublon, export CSV, mot de passe oublié, absence de fuite entre écoles.
+
+**⚠ Non vérifié** : le site n'a **pas** pu être essayé contre un **vrai** projet Supabase (je n'y ai pas accès). Les routes utilisées sont celles de la documentation officielle, mais d'éventuels détails (libellés de menus, réglages d'emails, forme exacte de certaines réponses) peuvent différer. **Faites le test du §7 avant d'annoncer quoi que ce soit** et dites-moi ce qui coince.
+
+**Limites actuelles à connaître**
+- N'importe qui peut créer un compte enseignant (on ne vérifie pas le métier). Chaque compte est limité à 3 écoles, 60 classes par école, 1 500 élèves par école. En cas d'abus, Supabase permet de désactiver les inscriptions ou d'ajouter un captcha (demande un petit développement).
+- Le code élève est la seule clé : il faut le garder privé comme un mot de passe. 8 caractères parmi 31 → ~850 milliards de combinaisons, avec frein sur les essais ratés. L'enseignant peut le renouveler en un clic.
+- Un élève sur un appareil partagé reste connecté 60 jours : **« Changer d'élève »** (accueil) le déconnecte.
+- Pas encore : inviter un second enseignant dans la même école (chacun voit ses propres écoles), changement d'adresse email depuis l'interface, statistiques d'école globales.
+
+## 12. Coûts et hébergement du site
+
+| Poste | Prix indicatif |
+|---|---|
+| Site (GitHub Pages) | 0 € |
+| Supabase Free | 0 € (pause après 1 semaine d'inactivité, pas de sauvegarde) |
+| Supabase Pro | ≈ 25 $/mois (vérifiez la grille sur supabase.com/pricing) |
+| Envoi d'emails (Brevo, Resend…) | 0 € à quelques euros |
+| Nom de domaine (facultatif, ex. `monatelier.fr`) | ≈ 8–15 €/an |
+
+**GitHub Pages et usage commercial** : GitHub Pages est prévu pour des sites personnels, associatifs, de projet ; ses conditions **interdisent d'en faire un service commercial** (vendre un abonnement, par exemple). Tant que le jeu est gratuit pour les écoles, c'est bon. Le jour où vous faites payer un abonnement, déplacez simplement le site (fichiers statiques) chez **Cloudflare Pages**, **Netlify** ou **Vercel** — les données n'ont pas à bouger, car elles sont chez Supabase. Un nom de domaine à vous rend ce déménagement invisible pour les utilisateurs.
+
+**Nom de domaine** : achetez-le chez un registrar (OVH, Gandi…), ajoutez-le dans *GitHub → Settings → Pages → Custom domain*, puis **mettez à jour *Site URL* et *Redirect URLs* dans Supabase** (§4).
+
+## 13. Entretien
+
+- Surveillez *Supabase → Reports* (stockage, utilisateurs actifs). Le stockage est minime : une partie = une ligne de quelques dizaines d'octets.
+- Si vous modifiez la base plus tard (nouveau jeu avec de nouvelles colonnes, etc.), faites-le par un nouveau script SQL daté (dans `serveur/`) et gardez `schema.sql` à jour.
+- Nouveau jeu : le serveur accepte déjà n'importe quel identifiant de jeu (`game`) et de mode ; **le classement, l'export et le tableau de bord sont déjà prêts pour le suivant**.

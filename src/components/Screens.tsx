@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { weakLetters } from '../game/analysis';
-import { ALPHABET, DIFFICULTIES, DIFFICULTIES_ORDER, encodeCustom } from '../game/difficulty';
+import { ALPHABET, DIFFICULTIES, DIFFICULTIES_ORDER } from '../game/difficulty';
 import type { Content, CustomConfig, Difficulty, Penalty } from '../game/difficulty';
 import type { RunStats } from '../game/engine';
 import { LAYOUTS, fingerLabel } from '../game/layouts';
 import { scoresFor } from '../game/storage';
 import type { Layout, ScoreEntry, Settings, TextSize } from '../game/storage';
 import { countWords } from '../game/words';
-import type { CloudConfig } from '../game/cloud';
+import type { StudentAccount } from '../server/types';
 import { ScoresPanel } from './Extras';
 
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
@@ -54,7 +54,7 @@ export function Options({ settings, kbOn, onChange }: OptionsProps) {
         </button>
       )}
       <Check on={settings.font === 'dys'} onClick={() => onChange({ font: settings.font === 'dys' ? 'normal' : 'dys' })}>
-        Police dyslexie
+        Police facile à lire
       </Check>
       <button
         type="button"
@@ -74,13 +74,15 @@ const NEXT_SIZE: Record<TextSize, TextSize> = { normal: 'large', large: 'xlarge'
 // ───────────────────────── Difficulté ─────────────────────────
 
 function DifficultyPicker({ value, onChange }: { value: Difficulty; onChange: (d: Difficulty) => void }) {
+  // « Perso » est réservé aux séances de l'enseignant : visible seulement quand il est actif
+  const modes = DIFFICULTIES_ORDER.filter((d) => d !== 'perso' || value === 'perso');
   return (
     <div className="mt-5">
       <h2 className="subhead mb-2" id="diff-title">
-        Difficulté
+        Niveau
       </h2>
-      <div className="diff-grid" role="radiogroup" aria-labelledby="diff-title">
-        {DIFFICULTIES_ORDER.map((d) => (
+      <div className="diff-grid" data-n={modes.length} role="radiogroup" aria-labelledby="diff-title">
+        {modes.map((d) => (
           <button
             key={d}
             type="button"
@@ -132,13 +134,11 @@ function Seg<T extends string | number>({
   );
 }
 
-function CustomPanel({ settings, onChange }: { settings: Settings; onChange: (patch: Partial<Settings>) => void }) {
+export function CustomPanel({ settings, onChange }: { settings: Settings; onChange: (patch: Partial<Settings>) => void }) {
   const c = settings.custom;
   const set = (patch: Partial<CustomConfig>) => onChange({ custom: { ...c, ...patch } });
-  const [copied, setCopied] = useState(false);
   const allowed = c.letters.toUpperCase();
   const words = countWords(allowed, Math.min(3, c.maxLen), c.maxLen);
-  const link = `${window.location.href.split('#')[0]}#c=${encodeCustom(c)}`;
   const [top, mid, bot] = LAYOUTS[settings.layout];
   const toggle = (ch: string) => {
     const on = c.letters.includes(ch);
@@ -146,19 +146,8 @@ function CustomPanel({ settings, onChange }: { settings: Settings; onChange: (pa
     set({ letters: on ? c.letters.replace(ch, '') : [...c.letters, ch].sort().join('') });
   };
   const preset = (letters: string) => set({ letters });
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(link);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* le lien reste affiché : on peut le copier à la main */
-    }
-  };
-
   return (
-    <div className="cfg mt-4" role="group" aria-label="Réglages de la séance">
-      <h3 className="subhead mb-2">Réglages de la séance</h3>
+    <div className="cfg mt-3" role="group" aria-label="Réglages de la séance">
 
       <div className="cfg-row">
         <label className="cfg-label" htmlFor="cfg-speed">
@@ -245,16 +234,6 @@ function CustomPanel({ settings, onChange }: { settings: Settings; onChange: (pa
         onChange={(miss) => set({ miss })}
       />
 
-      <div className="cfg-row cfg-col">
-        <span className="cfg-label">Partager cette séance</span>
-        <div className="flex gap-2">
-          <input className="cfg-link" readOnly value={link} aria-label="Lien de la séance" onFocus={(e) => e.currentTarget.select()} />
-          <button type="button" className="btn btn-ghost" onClick={copy}>
-            {copied ? 'Copié' : 'Copier'}
-          </button>
-        </div>
-        <p className="text-[13px] leading-snug text-ink/70">Les élèves qui ouvrent ce lien jouent avec les mêmes réglages.</p>
-      </div>
     </div>
   );
 }
@@ -358,12 +337,15 @@ interface MenuProps {
   onChange: (patch: Partial<Settings>) => void;
   onClear: () => void;
   onProgress: () => void;
-  onTeacher: () => void;
+  /** élève connecté (prénom imposé, classements Classe et École) */
+  account: StudentAccount | null;
+  onHome: () => void;
 }
 
-export function Menu({ scores, settings, kbOn, install, onStart, onChange, onClear, onProgress, onTeacher }: MenuProps) {
+export function Menu({ scores, settings, kbOn, install, onStart, onChange, onClear, onProgress, account, onHome }: MenuProps) {
   const diff = settings.difficulty;
   const list = scoresFor(scores, diff);
+  const assist = diff === 'perso' ? settings.custom.autoTarget : DIFFICULTIES[diff].autoTarget;
   return (
     <div className="overlay">
       <section className="card w-full max-w-[600px]" aria-labelledby="game-title">
@@ -379,38 +361,46 @@ export function Menu({ scores, settings, kbOn, install, onStart, onChange, onCle
           </span>
         </h1>
         <div className="rule" aria-hidden="true" />
-        <p className="mt-4 max-w-[46ch] text-pretty text-[16px] leading-snug sm:text-[17px]">
-          Chaque touche est un coup. Tapez les mots pour faire éclater les taches d’encre avant
-          qu’elles n’atteignent la marge.
+        <p className="mt-3 max-w-[46ch] text-pretty text-[16px] leading-snug">
+          Chaque touche est un coup : fais éclater les taches d’encre avant qu’elles n’atteignent la marge.
         </p>
 
         <DifficultyPicker value={diff} onChange={(d) => onChange({ difficulty: d })} />
-        {diff === 'perso' && <CustomPanel settings={settings} onChange={onChange} />}
 
-        <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <label className="subhead" htmlFor="player-name">
-            Prénom ou pseudo
-          </label>
-          <input
-            id="player-name"
-            className="field"
-            value={settings.name}
-            maxLength={12}
-            size={12}
-            placeholder="TON PRÉNOM"
-            autoComplete="off"
-            autoCapitalize="characters"
-            spellCheck={false}
-            enterKeyHint="done"
-            onChange={(e) => onChange({ name: e.target.value.toUpperCase() })}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === 'Escape') {
-                e.preventDefault();
-                e.currentTarget.blur();
-              }
-            }}
-          />
-        </div>
+        {account ? (
+          <p className="mt-5 text-[15px] leading-snug">
+            <span className="subhead">Joueur</span>&nbsp; <strong>{account.student.name}</strong>
+            <span className="text-ink/70">
+              {' '}
+              · {account.class.name} · {account.school.name}
+            </span>
+          </p>
+        ) : (
+          <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <label className="subhead" htmlFor="player-name">
+              Prénom
+            </label>
+            <input
+              id="player-name"
+              className="field"
+              value={settings.name}
+              maxLength={12}
+              size={12}
+              placeholder="TON PRÉNOM"
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              enterKeyHint="done"
+              onChange={(e) => onChange({ name: e.target.value.toUpperCase() })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === 'Escape') {
+                  e.preventDefault();
+                  e.currentTarget.blur();
+                }
+              }}
+            />
+          </div>
+        )}
 
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3">
           <button type="button" className="btn btn-primary" autoFocus={!kbOn} onClick={onStart}>
@@ -423,70 +413,65 @@ export function Menu({ scores, settings, kbOn, install, onStart, onChange, onCle
           )}
         </div>
 
-        <ul className="mt-6 grid gap-2 text-[15px] leading-snug">
-          <li className="howto">
-            <kbd className="kbd">A–Z</kbd>
-            <span>
-              {(diff === 'perso' ? settings.custom.autoTarget : DIFFICULTIES[diff].autoTarget)
-                ? 'La cible est choisie pour toi : tape la touche rouge du clavier. Une autre première lettre change de cible.'
-                : 'La première lettre verrouille une cible, chaque lettre suivante la frappe.'}
-            </span>
-          </li>
-          {(diff === 'perso' ? settings.custom.autoTarget : DIFFICULTIES[diff].autoTarget) && (
+        <details className="fold mt-5">
+          <summary>Comment jouer&nbsp;?</summary>
+          <ul className="mt-2 grid gap-2 text-[15px] leading-snug">
             <li className="howto">
-              <kbd className="kbd">•</kbd>
-              <span>Les points sous chaque touche indiquent le doigt : 1 = index, 2 = majeur, 3 = annulaire, 4 = auriculaire.</span>
+              <kbd className="kbd">A–Z</kbd>
+              <span>
+                {assist
+                  ? 'La cible est choisie pour toi : tape la touche rouge du clavier.'
+                  : 'La première lettre verrouille une cible, chaque lettre suivante la frappe.'}
+              </span>
             </li>
-          )}
-          <li className="howto">
-            <kbd className="kbd kbd-sym">↵</kbd>
-            <span>Jauge pleine&nbsp;? Le retour chariot balaie tout l’écran.</span>
-          </li>
-          <li className="howto">
-            <kbd className="kbd kbd-sym">⌫</kbd>
-            <span>
-              Lâcher la cible.{' '}
-              {!kbOn && (
-                <>
-                  <kbd className="kbd">Échap</kbd> met en pause.
-                </>
-              )}
-            </span>
-          </li>
-        </ul>
+            {assist && (
+              <li className="howto">
+                <kbd className="kbd">•</kbd>
+                <span>Les points sous chaque touche indiquent le doigt : 1 = index, 2 = majeur, 3 = annulaire, 4 = auriculaire.</span>
+              </li>
+            )}
+            <li className="howto">
+              <kbd className="kbd kbd-sym">↵</kbd>
+              <span>Jauge pleine&nbsp;? Le retour chariot balaie tout l’écran.</span>
+            </li>
+            <li className="howto">
+              <kbd className="kbd kbd-sym">⌫</kbd>
+              <span>Lâcher la cible{!kbOn && ' · Échap met en pause'}.</span>
+            </li>
+          </ul>
+        </details>
 
         {diff === 'perso' ? (
-          <p className="mt-6 text-[14px] leading-snug text-ink/75">Séance personnalisée : les scores ne sont pas classés.</p>
+          <p className="mt-5 text-[14px] leading-snug text-ink/75">Séance personnalisée : pas de classement.</p>
         ) : (
-          <ScoresPanel diff={diff} local={list} cloud={settings.cloud} limit={5} onClear={onClear} />
+          <ScoresPanel diff={diff} local={list} account={account} limit={3} onClear={onClear} />
         )}
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" className="btn btn-ghost" onClick={onProgress}>
+        <div className="menu-links mt-4">
+          <button type="button" className="link" onClick={onProgress}>
             Mes progrès
           </button>
-          <button type="button" className="btn btn-ghost" onClick={onTeacher}>
-            Espace enseignant
+          <button type="button" className="link" onClick={onHome}>
+            Accueil · autres jeux
           </button>
-        </div>
-
-        {install.mode === 'prompt' && (
-          <div className="mt-4">
-            <button type="button" className="btn btn-ghost" onClick={install.onInstall}>
+          {install.mode === 'prompt' && (
+            <button type="button" className="link" onClick={install.onInstall}>
               Installer l’application
             </button>
-            <p className="mt-1 text-[13px] leading-snug text-ink/70">Elle s’ouvre comme une application et fonctionne sans réseau.</p>
-          </div>
-        )}
+          )}
+        </div>
         {install.mode === 'ios' && (
-          <p className="mt-4 text-[13px] leading-snug text-ink/75">
+          <p className="mt-2 text-[13px] leading-snug text-ink/75">
             Pour installer le jeu&nbsp;: touche <strong>Partager</strong> puis <strong>Sur l’écran d’accueil</strong>.
           </p>
         )}
 
-        <div className="mt-5 border-t-2 border-dashed border-ink/25 pt-3">
-          <Options settings={settings} kbOn={kbOn} onChange={onChange} />
-        </div>
+        <details className="fold mt-4">
+          <summary>Réglages</summary>
+          <div className="mt-2">
+            <Options settings={settings} kbOn={kbOn} onChange={onChange} />
+          </div>
+        </details>
       </section>
     </div>
   );
@@ -558,9 +543,8 @@ interface GameOverProps {
   drill: boolean;
   layout: Layout;
   scores: ScoreEntry[];
-  cloud: CloudConfig;
-  /** identifiant de la partie dans le classement partagé */
-  cloudId: string | null;
+  account: StudentAccount | null;
+  /** état de l'envoi de la partie au serveur */
   cloudStatus: 'off' | 'sending' | 'sent' | 'queued';
   entryId: string | null;
   rank: number;
@@ -578,8 +562,7 @@ export function GameOver({
   drill,
   layout,
   scores,
-  cloud,
-  cloudId,
+  account,
   cloudStatus,
   entryId,
   rank,
@@ -719,13 +702,12 @@ export function GameOver({
             <ScoresPanel
               diff={diff}
               local={scoresFor(scores, diff)}
-              cloud={cloud}
+              account={account}
               limit={6}
               highlightId={entryId}
-              cloudId={cloudId}
               refreshKey={cloudStatus}
-              name={name}
-              onName={changeName}
+              name={account ? undefined : name}
+              onName={account ? undefined : changeName}
             />
           </>
         )}

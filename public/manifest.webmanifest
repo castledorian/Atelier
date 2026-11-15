@@ -1,7 +1,7 @@
 {
-  "name": "Frappe ! — Défense dactylographique",
-  "short_name": "Frappe !",
-  "description": "Un jeu de dactylographie : chaque touche inflige des dégâts aux vagues de taches d’encre.",
+  "name": "Atelier — jeux pour apprendre",
+  "short_name": "Atelier",
+  "description": "Jeux pour apprendre : dactylographie (Frappe !), calcul mental… avec comptes d’école et classements de classe.",
   "lang": "fr",
   "start_url": "./",
   "scope": "./",

@@ -110,8 +110,8 @@ const COMBO_STEP = 15;
 const MAX_PARTS = 520;
 const F_DISP = '"Special Elite", "Courier New", monospace';
 const F_WORD = '"Courier Prime", "Courier New", monospace';
-// Police adaptée à la dyslexie : OpenDyslexic si elle est chargée, sinon des polices système réputées lisibles.
-const F_DYS = '"OpenDyslexic", "Atkinson Hyperlegible", Verdana, "Trebuchet MS", "Comic Sans MS", sans-serif';
+// Police de lecture facile : EasyReading PRO si elle est installée (voir public/fonts/LISEZ-MOI.txt), sinon des polices système lisibles.
+const F_DYS = '"EasyReading PRO", Verdana, "Trebuchet MS", "Comic Sans MS", sans-serif';
 const FLAVOR = [
   'Gardez la cadence',
   'Encore plus d’encre',
@@ -617,7 +617,7 @@ export class Game {
     this.clearing = false;
     const boss = n % 5 === 0 && !this.drill;
     const letters = n <= c.letterWaves; // vagues d'apprentissage : lettres isolées, rangée par rangée
-    const raw = boss ? 4 + Math.floor(n / 2) : 5 + Math.floor(n * 1.5);
+    const raw = boss ? 4 + Math.floor(n / 2) : 5 + Math.floor(n * c.growth);
     const count = letters ? Math.min(this.drill || c.letterWaves >= 999 ? 14 : 99, 6 + 2 * n) : Math.max(3, Math.round(raw * c.countMul));
     const pates = n >= c.pateFrom && !letters ? 1 + Math.floor((n - c.pateFrom) / c.pateEvery) : 0;
     const gouttes = letters ? count : n >= c.goutteFrom ? c.goutteBase + Math.floor(n / c.goutteDiv) : 0;
