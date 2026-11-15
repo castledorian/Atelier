@@ -804,7 +804,8 @@ html[data-text='xlarge'] .card .title-sm {
   outline: 3px solid var(--color-ribbon);
   outline-offset: 1px;
 }
-.seg-b[aria-selected='true'] {
+.seg-b[aria-selected='true'],
+.seg-b[aria-pressed='true'] {
   background: var(--color-ink);
   color: var(--color-paper);
 }
@@ -1650,4 +1651,12 @@ html[data-text='xlarge'] .card .title {
   .tip-opt {
     display: none;
   }
+}
+
+/* Tampons du cahier (Mémoire d'encre) */
+.gcard-stamps {
+  display: block;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  color: var(--color-ink);
 }

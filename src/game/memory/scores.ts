@@ -74,3 +74,48 @@ export function saveMemoryMode(m: Mode) {
     /* ignoré */
   }
 }
+
+// ───────────── Progression : tampons du cahier ─────────────
+
+/** Un tampon par page terminée (6 au maximum) : un but visible qui se remplit, et qui reste sur l'appareil. */
+export interface MemoryProgress {
+  /** plus grand nombre de pages terminées, de 0 à 6 */
+  stamps: number;
+  /** plus longue suite (ou plus grand nombre de taches) de la dernière partie */
+  lastSpan: number;
+}
+
+const PKEY = 'atelier.memory.progress.v1';
+
+function readProgress(): Record<Mode, MemoryProgress> {
+  const empty: Record<Mode, MemoryProgress> = { suite: { stamps: 0, lastSpan: 0 }, cases: { stamps: 0, lastSpan: 0 } };
+  try {
+    const v = JSON.parse(localStorage.getItem(PKEY) ?? 'null');
+    if (!v || typeof v !== 'object') return empty;
+    for (const m of ['suite', 'cases'] as const) {
+      const x = v[m];
+      if (x && typeof x.stamps === 'number' && typeof x.lastSpan === 'number') {
+        empty[m] = { stamps: Math.max(0, Math.min(6, Math.floor(x.stamps))), lastSpan: Math.max(0, Math.floor(x.lastSpan)) };
+      }
+    }
+    return empty;
+  } catch {
+    return empty;
+  }
+}
+
+export const loadProgress = (mode: Mode): MemoryProgress => readProgress()[mode];
+
+/** Enregistre une partie terminée ; renvoie la progression d'AVANT et d'APRÈS (pour féliciter d'un nouveau tampon). */
+export function recordProgress(mode: Mode, pagesCleared: number, span: number): { before: MemoryProgress; after: MemoryProgress } {
+  const all = readProgress();
+  const before = { ...all[mode] };
+  const after = { stamps: Math.max(before.stamps, Math.max(0, Math.min(6, pagesCleared))), lastSpan: span };
+  all[mode] = after;
+  try {
+    localStorage.setItem(PKEY, JSON.stringify(all));
+  } catch {
+    /* stockage plein ou refusé : tant pis */
+  }
+  return { before, after };
+}

@@ -34,6 +34,8 @@ export interface MemoryResult {
   bestStreak: number;
   /** plus longue suite (ou plus grand nombre de cases) retenue */
   maxSpan: number;
+  /** page de départ (0 = début du cahier) */
+  startPage: number;
   /** secondes réellement jouées */
   time: number;
   won: boolean;
@@ -105,7 +107,7 @@ const F_DISP = '"Special Elite", "Courier New", monospace';
 const PART_COLORS = [INK, RED, GREEN, GOLD, PAPER_HI];
 const MAX_PARTS = 200;
 const LEAD = 0.6; // pause avant la première tache de la suite
-const FLIP = 0.2; // durée d'un retournement (s)
+const FLIP = 0.22; // durée du réveil / de l'endormissement d'une tache (s)
 const VARIANTS = 6; // formes de taches différentes
 /** Teinte du papier : elle change très doucement à chaque page, pour sentir qu'on avance. */
 const TINTS = ['#efe6d2', '#ece8d3', '#e8eadb', '#e6e9e2', '#ebe6e2', '#f2e6cf'];
@@ -172,6 +174,7 @@ export class MemoryGame {
   private wrong = 0;
   private maxSpan = 0;
   private pageLost = 0;
+  private startPage = 0;
   private record = 0; // meilleure suite déjà réussie sur cet appareil (La Suite)
   private recordShown = false;
   private nearMiss = false;
@@ -200,6 +203,7 @@ export class MemoryGame {
   private lastLit = -1;
   private cursor = 4;
   private showCursor = false;
+  private lookT = -99; // dernier moment où le doigt / la souris a bougé
   private lookX = -1;
   private lookY = -1;
   private flash = 0;
@@ -217,14 +221,13 @@ export class MemoryGame {
 
   // pièces
   private shown = new Uint8Array(9); // face actuellement visible
-  private flipTo = new Uint8Array(9); // face vers laquelle on se retourne
+  private flipTo = new Uint8Array(9); // face de départ pendant une transition (fondu)
   private flipT = new Float32Array(9).fill(-1); // -1 = au repos, sinon 0 → 1
   private land = new Float32Array(9); // petit rebond à l'atterrissage
   private born = new Float32Array(9); // apparition de la grille
   private ph = new Float32Array(9); // phase propre à chaque pièce (yeux, flottement)
   private hold = new Float32Array(9); // pièce retenue face visible un instant après un bon choix
   private mark = new Uint8Array(9); // 0 rien · 1 juste · 2 faux · 3 indice
-  private awk = new Float32Array(9); // tache endormie qui ouvre les yeux quand on la survole
   private gz = { lx: 0, ly: 0, blink: 0 };
   private halo: HTMLCanvasElement | null = null;
   private faces: HTMLCanvasElement[] = [];
@@ -272,10 +275,14 @@ export class MemoryGame {
 
   // ───────────────────────── Commandes ─────────────────────────
 
-  start(mode: Mode) {
+  /** `startPage` : on peut repartir du début d'une page déjà terminée (0 à 5), pour jouer à son niveau sans tout refaire. */
+  start(mode: Mode, startPage = 0) {
     this.mode = mode;
     this.run = 'play';
     this.reset();
+    this.startPage = clamp(Math.floor(startPage), 0, PAGES - 1);
+    this.n = this.startPage * perPage(mode);
+    this.tintBg();
     this.paused = false;
     this.sfx.play('start');
     this.pageBanner();
@@ -307,6 +314,7 @@ export class MemoryGame {
     if (this.run !== 'play' || this.paused || this.over) return;
     this.lookX = x;
     this.lookY = y;
+    this.lookT = this.pulse;
     const i = this.tileAt(x, y);
     if (i < 0) return;
     this.cursor = i;
@@ -317,6 +325,7 @@ export class MemoryGame {
   lookAt(x: number, y: number) {
     this.lookX = x;
     this.lookY = y;
+    this.lookT = this.pulse;
   }
 
   /** Clavier : déplace le curseur doré. */
@@ -428,7 +437,6 @@ export class MemoryGame {
       this.ph = new Float32Array(len);
       this.hold = new Float32Array(len);
       this.mark = new Uint8Array(len);
-      this.awk = new Float32Array(len);
     }
     if (changed || force) {
       for (let i = 0; i < len; i++) {
@@ -436,7 +444,6 @@ export class MemoryGame {
         this.shown[i] = FRONT;
         this.flipT[i] = -1;
         this.land[i] = 0;
-        this.awk[i] = 0;
         this.born[i] = -0.045 * i; // les pièces apparaissent l'une après l'autre
       }
     }
@@ -498,6 +505,16 @@ export class MemoryGame {
     if (this.run === 'play') this.sfx.play(`n${i % 9}` as SfxName);
   }
 
+  /** Petite vibration sur téléphone / tablette (retour tactile), désactivée avec les secousses ou si l'appareil demande moins de mouvement. */
+  private buzz(pattern: number | number[]) {
+    if (!this.shakeOn || this.reduced || this.run !== 'play') return;
+    try {
+      navigator.vibrate?.(pattern);
+    } catch {
+      /* ignoré */
+    }
+  }
+
   /** Changement de face immédiat (réponse à un toucher) : pas de retournement, la réaction doit être instantanée. */
   private snap(i: number, face: number) {
     if (this.shown[i] === face && this.flipT[i] < 0) return;
@@ -514,6 +531,7 @@ export class MemoryGame {
         this.hold[i] = 0.42;
         this.snap(i, BLOT);
         this.note(i);
+        this.buzz(8);
         this.k++;
         if (this.k >= this.seq.length) this.roundOk();
       } else {
@@ -526,6 +544,7 @@ export class MemoryGame {
         this.mark[i] = 1;
         this.snap(i, OK);
         this.note(i);
+        this.buzz(8);
         if (this.found.size >= this.targets.length) this.roundOk();
       } else {
         this.bad(i);
@@ -599,6 +618,7 @@ export class MemoryGame {
     this.flashC = RED;
     this.shake = 7;
     this.sfx.play('error');
+    this.buzz([25, 40, 25]);
     this.st = 'bad';
     this.tt = 0;
     if (this.lives <= 0) {
@@ -946,6 +966,7 @@ export class MemoryGame {
           won: this.won,
           page: this.won ? PAGES : stageOf(this.mode, this.n) + 1,
           lives: Math.max(0, this.lives),
+          startPage: this.startPage,
         });
       }
     }
@@ -964,13 +985,12 @@ export class MemoryGame {
       if (this.flipT[i] < 0) {
         const d = this.desired(i, litNow);
         if (d !== this.shown[i] && this.born[i] > 0.1) {
-          this.flipTo[i] = d;
+          this.flipTo[i] = this.shown[i];
+          this.shown[i] = d;
           this.flipT[i] = 0;
         }
       } else {
-        const before = this.flipT[i];
         this.flipT[i] += dt / FLIP;
-        if (before < 0.5 && this.flipT[i] >= 0.5) this.shown[i] = this.flipTo[i];
         if (this.flipT[i] >= 1) {
           this.flipT[i] = -1;
           this.land[i] = 0.22;
@@ -1246,6 +1266,7 @@ export class MemoryGame {
     const fw = faces[0].width / this.dpr;
     const hw = halo.width / this.dpr;
     const playing = this.run === 'play' && !this.over;
+    const recent = this.pulse - this.lookT < 1.2;
     for (let i = 0; i < n * n; i++) {
       const r = this.tileRect(i)!;
       const cx = r.x + r.s / 2;
@@ -1256,42 +1277,44 @@ export class MemoryGame {
       const appear = backOut(clamp(b / 0.32, 0, 1));
       const ph = this.ph[i];
       const flipping = this.flipT[i] >= 0;
-      const th = flipping ? Math.PI * smooth(clamp(this.flipT[i], 0, 1)) : 0;
-      const sinT = Math.sin(th);
-      const sx = Math.max(0.04, Math.abs(Math.cos(th)));
+      // réveil : fondu de la tache pâle vers l'encre noire (ou l'inverse), avec un petit bond, SANS retournement
+      const p = flipping ? smooth(clamp(this.flipT[i], 0, 1)) : 1;
+      const bump = flipping ? Math.sin(Math.PI * p) : 0;
       const face = this.shown[i];
+      const from = this.flipTo[i];
       const dark = face === BLOT || face === HINT;
       const v = (i * 5 + 2) % VARIANTS;
-      // survol / curseur : la tache se soulève et, si elle dormait, ouvre les yeux pour regarder le doigt
+      // survol : la tache se soulève un peu (seulement tant que la souris ou le doigt bouge, ou au curseur clavier)
       const hovered =
         playing &&
         this.st === 'input' &&
-        ((this.lookX >= 0 && Math.hypot(this.lookX - cx, this.lookY - cy) < R) || (this.showCursor && i === this.cursor));
-      this.awk[i] += ((hovered ? 1 : 0) - this.awk[i]) * 0.25;
-      const lift = sinT * R * 0.3 + (hovered ? R * 0.06 : 0);
+        ((recent && this.lookX >= 0 && Math.hypot(this.lookX - cx, this.lookY - cy) < R) || (this.showCursor && i === this.cursor));
+      const lift = bump * R * 0.1 + (hovered ? R * 0.06 : 0);
       cy += dark ? 0 : Math.sin(this.pulse * 1.5 + ph) * 1.4;
       // rebond à l'atterrissage (écrasement puis étirement)
       const lk = this.land[i] / 0.22;
       const squash = lk > 0 ? Math.sin(lk * Math.PI) * 0.1 : 0;
-      const breathe = 0;
       const jelly = dark && !flipping ? 0.02 * Math.sin(this.pulse * 8 + ph) : 0;
-      const sc = appear * (1 + sinT * 0.08 + (hovered ? 0.05 : 0));
+      const sc = appear * (1 + bump * 0.08 + (hovered ? 0.05 : 0));
       const tilt = dark && !flipping ? 0.035 * Math.sin(this.pulse * 4.5 + ph) : 0;
       let y = cy - lift;
       // au repos, on pose la tache sur un pixel entier : l'image est recopiée telle quelle (beaucoup plus rapide sur les vieux ordinateurs)
       const rest = !flipping && !dark && lk <= 0 && appear >= 0.999 && !hovered;
       if (rest) y = Math.round(y * this.dpr) / this.dpr;
+      // à quel point la tache est « noire » en ce moment (0 pâle · 1 encre) : ombre et halo suivent
+      const fromDark = from === BLOT || from === HINT;
+      const ink = flipping ? (dark ? p : 0) + (fromDark ? 1 - p : 0) : dark ? 1 : 0;
 
       // ombre au sol
       c.fillStyle = INK;
-      c.globalAlpha = (dark ? 0.26 : 0.16) * Math.min(1, appear) * (1 - 0.4 * sinT);
+      c.globalAlpha = (0.16 + 0.1 * ink) * Math.min(1, appear);
       c.beginPath();
-      c.ellipse(cx, r.y + r.s / 2 + R * 0.92 + 2, R * 0.78 * (1 - 0.2 * sinT) * sc, R * 0.2 * sc, 0, 0, TAU);
+      c.ellipse(cx, r.y + r.s / 2 + R * 0.92 + 2, R * 0.78 * (1 - 0.1 * bump) * sc, R * 0.2 * sc, 0, 0, TAU);
       c.fill();
       // halo d'encre
-      if (dark) {
+      if (ink > 0.01) {
         const hs = hw * sc;
-        c.globalAlpha = (0.8 + 0.1 * Math.sin(this.pulse * 3 + ph)) * Math.min(1, appear) * (flipping ? sx : 1);
+        c.globalAlpha = (0.8 + 0.1 * Math.sin(this.pulse * 3 + ph)) * Math.min(1, appear) * ink;
         c.drawImage(halo, cx - hs / 2, y - hs / 2, hs, hs);
       }
       c.globalAlpha = 1;
@@ -1299,12 +1322,20 @@ export class MemoryGame {
       c.save();
       c.translate(rest ? Math.round(cx * this.dpr) / this.dpr : cx, y);
       if (tilt !== 0) c.rotate(tilt);
-      c.scale(sc * sx * (1 + squash + jelly + breathe), sc * (1 - squash - jelly + breathe + sinT * 0.06));
-      const asleep = face === FRONT && this.awk[i] < 0.08;
-      c.drawImage(faces[(asleep ? 5 : face) * VARIANTS + v], -fw / 2, -fw / 2, fw, fw);
-      if (sx > 0.3) {
-        if (dark) this.drawEyes(c, R, ph, cx, y, face === HINT);
-        else if (face === FRONT && !asleep) this.drawSleepEyes(c, R, i, ph, cx, y);
+      c.scale(sc * (1 + squash + jelly), sc * (1 - squash - jelly));
+      const spr = (f: number) => faces[(f === FRONT ? 5 : f) * VARIANTS + v];
+      if (flipping) {
+        c.globalAlpha = 1 - p;
+        c.drawImage(spr(from), -fw / 2, -fw / 2, fw, fw);
+        c.globalAlpha = p;
+        c.drawImage(spr(face), -fw / 2, -fw / 2, fw, fw);
+        c.globalAlpha = 1;
+        // les yeux s'ouvrent (réveil) ou se ferment (endormissement)
+        if (dark) this.drawEyes(c, R, ph, cx, y, face === HINT, p, p);
+        else if (fromDark) this.drawEyes(c, R, ph, cx, y, from === HINT, 1 - p, 1 - p);
+      } else {
+        c.drawImage(spr(face), -fw / 2, -fw / 2, fw, fw);
+        if (dark) this.drawEyes(c, R, ph, cx, y, face === HINT, 1, 1);
       }
       c.restore();
 
@@ -1354,12 +1385,13 @@ export class MemoryGame {
   }
 
   /** Deux yeux vivants : ils regardent autour d'eux, suivent le doigt, clignent et froncent les sourcils. */
-  private drawEyes(c: CanvasRenderingContext2D, R: number, ph: number, wx: number, wy: number, dim: boolean) {
+  private drawEyes(c: CanvasRenderingContext2D, R: number, ph: number, wx: number, wy: number, dim: boolean, open: number, alpha: number) {
     const er = R * 0.2;
     const t = this.pulse;
     this.gaze(R, ph, wx, wy);
-    const { lx, ly, blink } = this.gz;
-    c.globalAlpha = dim ? 0.8 : 1;
+    const { lx, ly } = this.gz;
+    const blink = Math.max(this.gz.blink, 1 - open);
+    c.globalAlpha = (dim ? 0.8 : 1) * alpha;
     for (const sx of [-1, 1]) {
       const ex = sx * R * 0.3;
       const ey = -R * 0.04;
@@ -1388,42 +1420,6 @@ export class MemoryGame {
       c.stroke();
     }
     c.globalAlpha = 1;
-  }
-
-  /** Tache endormie : deux petits arcs (yeux fermés) ; quand le doigt s'approche, elle ouvre les yeux et le suit. */
-  private drawSleepEyes(c: CanvasRenderingContext2D, R: number, i: number, ph: number, wx: number, wy: number) {
-    const a = this.awk[i];
-    const er = R * 0.17;
-    const ey = -R * 0.03;
-    c.lineCap = 'round';
-    if (a < 0.08) {
-      c.strokeStyle = 'rgba(27,25,21,0.58)';
-      c.lineWidth = Math.max(2, R * 0.05);
-      for (const sx of [-1, 1]) {
-        c.beginPath();
-        c.arc(sx * R * 0.3, ey - er * 0.2, er * 0.95, Math.PI * 0.12, Math.PI * 0.88);
-        c.stroke();
-      }
-      return;
-    }
-    this.gaze(R, ph, wx, wy);
-    const { lx, ly } = this.gz;
-    for (const sx of [-1, 1]) {
-      const ex = sx * R * 0.3;
-      c.fillStyle = PAPER_HI;
-      c.strokeStyle = 'rgba(27,25,21,0.85)';
-      c.lineWidth = 2;
-      c.beginPath();
-      c.ellipse(ex, ey, er, Math.max(1.2, er * a), 0, 0, TAU);
-      c.fill();
-      c.stroke();
-      if (a > 0.5) {
-        c.fillStyle = INK;
-        c.beginPath();
-        c.arc(ex + lx * er * 0.4, ey + ly * er * 0.35, er * 0.5, 0, TAU);
-        c.fill();
-      }
-    }
   }
 
   private drawRings(c: CanvasRenderingContext2D) {

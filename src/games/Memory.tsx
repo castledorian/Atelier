@@ -7,7 +7,7 @@ import { MemoryGame } from '../game/memory/engine';
 import type { MemoryResult } from '../game/memory/engine';
 import { MODES, PAGES } from '../game/memory/rounds';
 import type { Mode } from '../game/memory/rounds';
-import { addMemoryScore, clearMemoryScores, loadMemoryMode, loadMemoryScores, saveMemoryMode } from '../game/memory/scores';
+import { addMemoryScore, clearMemoryScores, loadMemoryMode, loadMemoryScores, loadProgress, recordProgress, saveMemoryMode } from '../game/memory/scores';
 import type { MemoryScore } from '../game/memory/scores';
 import { newRunId } from '../game/history';
 import { loadSettings, saveSettings } from '../game/storage';
@@ -45,6 +45,10 @@ interface Run {
   rank: number;
   id: string;
   record: boolean;
+  /** plus longue suite de la partie précédente (0 si c'est la première) */
+  prevSpan: number;
+  stampsBefore: number;
+  stampsAfter: number;
 }
 
 export default function Memory({ account, onHome, onSessionLost }: Props) {
@@ -56,14 +60,16 @@ export default function Memory({ account, onHome, onSessionLost }: Props) {
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const [mode, setMode] = useState<Mode>(loadMemoryMode);
   const [run, setRun] = useState<Run | null>(null);
+  const [startPage, setStartPage] = useState(0);
   const [cloud, setCloud] = useState<Cloud>('off');
   const lost = useRef(false);
   const accountRef = useRef(account);
   accountRef.current = account;
-  const live = useRef({ phase, mode, settings, overAt: 0, recId: '' });
+  const live = useRef({ phase, mode, settings, overAt: 0, recId: '', startPage: 0 });
   live.current.phase = phase;
   live.current.mode = mode;
   live.current.settings = settings;
+  live.current.startPage = startPage;
 
   // ───────────── Fin de partie ─────────────
   const onOver = useRef<(r: MemoryResult) => void>(() => {});
@@ -111,7 +117,8 @@ export default function Memory({ account, onHome, onSessionLost }: Props) {
         });
     } else setCloud('off');
     live.current.overAt = performance.now();
-    setRun({ result, rank, id, record });
+    const prog = recordProgress(result.mode, result.won ? PAGES : result.page - 1, result.maxSpan);
+    setRun({ result, rank, id, record, prevSpan: prog.before.lastSpan, stampsBefore: prog.before.stamps, stampsAfter: prog.after.stamps });
     setPhase('over');
   };
 
@@ -155,7 +162,7 @@ export default function Memory({ account, onHome, onSessionLost }: Props) {
       setMode(m);
       live.current.mode = m;
       gameRef.current?.setOptions({ best: bestSpan(m) });
-      gameRef.current?.start(m);
+      gameRef.current?.start(m, Math.min(live.current.startPage, loadProgress(m).stamps));
       setRun(null);
       setPhase('play');
     },
@@ -310,6 +317,8 @@ export default function Memory({ account, onHome, onSessionLost }: Props) {
             account={account}
             onChange={change}
             onStart={begin}
+            startPage={startPage}
+            setStartPage={setStartPage}
             onHome={onHome}
           />
         )}
@@ -387,10 +396,12 @@ interface MenuProps {
   account: StudentAccount | null;
   onChange: (p: Partial<Settings>) => void;
   onStart: (m: Mode) => void;
+  startPage: number;
+  setStartPage: (p: number) => void;
   onHome: () => void;
 }
 
-function MenuScreen({ view, setView, mode, setMode, settings, account, onChange, onStart, onHome }: MenuProps) {
+function MenuScreen({ view, setView, mode, setMode, settings, account, onChange, onStart, startPage, setStartPage, onHome }: MenuProps) {
   const [scores, setScores] = useState<MemoryScore[]>(() => loadMemoryScores(mode));
   const [sMode, setSMode] = useState<Mode>(mode);
   useEffect(() => {
@@ -544,6 +555,7 @@ function MenuScreen({ view, setView, mode, setMode, settings, account, onChange,
           <div className="games games-levels" data-n="2">
             {MODES.map((m) => {
               const best = loadMemoryScores(m.id)[0]?.score;
+              const stamps = loadProgress(m.id).stamps;
               return (
                 <button
                   key={m.id}
@@ -555,11 +567,32 @@ function MenuScreen({ view, setView, mode, setMode, settings, account, onChange,
                 >
                   <span className="gcard-name">{m.label}</span>
                   <span className="gcard-text">{m.hint}</span>
+                  <span className="gcard-stamps tip-opt" role="img" aria-label={`Tampons : ${stamps} sur ${PAGES}`}>
+                    {Array.from({ length: PAGES }, (_, k) => (k < stamps ? '●' : '○')).join(' ')}
+                  </span>
                   <span className="gcard-go">{best ? `Record : ${fmt(best)}` : 'Jouer →'}</span>
                 </button>
               );
             })}
           </div>
+          {loadProgress(mode).stamps > 0 && (
+            <div className="tip-opt mt-2 flex flex-wrap items-center gap-2" role="group" aria-label="Page de départ">
+              <span className="subhead">Départ</span>
+              <div className="seg">
+                {Array.from({ length: Math.min(PAGES, loadProgress(mode).stamps + 1) }, (_, k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    className="seg-b"
+                    aria-pressed={Math.min(startPage, loadProgress(mode).stamps) === k}
+                    onClick={() => setStartPage(k)}
+                  >
+                    {k === 0 ? 'Début' : `Page ${k + 1}`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
     </div>
@@ -759,6 +792,16 @@ function OverScreen({ run, account, cloud, onRestart, onMenu, onHome }: OverProp
                   ? `Tu as retenu une suite de ${r.maxSpan} taches.`
                   : `Tu as retrouvé jusqu’à ${r.maxSpan} taches sur la grille.`}
             </p>
+            {run.stampsAfter > run.stampsBefore ? (
+              <p className="mt-1 text-[15px] font-bold text-ink">
+                Nouveau tampon&nbsp;! {Array.from({ length: PAGES }, (_, k) => (k < run.stampsAfter ? '●' : '○')).join(' ')}
+              </p>
+            ) : (
+              run.prevSpan > 0 &&
+              r.maxSpan > run.prevSpan && (
+                <p className="mt-1 text-[15px] font-bold text-ink">+{r.maxSpan - run.prevSpan} par rapport à ta dernière partie&nbsp;!</p>
+              )
+            )}
             {!r.won && (
               <p className="tip-opt mt-1 text-[14px] leading-snug text-ink/70">
                 <strong>Astuce&nbsp;:</strong> {tipFor(r.mode, r.score + r.correct)}
