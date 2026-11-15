@@ -23,15 +23,12 @@ export interface Settings {
   layout: Layout;
   name: string;
   difficulty: Difficulty;
-  /** police : normale (machine à écrire) ou adaptée à la dyslexie */
-  font: FontChoice;
   /** taille du texte */
   textSize: TextSize;
   /** réglages de la séance « Perso » */
   custom: CustomConfig;
 }
 
-export type FontChoice = 'normal' | 'dys';
 export type TextSize = 'normal' | 'large' | 'xlarge';
 
 const SCORES_KEY = 'frappe.scores.v1';
@@ -131,7 +128,6 @@ export function loadSettings(): Settings {
     layout: 'azerty',
     name: '',
     difficulty: 'standard',
-    font: 'normal',
     textSize: 'normal',
     custom: DEFAULT_CUSTOM,
   };
@@ -144,7 +140,6 @@ export function loadSettings(): Settings {
     layout: saved.layout === 'qwerty' ? 'qwerty' : 'azerty',
     name: typeof saved.name === 'string' ? saved.name.slice(0, 12) : '',
     difficulty: isDifficulty(saved.difficulty) ? saved.difficulty : 'standard',
-    font: saved.font === 'dys' ? 'dys' : 'normal',
     textSize: saved.textSize === 'large' || saved.textSize === 'xlarge' ? saved.textSize : 'normal',
     custom: sanitizeCustom(saved.custom),
   };

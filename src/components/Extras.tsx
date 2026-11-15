@@ -6,6 +6,7 @@ import type { ScoreEntry } from '../game/storage';
 import { explain } from '../server/api';
 import { fetchBoard } from '../server/student';
 import type { BoardRow, Scope, StudentAccount } from '../server/types';
+import { BackButton } from './BackButton';
 import { ScoreTable } from './Screens';
 
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
@@ -62,9 +63,11 @@ interface ScoresPanelProps {
   name?: string;
   onName?: (name: string) => void;
   onClear?: () => void;
+  /** sans marge ni grand titre (le titre est déjà affiché par l'écran) */
+  bare?: boolean;
 }
 
-export function ScoresPanel({ diff, local, account, limit, highlightId, refreshKey, name, onName, onClear }: ScoresPanelProps) {
+export function ScoresPanel({ diff, local, account, limit, highlightId, refreshKey, name, onName, onClear, bare = false }: ScoresPanelProps) {
   const token = account?.token ?? null;
   const [tab, setTab] = useState<'class' | 'school' | 'local'>(token ? 'class' : 'local');
   const [rows, setRows] = useState<BoardRow[] | null>(null);
@@ -87,9 +90,9 @@ export function ScoresPanel({ diff, local, account, limit, highlightId, refreshK
 
   const label = DIFFICULTIES[diff].label;
   return (
-    <div className="mt-6">
+    <div className={bare ? undefined : 'mt-[var(--sp)]'}>
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h2 className="subhead">Meilleurs scores · {label}</h2>
+        <h2 className="subhead">{bare ? `Niveau ${label}` : `Meilleurs scores · ${label}`}</h2>
         {token && (
           <div className="seg" role="tablist" aria-label="Classement">
             <button type="button" role="tab" aria-selected={tab === 'class'} className="seg-b" onClick={() => setTab('class')}>
@@ -218,10 +221,12 @@ export function Progress({ runs, loading, currentName, onBack }: { runs: RunReco
 
   return (
     <div className="overlay">
-      <section className="card w-full max-w-[520px]" role="dialog" aria-modal="true" aria-labelledby="prog-title">
-        <p className="eyebrow">Mes progrès</p>
+      <section className="card card-game card-progress w-full" role="dialog" aria-modal="true" aria-labelledby="prog-title">
+        <div className="card-top">
+          <BackButton onClick={onBack} label="Retour" autoFocus />
+        </div>
         <h2 id="prog-title" className="title-sm">
-          Courbe de progression
+          Mes progrès
         </h2>
         <div className="rule" aria-hidden="true" />
 
@@ -235,7 +240,7 @@ export function Progress({ runs, loading, currentName, onBack }: { runs: RunReco
           </p>
         ) : (
           <>
-            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="mt-[var(--sp)] flex flex-wrap items-center gap-x-4 gap-y-2">
               <label className="flex items-center gap-2 text-[14px]">
                 Élève
                 <select className="field" value={who} onChange={(e) => setWho(e.target.value)}>
@@ -261,7 +266,7 @@ export function Progress({ runs, loading, currentName, onBack }: { runs: RunReco
               <p className="mt-4 text-[15px] leading-snug">Aucune partie pour ce choix.</p>
             ) : (
               <>
-                <p className="mt-4 text-[15px] leading-snug" aria-live="polite">
+                <p className="mt-[var(--sp)] text-[15px] leading-snug" aria-live="polite">
                   {list.length} partie{list.length > 1 ? 's' : ''} · meilleur&nbsp;: <strong>{Math.round(Math.max(...wpm))}</strong> mots/min.
                   {delta !== null && (
                     <>
@@ -275,18 +280,15 @@ export function Progress({ runs, loading, currentName, onBack }: { runs: RunReco
                     </>
                   )}
                 </p>
-                <LineChart values={wpm} title="Mots par minute" unit="mots/min" />
-                <LineChart values={acc} title="Précision" unit="%" fixedMax={100} />
+                <div className="charts">
+                  <LineChart values={wpm} title="Mots par minute" unit="mots/min" />
+                  <LineChart values={acc} title="Précision" unit="%" fixedMax={100} />
+                </div>
               </>
             )}
           </>
         )}
 
-        <div className="mt-5">
-          <button type="button" className="btn btn-primary" autoFocus onClick={onBack}>
-            Retour
-          </button>
-        </div>
       </section>
     </div>
   );

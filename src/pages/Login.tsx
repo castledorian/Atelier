@@ -1,3 +1,4 @@
+import { BackButton } from '../components/BackButton';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Frame, Notice } from './Frame';
@@ -20,12 +21,15 @@ export default function Login({ initialTab, recovery, onStudent, onTeacher, onBa
   const [tab, setTab] = useState<'student' | 'teacher'>(recovery ? 'teacher' : initialTab);
   return (
     <Frame>
+      <div className="card-top">
+        <BackButton onClick={onBack} />
+      </div>
       <p className="eyebrow">Connexion</p>
       <h1 className="title-sm">Qui joue&nbsp;?</h1>
       <div className="rule" aria-hidden="true" />
 
       {!recovery && (
-        <div className="seg mt-4" role="tablist" aria-label="Type de compte">
+        <div className="seg seg-big mt-[var(--sp)]" role="tablist" aria-label="Type de compte">
           <button type="button" role="tab" aria-selected={tab === 'student'} className="seg-b" onClick={() => setTab('student')}>
             Élève
           </button>
@@ -36,12 +40,6 @@ export default function Login({ initialTab, recovery, onStudent, onTeacher, onBa
       )}
 
       {tab === 'student' ? <StudentForm onDone={onStudent} /> : <TeacherForm recovery={recovery} onDone={onTeacher} />}
-
-      <div className="mt-6">
-        <button type="button" className="link" onClick={onBack}>
-          ← Retour à l’accueil
-        </button>
-      </div>
     </Frame>
   );
 }

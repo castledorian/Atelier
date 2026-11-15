@@ -15,50 +15,37 @@ export type SfxName =
   | 'over'
   | 'start';
 
-export class Sfx {
-  enabled = true;
-  private ac: AudioContext | null = null;
-  private out: GainNode | null = null;
-  private noise: AudioBuffer | null = null;
+/** Durée de chaque effet (secondes), pour le pré-calcul. */
+const LENGTH: Record<SfxName, number> = {
+  key: 0.1,
+  hit: 0.1,
+  kill: 0.25,
+  bigkill: 1,
+  ding: 0.95,
+  error: 0.18,
+  breach: 0.65,
+  sweep: 1.4,
+  mult: 0.25,
+  ready: 0.42,
+  wave: 1.15,
+  clear: 0.6,
+  over: 1.45,
+  start: 1.15,
+};
+const NAMES = Object.keys(LENGTH) as SfxName[];
 
-  /** À appeler depuis un geste utilisateur (clic, touche) pour débloquer l'audio. */
-  unlock() {
-    if (!this.ac) {
-      const AC =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AC) return;
-      try {
-        this.ac = new AC();
-      } catch {
-        return;
-      }
-      const ac = this.ac;
-      const comp = ac.createDynamicsCompressor();
-      this.out = ac.createGain();
-      this.out.gain.value = 0.5;
-      this.out.connect(comp);
-      comp.connect(ac.destination);
-      const len = Math.floor(ac.sampleRate * 0.6);
-      this.noise = ac.createBuffer(1, len, ac.sampleRate);
-      const data = this.noise.getChannelData(0);
-      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
-    }
-    if (this.ac.state === 'suspended') void this.ac.resume().catch(() => {});
-  }
+/** Petit synthétiseur : écrit un effet dans un contexte audio (en direct ou hors ligne). */
+class Synth {
+  constructor(
+    private readonly ac: BaseAudioContext,
+    private readonly out: AudioNode,
+    private readonly noise: AudioBuffer,
+    private readonly t0: number,
+  ) {}
 
-  private burst(
-    type: BiquadFilterType,
-    f0: number,
-    f1: number,
-    dur: number,
-    vol: number,
-    delay = 0,
-    q = 1,
-  ) {
-    const ac = this.ac;
-    if (!ac || !this.out || !this.noise) return;
-    const t = ac.currentTime + delay;
+  burst(type: BiquadFilterType, f0: number, f1: number, dur: number, vol: number, delay = 0, q = 1) {
+    const { ac } = this;
+    const t = this.t0 + delay;
     const src = ac.createBufferSource();
     src.buffer = this.noise;
     src.playbackRate.value = 0.8 + Math.random() * 0.4;
@@ -78,10 +65,9 @@ export class Sfx {
     src.stop(t + dur + 0.02);
   }
 
-  private tone(type: OscillatorType, f0: number, f1: number, dur: number, vol: number, delay = 0) {
-    const ac = this.ac;
-    if (!ac || !this.out) return;
-    const t = ac.currentTime + delay;
+  tone(type: OscillatorType, f0: number, f1: number, dur: number, vol: number, delay = 0) {
+    const { ac } = this;
+    const t = this.t0 + delay;
     const osc = ac.createOscillator();
     osc.type = type;
     osc.frequency.setValueAtTime(f0, t);
@@ -96,18 +82,17 @@ export class Sfx {
     osc.stop(t + dur + 0.02);
   }
 
-  private bell(delay = 0, vol = 0.22) {
+  bell(delay = 0, vol = 0.22) {
     this.tone('sine', 2093, 2093, 0.9, vol, delay);
     this.tone('sine', 4186, 4186, 0.45, vol * 0.35, delay);
     this.tone('sine', 6270, 6270, 0.2, vol * 0.15, delay);
   }
 
   play(name: SfxName) {
-    if (!this.enabled || !this.ac || this.ac.state !== 'running') return;
     switch (name) {
       case 'key':
-        this.burst('bandpass', 2200 + Math.random() * 1200, 1800, 0.035, 0.55, 0, 1.4);
-        this.tone('triangle', 170 + Math.random() * 30, 90, 0.05, 0.3);
+        this.burst('bandpass', 2700, 1800, 0.035, 0.55, 0, 1.4);
+        this.tone('triangle', 185, 90, 0.05, 0.3);
         break;
       case 'hit':
         this.burst('lowpass', 1400, 500, 0.06, 0.3);
@@ -168,5 +153,78 @@ export class Sfx {
         this.bell(0.22, 0.22);
         break;
     }
+  }
+}
+
+/**
+ * Effets sonores. Chaque effet est calculé UNE fois au démarrage (hors ligne), puis rejoué comme un simple
+ * enregistrement : une frappe ne coûte qu'un lecteur audio, ce qui garde le jeu fluide sur les vieux ordinateurs.
+ */
+export class Sfx {
+  enabled = true;
+  private ac: AudioContext | null = null;
+  private out: GainNode | null = null;
+  private noise: AudioBuffer | null = null;
+  private baked: Partial<Record<SfxName, AudioBuffer>> = {};
+
+  /** À appeler depuis un geste utilisateur (clic, touche) pour débloquer l'audio. */
+  unlock() {
+    if (!this.ac) {
+      const AC =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AC) return;
+      try {
+        this.ac = new AC();
+      } catch {
+        return;
+      }
+      const ac = this.ac;
+      const comp = ac.createDynamicsCompressor();
+      this.out = ac.createGain();
+      this.out.gain.value = 0.5;
+      this.out.connect(comp);
+      comp.connect(ac.destination);
+      const len = Math.floor(ac.sampleRate * 0.6);
+      this.noise = ac.createBuffer(1, len, ac.sampleRate);
+      const data = this.noise.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      void this.bake(ac.sampleRate);
+    }
+    if (this.ac.state === 'suspended') void this.ac.resume().catch(() => {});
+  }
+
+  /** Pré-calcul de tous les effets ; en attendant (ou sans OfflineAudioContext), ils sont joués en direct. */
+  private async bake(rate: number) {
+    const OAC =
+      window.OfflineAudioContext ||
+      (window as unknown as { webkitOfflineAudioContext?: typeof OfflineAudioContext }).webkitOfflineAudioContext;
+    if (!OAC) return;
+    for (const name of NAMES) {
+      try {
+        const oc = new OAC(1, Math.ceil(LENGTH[name] * rate), rate);
+        const noise = oc.createBuffer(1, this.noise!.length, rate);
+        noise.copyToChannel(this.noise!.getChannelData(0), 0);
+        new Synth(oc, oc.destination, noise, 0).play(name);
+        this.baked[name] = await oc.startRendering();
+      } catch {
+        return; // navigateur trop ancien : on garde la synthèse en direct
+      }
+    }
+  }
+
+  play(name: SfxName) {
+    if (!this.enabled || !this.ac || !this.out || !this.noise || this.ac.state !== 'running') return;
+    const buf = this.baked[name];
+    if (!buf) {
+      new Synth(this.ac, this.out, this.noise, this.ac.currentTime).play(name);
+      return;
+    }
+    const src = this.ac.createBufferSource();
+    src.buffer = buf;
+    // légère variation de hauteur : deux frappes ne sonnent jamais exactement pareil
+    if (name === 'key' || name === 'hit' || name === 'kill') src.playbackRate.value = 0.94 + Math.random() * 0.12;
+    src.connect(this.out);
+    src.start();
   }
 }

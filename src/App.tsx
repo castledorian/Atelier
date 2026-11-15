@@ -187,10 +187,8 @@ export default function App({ account, onHome, onSessionLost, install }: TypingP
       shake: settings.shake,
       touch: kbOn,
       layout: settings.layout,
-      font: settings.font,
       wordScale: TEXT_SCALE[settings.textSize],
     });
-    document.documentElement.dataset.font = settings.font;
     document.documentElement.dataset.text = settings.textSize;
   }, [settings, kbOn, sfx]);
 
@@ -467,6 +465,7 @@ export default function App({ account, onHome, onSessionLost, install }: TypingP
             onResume={resume}
             onRestart={restart}
             onMenu={toMenu}
+            onHome={onHome}
             onChange={changeSettings}
           />
         )}
@@ -486,6 +485,7 @@ export default function App({ account, onHome, onSessionLost, install }: TypingP
             onName={rename}
             onRestart={restart}
             onMenu={toMenu}
+            onHome={onHome}
             onDrill={startDrill}
           />
         )}

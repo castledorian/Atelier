@@ -10,19 +10,22 @@ Vous n'avez rien à installer, aucun script à copier. Il suffit d'un compte gra
 
 ## 2. Ajouter vos élèves
 
-1. Dans **Ajouter des élèves**, tapez ou collez **un prénom par ligne** (ou un pseudo : jamais de nom de famille).
+1. Dans l'onglet **Ajouter des élèves** de la classe, tapez ou collez **un prénom par ligne** (ou un pseudo : jamais de nom de famille).
 2. Chaque élève reçoit un **code personnel de 8 caractères** (ex. `KQ7M 2XAB`).
 3. **Imprimer les codes** sort une fiche à découper à distribuer. Un code perdu ? **Nouveau code** (l'ancien cesse de fonctionner).
 
 ## 3. Les élèves jouent
 
 Sur le site : **Je suis élève**, taper son code, choisir un jeu. Plus rien à saisir ensuite : ils restent connectés sur leur appareil (**Changer d'élève** sur l'accueil pour un ordinateur partagé).
+- Dans chaque jeu, le bouton **← Accueil** (toujours en haut à gauche) ramène à la liste des jeux.
 - Ils se comparent **dans leur classe** et **dans leur école** (onglets *Classe* / *École*).
 - Les scores sont gardés sur le serveur : ils retrouvent leur courbe de progression sur n'importe quel appareil.
 
 ## 4. Suivre et exporter
 
-- **Élèves et résultats** : parties jouées, records, mots/minute moyens, précision, temps passé, dernière partie.
+Chaque classe a quatre onglets : **Résultats**, **Ajouter des élèves**, **Séance de la classe** et **Supprimer**.
+
+- **Résultats** : parties jouées, records, mots/minute moyens, précision, temps passé, dernière partie. Sur un petit écran, certaines colonnes sont masquées : elles sont toutes dans l'export.
 - **Exporter (CSV)** : toutes les parties de la classe, à ouvrir dans Excel ou LibreOffice.
 - **Séance de la classe** : réglez vitesse, vies, lettres autorisées, longueur des mots… Vos élèves démarrent sur cette séance (mode « Perso », non classé). Ils peuvent toujours choisir un autre mode.
 

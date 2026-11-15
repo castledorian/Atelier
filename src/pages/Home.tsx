@@ -71,13 +71,11 @@ export default function Home({ student, teacher, onPlay, onLogin, onDashboard, o
             </div>
           </>
         ) : (
-          <p className="text-[14px] leading-snug text-ink/75">
-            Mode local : tes scores restent sur cet appareil (les comptes d’école ne sont pas activés sur ce site).
-          </p>
+          <p className="text-[14px] leading-snug text-ink/75">Tes scores restent sur cet appareil.</p>
         )}
       </section>
 
-      <h2 className="subhead mt-6">Choisis un jeu</h2>
+      <h2 className="subhead mt-[var(--sp)]">Choisis un jeu</h2>
       <div className="games">
         <button type="button" className="gcard" onClick={() => onPlay('typing')}>
           <span className="gcard-tag">Clavier</span>

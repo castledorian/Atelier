@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { BackButton } from '../components/BackButton';
 import { Frame } from '../pages/Frame';
 import { newRunId } from '../game/history';
 import { explain } from '../server/api';
@@ -227,10 +228,13 @@ export default function MathGame({ account, onHome, onSessionLost }: Props) {
   if (phase === 'menu') {
     return (
       <Frame>
+        <div className="card-top">
+          <BackButton onClick={onHome} />
+        </div>
         <p className="eyebrow">Maths · version provisoire</p>
         <h1 className="title-sm">Calcul éclair</h1>
         <div className="rule" aria-hidden="true" />
-        <p className="mt-3 text-[16px] leading-snug">
+        <p className="tagline">
           Tu as {DURATION}&nbsp;secondes. Tape la réponse : elle est validée toute seule dès qu’elle est juste. Les bonnes réponses à la suite rapportent des points en plus.
         </p>
         {account && (
@@ -238,8 +242,8 @@ export default function MathGame({ account, onHome, onSessionLost }: Props) {
             Joueur&nbsp;: <strong>{account.student.name}</strong> · {account.class.name}
           </p>
         )}
-        <h2 className="subhead mt-5">Ton niveau</h2>
-        <div className="games">
+        <h2 className="subhead mt-[var(--sp)]">Choisis ton niveau</h2>
+        <div className="games games-levels">
           {LEVELS.map((l) => (
             <button key={l.id} type="button" className="gcard" onClick={() => start(l.id)}>
               <span className="gcard-name">{l.label}</span>
@@ -248,11 +252,6 @@ export default function MathGame({ account, onHome, onSessionLost }: Props) {
             </button>
           ))}
         </div>
-        <div className="mt-6">
-          <button type="button" className="link" onClick={onHome}>
-            ← Accueil · autres jeux
-          </button>
-        </div>
       </Frame>
     );
   }
@@ -260,15 +259,18 @@ export default function MathGame({ account, onHome, onSessionLost }: Props) {
   if (phase === 'play') {
     return (
       <Frame>
-        <div className="math-top">
+        <div className="card-top">
+          <BackButton onClick={onHome} />
           <span className="subhead">{LEVELS.find((l) => l.id === level)?.label}</span>
+        </div>
+        <div className="math-top">
           <span className="num math-time" role="timer" aria-label={`${left} secondes restantes`}>
             {left}&nbsp;s
           </span>
           <span className="num">Score {score}</span>
         </div>
         <div className="math-bar" aria-hidden="true">
-          <i style={{ width: `${(left / DURATION) * 100}%` }} />
+          <i style={{ transform: `scaleX(${left / DURATION})` }} />
         </div>
         <div className={`math-q ${flash === 'ok' ? 'is-ok' : flash === 'ko' ? 'is-ko' : ''}`} aria-live="off">
           {q.text} = ?
@@ -305,10 +307,13 @@ export default function MathGame({ account, onHome, onSessionLost }: Props) {
 
   return (
     <Frame>
+      <div className="card-top">
+        <BackButton onClick={onHome} />
+      </div>
       <p className="eyebrow">Calcul éclair · {LEVELS.find((l) => l.id === result?.level)?.label}</p>
       <h1 className="title-sm">Temps écoulé&nbsp;!</h1>
       <div className="rule" aria-hidden="true" />
-      <div className="mt-4 flex items-end gap-3">
+      <div className="mt-[var(--sp)] flex items-end gap-3">
         <div className="score-big" aria-label={`Score : ${result?.score ?? 0}`}>
           {result?.score ?? 0}
         </div>
@@ -326,15 +331,12 @@ export default function MathGame({ account, onHome, onSessionLost }: Props) {
           </div>
         ))}
       </dl>
-      <div className="mt-5 flex flex-wrap gap-3">
+      <div className="mt-[var(--sp)] flex flex-wrap gap-3">
         <button type="button" className="btn btn-primary" autoFocus onClick={() => start(result?.level ?? level)}>
           Rejouer
         </button>
         <button type="button" className="btn btn-ghost" onClick={() => setPhase('menu')}>
           Changer de niveau
-        </button>
-        <button type="button" className="btn btn-ghost" onClick={onHome}>
-          Accueil
         </button>
       </div>
       {account && (

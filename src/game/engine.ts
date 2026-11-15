@@ -110,8 +110,6 @@ const COMBO_STEP = 15;
 const MAX_PARTS = 520;
 const F_DISP = '"Special Elite", "Courier New", monospace';
 const F_WORD = '"Courier Prime", "Courier New", monospace';
-// Police de lecture facile : EasyReading PRO si elle est installée (voir public/fonts/LISEZ-MOI.txt), sinon des polices système lisibles.
-const F_DYS = '"EasyReading PRO", Verdana, "Trebuchet MS", "Comic Sans MS", sans-serif';
 const FLAVOR = [
   'Gardez la cadence',
   'Encore plus d’encre',
@@ -159,6 +157,16 @@ export class Game {
   private raf = 0;
   private last = 0;
   private dirty = true;
+  /**
+   * Qualité automatique : résolution maximale du canvas (1 = un pixel par pixel CSS).
+   * Si l'ordinateur n'arrive pas à suivre 60 images/s, on baisse la résolution plutôt que de saccader.
+   */
+  private quality = 2;
+  private slowAvg = 16.7;
+  private slowFrames = 0;
+  private cwFont = '';
+  /** démo d'arrière-plan figée (ordinateur trop lent : le menu reste fluide) */
+  private demoStill = false;
 
   // Géométrie (pixels CSS)
   private W = 0;
@@ -268,6 +276,11 @@ export class Game {
     this.reset();
     this.mode = 'play';
     this.paused = false;
+    // le menu a déjà montré que l'ordinateur est lent : on démarre directement en qualité allégée
+    if (this.demoStill && this.quality > 1) {
+      this.quality = 1;
+      this.resize();
+    }
     this.snd('start');
     this.startWave(1);
     this.last = performance.now();
@@ -291,16 +304,10 @@ export class Game {
     this.last = performance.now();
   }
 
-  setOptions(o: { shake: boolean; touch: boolean; layout?: Layout; font?: 'normal' | 'dys'; wordScale?: number }) {
+  setOptions(o: { shake: boolean; touch: boolean; layout?: Layout; wordScale?: number }) {
     this.shakeOn = o.shake;
     this.touch = o.touch;
     if (o.layout) this.layout = o.layout;
-    if (o.font) {
-      const dys = o.font === 'dys';
-      this.fWord = dys ? F_DYS : F_WORD;
-      this.fDisp = dys ? F_DYS : F_DISP;
-      if (dys && document.fonts?.load) void document.fonts.load(`700 20px ${F_DYS}`).catch(() => {});
-    }
     if (o.wordScale) {
       this.wordScale = o.wordScale;
       this.fs = Math.round((this.W < 520 ? 17 : 21) * this.wordScale);
@@ -393,8 +400,14 @@ export class Game {
 
   private frame = (now: number) => {
     this.raf = requestAnimationFrame(this.frame);
-    const dt = Math.min(0.05, Math.max(0, (now - this.last) / 1000));
+    const ms = now - this.last;
+    const dt = Math.min(0.05, Math.max(0, ms / 1000));
     this.last = now;
+    if (!this.paused) this.watchSpeed(ms);
+    if (this.mode === 'demo' && this.demoStill) {
+      if (this.dirty) this.render();
+      return;
+    }
     if (this.paused) {
       if (this.dirty) this.render();
       return;
@@ -403,11 +416,33 @@ export class Game {
     this.render();
   };
 
+  /** Surveille la durée des images ; trop lent pendant ~1,5 s → résolution plus basse (jamais remontée pendant la session). */
+  private watchSpeed(ms: number) {
+    if (ms <= 0 || ms > 200) return; // onglet caché, pause… : non significatif
+    this.slowAvg += (ms - this.slowAvg) * 0.05;
+    if (this.slowAvg > 21) this.slowFrames++;
+    else this.slowFrames = Math.max(0, this.slowFrames - 2);
+    if (this.slowFrames < 60) return;
+    if (this.mode === 'demo') {
+      // derrière le menu, l'animation n'est qu'un décor : on la fige plutôt que de ralentir l'écran
+      this.demoStill = true;
+      this.slowFrames = 0;
+      this.slowAvg = 16.7;
+      return;
+    }
+    if (this.quality <= 0.75) return;
+    const cur = Math.min(this.quality, window.devicePixelRatio || 1);
+    this.quality = cur > 1.5 ? 1.5 : cur > 1 ? 1 : 0.75;
+    this.slowFrames = 0;
+    this.slowAvg = 16.7;
+    this.resize();
+  }
+
   private resize = () => {
     const rect = this.canvas.getBoundingClientRect();
     const W = Math.max(240, Math.round(rect.width));
     const H = Math.max(200, Math.round(rect.height));
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const dpr = Math.min(2, this.quality, window.devicePixelRatio || 1);
     if (W === this.W && H === this.H && dpr === this.dpr) return;
     this.W = W;
     this.H = H;
@@ -1236,14 +1271,23 @@ export class Game {
       shx = (Math.random() * 2 - 1) * amt;
       shy = (Math.random() * 2 - 1) * amt;
     }
-    c.setTransform(dpr, 0, 0, dpr, shx * dpr, shy * dpr);
+    // décalage arrondi au pixel près : les grandes images (fond, taches) sont copiées telles quelles, sans
+    // rééchantillonnage, ce qui coûte bien moins cher pendant les secousses
+    const ox = Math.round(shx * dpr);
+    const oy = Math.round(shy * dpr);
+    c.setTransform(1, 0, 0, 1, 0, 0);
     c.globalAlpha = 1;
-    c.drawImage(this.bg, -20, -20, W + 40, H + 40);
-    c.drawImage(this.stains, 0, 0, W, H);
+    c.drawImage(this.bg, ox - Math.round(20 * dpr), oy - Math.round(20 * dpr));
+    c.drawImage(this.stains, ox, oy);
+    c.setTransform(dpr, 0, 0, dpr, ox, oy);
 
-    c.font = `700 ${this.fs}px ${this.fWord}`;
-    // les lettres sont centrées dans des cases de largeur égale (utile aussi pour les polices non monospace)
-    this.cw = Math.max(c.measureText('M').width, c.measureText('W').width);
+    const wf = `700 ${this.fs}px ${this.fWord}`;
+    c.font = wf;
+    // les lettres sont centrées dans des cases de largeur égale ; mesuré seulement quand la police change
+    if (wf !== this.cwFont || !document.fonts || document.fonts.status !== 'loaded') {
+      this.cw = Math.max(c.measureText('M').width, c.measureText('W').width);
+      this.cwFont = wf;
+    }
 
     this.drawBanner();
     this.drawDanger();

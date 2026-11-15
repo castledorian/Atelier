@@ -1,3 +1,4 @@
+import { BackButton } from '../components/BackButton';
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Frame, Notice } from './Frame';
@@ -82,7 +83,10 @@ export default function Dashboard({ email, onHome, onSignOut }: Props) {
   };
 
   return (
-    <Frame wide>
+    <Frame wide fill>
+      <div className="card-top">
+        <BackButton onClick={onHome} />
+      </div>
       <div className="dash-head">
         <div>
           <p className="eyebrow">Espace enseignant</p>
@@ -91,9 +95,6 @@ export default function Dashboard({ email, onHome, onSignOut }: Props) {
         <div className="dash-who">
           <span className="text-[13px] text-ink/70">{email}</span>
           <div className="who-actions">
-            <button type="button" className="link" onClick={onHome}>
-              Accueil
-            </button>
             <button type="button" className="link" onClick={onSignOut}>
               Se déconnecter
             </button>
@@ -216,7 +217,15 @@ function NameForm({
       <label className="subhead" htmlFor="nf-name">
         {label}
       </label>
-      <input id="nf-name" className="field" value={name} maxLength={80} placeholder={placeholder} onChange={(e) => setName(e.target.value)} autoFocus />
+      <input
+        id="nf-name"
+        className="field"
+        value={name}
+        maxLength={80}
+        placeholder={placeholder}
+        onChange={(e) => setName(e.target.value)}
+        autoFocus
+      />
       <div>
         <button type="submit" className="btn btn-primary" disabled={busy || name.trim().length < 2}>
           {button}
@@ -270,7 +279,14 @@ function SchoolBar({
               }
             }}
           >
-            <input className="field" placeholder="Nom d’une autre école" aria-label="Nom d’une autre école" value={adding} maxLength={80} onChange={(e) => setAdding(e.target.value)} />
+            <input
+              className="field"
+              placeholder="Nom d’une autre école"
+              aria-label="Nom d’une autre école"
+              value={adding}
+              maxLength={80}
+              onChange={(e) => setAdding(e.target.value)}
+            />
             <button type="submit" className="btn btn-ghost" disabled={adding.trim().length < 2}>
               Ajouter une école
             </button>
@@ -278,7 +294,8 @@ function SchoolBar({
         )}
         <div className="danger">
           <p className="text-[13px] leading-snug">
-            <strong>Supprimer l’école</strong> efface définitivement ses classes, ses élèves et tous leurs scores. Pour confirmer, recopie son nom&nbsp;: <em>{schoolName}</em>
+            <strong>Supprimer l’école</strong> efface définitivement ses classes, ses élèves et tous leurs scores. Pour confirmer, recopie
+            son nom&nbsp;: <em>{schoolName}</em>
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             <input className="field" aria-label="Recopier le nom de l’école" value={typed} onChange={(e) => setTyped(e.target.value)} />
@@ -324,7 +341,15 @@ function ClassBar({
             }
           }}
         >
-          <input className="field" autoFocus aria-label="Nom de la nouvelle classe" placeholder="CM1 B" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />
+          <input
+            className="field"
+            autoFocus
+            aria-label="Nom de la nouvelle classe"
+            placeholder="CM1 B"
+            value={name}
+            maxLength={40}
+            onChange={(e) => setName(e.target.value)}
+          />
           <button type="submit" className="btn btn-ghost" disabled={!name.trim()}>
             Créer
           </button>
@@ -362,10 +387,15 @@ function ClassPanel({
   const [confirm, setConfirm] = useState<string | null>(null);
   const [cfg, setCfg] = useState<CustomConfig | null>(cls.session_config ? sanitizeCustom(cls.session_config) : null);
   const [saved, setSaved] = useState(false);
+  /** une seule partie de la classe à la fois : la page reste courte */
+  const [part, setPart] = useState<'results' | 'add' | 'session' | 'danger'>('results');
 
   const reload = useCallback(async () => {
     const r = await act(() => T.classOverview(cls.id));
-    if (r) setRows(r);
+    if (r) {
+      setRows(r);
+      if (r.length === 0) setPart('add');
+    }
   }, [act, cls.id]);
   useEffect(() => {
     void reload();
@@ -383,7 +413,8 @@ function ClassPanel({
       setFresh(created);
       setNames('');
       setMsg(`${created.length} élève${created.length > 1 ? 's' : ''} ajouté${created.length > 1 ? 's' : ''}.`);
-      await reload();
+      const r = await act(() => T.classOverview(cls.id));
+      if (r) setRows(r);
     }
   };
 
@@ -410,221 +441,266 @@ function ClassPanel({
         ]),
       ),
     );
-    setMsg(`${runs.length} partie${runs.length > 1 ? 's' : ''} exportée${runs.length > 1 ? 's' : ''}${runs.length >= 5000 ? ' (les 5 000 plus récentes)' : ''}.`);
+    setMsg(
+      `${runs.length} partie${runs.length > 1 ? 's' : ''} exportée${runs.length > 1 ? 's' : ''}${runs.length >= 5000 ? ' (les 5 000 plus récentes)' : ''}.`,
+    );
   };
 
   const settings = { layout: 'azerty', custom: cfg ?? DEFAULT_CUSTOM } as unknown as Settings;
 
+  const PARTS: Array<[typeof part, string]> = [
+    ['results', 'Résultats'],
+    ['add', 'Ajouter des élèves'],
+    ['session', 'Séance de la classe'],
+    ['danger', 'Supprimer'],
+  ];
+
   return (
     <>
+      <div className="part-bar" role="tablist" aria-label={`Classe ${cls.name}`}>
+        {PARTS.map(([k, label]) => (
+          <button key={k} type="button" role="tab" aria-selected={part === k} className="part-tab" onClick={() => setPart(k)}>
+            {label}
+          </button>
+        ))}
+      </div>
+
       {msg && <Notice kind="ok">{msg}</Notice>}
 
-      <section className="sec" aria-labelledby="res-h">
-        <div className="sec-head">
-          <h2 id="res-h" className="subhead">
-            Élèves et résultats · {cls.name}
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn btn-ghost" onClick={() => void reload()}>
-              Actualiser
-            </button>
-            <button type="button" className="btn btn-ghost" onClick={exportRuns}>
-              Exporter (CSV)
-            </button>
-            <button type="button" className="btn btn-ghost" disabled={!rows?.length} onClick={() => window.print()}>
-              Imprimer les codes
-            </button>
+      {part === 'results' && (
+        <section className="sec sec-fill" aria-labelledby="res-h">
+          <div className="sec-head">
+            <h2 id="res-h" className="subhead">
+              Élèves et résultats · {cls.name}
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="btn btn-ghost" onClick={() => void reload()}>
+                Actualiser
+              </button>
+              <button type="button" className="btn btn-ghost" onClick={exportRuns}>
+                Exporter (CSV)
+              </button>
+              <button type="button" className="btn btn-ghost" disabled={!rows?.length} onClick={() => window.print()}>
+                Imprimer les codes
+              </button>
+            </div>
           </div>
-        </div>
-        {rows === null ? (
-          <p className="text-[15px]">Chargement…</p>
-        ) : rows.length === 0 ? (
-          <p className="text-[15px] leading-snug">Aucun élève pour l’instant. Ajoute-les ci-dessous.</p>
-        ) : (
-          <div className="tbl-wrap">
-            <table className="scores tbl">
-              <caption className="sr-only">Résultats des élèves de la classe</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Élève</th>
-                  <th scope="col">Code</th>
-                  <th scope="col" className="num">
-                    Parties
-                  </th>
-                  <th scope="col" className="num">
-                    Record frappe
-                  </th>
-                  <th scope="col" className="num">
-                    Record calcul
-                  </th>
-                  <th scope="col" className="num">
-                    Mots/min
-                  </th>
-                  <th scope="col" className="num">
-                    Précision
-                  </th>
-                  <th scope="col" className="num">
-                    Temps
-                  </th>
-                  <th scope="col">Dernière partie</th>
-                  <th scope="col">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.id}>
-                    <td>{r.name}</td>
-                    <td className="mono">{nice(r.access_code)}</td>
-                    <td className="num">{r.games}</td>
-                    <td className="num">{r.best_typing != null ? fmt(r.best_typing) : '–'}</td>
-                    <td className="num">{r.best_math != null ? fmt(r.best_math) : '–'}</td>
-                    <td className="num">{r.avg_wpm != null ? Math.round(r.avg_wpm) : '–'}</td>
-                    <td className="num">{r.avg_acc != null ? `${Math.round(r.avg_acc)} %` : '–'}</td>
-                    <td className="num">{r.seconds ? dur(r.seconds) : '–'}</td>
-                    <td>{r.last_played ? fmtDate(r.last_played) : '–'}</td>
-                    <td className="row-actions">
-                      <button
-                        type="button"
-                        className="link"
-                        onClick={async () => {
-                          const code = await act(() => T.resetCode(r.id));
-                          if (code) {
-                            setMsg(`Nouveau code de ${r.name} : ${nice(String(code))} (l’ancien ne fonctionne plus).`);
-                            await reload();
-                          }
-                        }}
-                      >
-                        Nouveau code
-                      </button>
-                      <button
-                        type="button"
-                        className="link"
-                        onClick={async () => {
-                          if (confirm !== r.id) {
-                            setConfirm(r.id);
-                            return;
-                          }
-                          setConfirm(null);
-                          const ok = await act(async () => {
-                            await T.deleteStudent(r.id);
-                            return true;
-                          });
-                          if (ok) {
-                            setMsg(`${r.name} et ses scores ont été supprimés.`);
-                            await reload();
-                          }
-                        }}
-                        onBlur={() => setConfirm(null)}
-                      >
-                        {confirm === r.id ? 'Confirmer' : 'Supprimer'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <p className="mt-2 text-[13px] leading-snug text-ink/75">
-          Les parties « Perso » et les entraînements ne comptent pas dans les records. Utilise des prénoms (ou des pseudos), jamais de noms complets.
-        </p>
-      </section>
-
-      <section className="sec" aria-labelledby="add-h">
-        <h2 id="add-h" className="subhead mb-2">
-          Ajouter des élèves
-        </h2>
-        <form onSubmit={add} className="form">
-          <label className="text-[14px] leading-snug" htmlFor="add-names">
-            Un prénom par ligne (tu peux coller une liste). Chaque élève reçoit un code personnel de 8 caractères.
-          </label>
-          <textarea id="add-names" className="field names-area" rows={5} value={names} placeholder={'Léa\nHugo\nInès M.'} onChange={(e) => setNames(e.target.value)} />
-          <div>
-            <button type="submit" className="btn btn-primary" disabled={!names.trim()}>
-              Ajouter à {cls.name}
-            </button>
-          </div>
-        </form>
-        {fresh && (
-          <div className="mt-3">
-            <h3 className="subhead mb-1">Codes créés</h3>
-            <ul className="code-list">
-              {fresh.map((s) => (
-                <li key={s.id}>
-                  <span>{s.name}</span>
-                  <span className="mono">{nice(s.access_code)}</span>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-1 text-[13px] text-ink/75">Retrouve-les à tout moment dans le tableau ci-dessus. « Imprimer les codes » sort une fiche à découper.</p>
-          </div>
-        )}
-      </section>
-
-      <section className="sec" aria-labelledby="ses-h">
-        <h2 id="ses-h" className="subhead mb-2">
-          Séance de la classe
-        </h2>
-        <label className="opt" style={{ cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            checked={cfg !== null}
-            onChange={(e) => {
-              setSaved(false);
-              setCfg(e.target.checked ? DEFAULT_CUSTOM : null);
-            }}
-          />
-          &nbsp;Les élèves de cette classe démarrent sur ma séance personnalisée (jeu Frappe&nbsp;!)
-        </label>
-        {cfg && (
-          <>
-            <p className="mt-2 text-[14px] leading-snug text-ink/80">
-              Vitesse, lettres autorisées, longueur des mots… Les élèves peuvent toujours choisir un autre mode, mais la séance est proposée d’office. Les parties « Perso » ne comptent pas au classement.
+          {rows === null ? (
+            <p className="text-[15px]">Chargement…</p>
+          ) : rows.length === 0 ? (
+            <p className="text-[15px] leading-snug">
+              Aucun élève pour l’instant.{' '}
+              <button type="button" className="link" onClick={() => setPart('add')}>
+                Ajouter des élèves
+              </button>
             </p>
-            <CustomPanel settings={settings} onChange={(p) => p.custom && (setSaved(false), setCfg(p.custom))} />
-          </>
-        )}
-        <div className="mt-3 flex items-center gap-3">
+          ) : (
+            <div className="tbl-wrap">
+              <table className="scores tbl">
+                <caption className="sr-only">Résultats des élèves de la classe</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Élève</th>
+                    <th scope="col">Code</th>
+                    <th scope="col" className="num c-mid">
+                      Parties
+                    </th>
+                    <th scope="col" className="num">
+                      Record frappe
+                    </th>
+                    <th scope="col" className="num c-mid">
+                      Record calcul
+                    </th>
+                    <th scope="col" className="num c-sm">
+                      Mots/min
+                    </th>
+                    <th scope="col" className="num c-lo">
+                      Précision
+                    </th>
+                    <th scope="col" className="num c-lo">
+                      Temps
+                    </th>
+                    <th scope="col" className="c-lo">
+                      Dernière partie
+                    </th>
+                    <th scope="col">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.id}>
+                      <td>{r.name}</td>
+                      <td className="mono">{nice(r.access_code)}</td>
+                      <td className="num c-mid">{r.games}</td>
+                      <td className="num">{r.best_typing != null ? fmt(r.best_typing) : '–'}</td>
+                      <td className="num c-mid">{r.best_math != null ? fmt(r.best_math) : '–'}</td>
+                      <td className="num c-sm">{r.avg_wpm != null ? Math.round(r.avg_wpm) : '–'}</td>
+                      <td className="num c-lo">{r.avg_acc != null ? `${Math.round(r.avg_acc)} %` : '–'}</td>
+                      <td className="num c-lo">{r.seconds ? dur(r.seconds) : '–'}</td>
+                      <td className="c-lo">{r.last_played ? fmtDate(r.last_played) : '–'}</td>
+                      <td className="row-actions">
+                        <button
+                          type="button"
+                          className="link"
+                          onClick={async () => {
+                            const code = await act(() => T.resetCode(r.id));
+                            if (code) {
+                              setMsg(`Nouveau code de ${r.name} : ${nice(String(code))} (l’ancien ne fonctionne plus).`);
+                              await reload();
+                            }
+                          }}
+                        >
+                          Nouveau code
+                        </button>
+                        <button
+                          type="button"
+                          className="link"
+                          onClick={async () => {
+                            if (confirm !== r.id) {
+                              setConfirm(r.id);
+                              return;
+                            }
+                            setConfirm(null);
+                            const ok = await act(async () => {
+                              await T.deleteStudent(r.id);
+                              return true;
+                            });
+                            if (ok) {
+                              setMsg(`${r.name} et ses scores ont été supprimés.`);
+                              await reload();
+                            }
+                          }}
+                          onBlur={() => setConfirm(null)}
+                        >
+                          {confirm === r.id ? 'Confirmer' : 'Supprimer'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="mt-2 text-[13px] leading-snug text-ink/75">
+            Les parties « Perso » et les entraînements ne comptent pas dans les records. Toutes les colonnes sont dans l’export CSV.
+          </p>
+        </section>
+      )}
+
+      {part === 'add' && (
+        <section className="sec" aria-labelledby="add-h">
+          <h2 id="add-h" className="subhead mb-2">
+            Ajouter des élèves
+          </h2>
+          <form onSubmit={add} className="form">
+            <label className="text-[14px] leading-snug" htmlFor="add-names">
+              Un prénom par ligne (tu peux coller une liste). Chaque élève reçoit un code personnel de 8 caractères. Utilise des prénoms ou
+              des pseudos, jamais de noms complets.
+            </label>
+            <textarea
+              id="add-names"
+              className="field names-area"
+              rows={5}
+              value={names}
+              placeholder={'Léa\nHugo\nInès M.'}
+              onChange={(e) => setNames(e.target.value)}
+            />
+            <div>
+              <button type="submit" className="btn btn-primary" disabled={!names.trim()}>
+                Ajouter à {cls.name}
+              </button>
+            </div>
+          </form>
+          {fresh && (
+            <div className="mt-3">
+              <h3 className="subhead mb-1">Codes créés</h3>
+              <ul className="code-list">
+                {fresh.map((s) => (
+                  <li key={s.id}>
+                    <span>{s.name}</span>
+                    <span className="mono">{nice(s.access_code)}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1 text-[13px] text-ink/75">
+                Retrouve-les à tout moment dans l’onglet « Résultats ». « Imprimer les codes » sort une fiche à découper.
+              </p>
+            </div>
+          )}
+        </section>
+      )}
+
+      {part === 'session' && (
+        <section className="sec" aria-labelledby="ses-h">
+          <h2 id="ses-h" className="subhead mb-2">
+            Séance de la classe
+          </h2>
+          <label className="opt" style={{ cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={cfg !== null}
+              onChange={(e) => {
+                setSaved(false);
+                setCfg(e.target.checked ? DEFAULT_CUSTOM : null);
+              }}
+            />
+            &nbsp;Les élèves de cette classe démarrent sur ma séance personnalisée (jeu Frappe&nbsp;!)
+          </label>
+          {cfg && (
+            <>
+              <p className="mt-2 text-[14px] leading-snug text-ink/80">
+                Vitesse, lettres autorisées, longueur des mots… Les élèves peuvent toujours choisir un autre mode, mais la séance est
+                proposée d’office. Les parties « Perso » ne comptent pas au classement.
+              </p>
+              <CustomPanel settings={settings} onChange={(p) => p.custom && (setSaved(false), setCfg(p.custom))} />
+            </>
+          )}
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={async () => {
+                const ok = await act(async () => {
+                  await T.saveClassSession(cls.id, cfg ? (cfg as unknown as Record<string, unknown>) : null);
+                  return true;
+                });
+                if (ok) {
+                  setSaved(true);
+                  onSaved(cfg ? (cfg as unknown as Record<string, unknown>) : null);
+                }
+              }}
+            >
+              Enregistrer pour la classe
+            </button>
+            {saved && <span className="text-[14px]">Enregistré ✓</span>}
+          </div>
+        </section>
+      )}
+
+      {part === 'danger' && (
+        <section className="sec danger-sec" aria-labelledby="del-h">
+          <h2 id="del-h" className="subhead">
+            Supprimer la classe {cls.name}
+          </h2>
+          <p className="mt-2 text-[14px] leading-snug">Efface la classe, ses élèves et tous leurs scores. Cette action est définitive.</p>
           <button
             type="button"
-            className="btn btn-ghost"
+            className="btn btn-ghost mt-2"
             onClick={async () => {
+              if (!window.confirm(`Supprimer définitivement la classe « ${cls.name} » et tous ses élèves ?`)) return;
               const ok = await act(async () => {
-                await T.saveClassSession(cls.id, cfg ? (cfg as unknown as Record<string, unknown>) : null);
+                await T.deleteClass(cls.id);
                 return true;
               });
-              if (ok) {
-                setSaved(true);
-                onSaved(cfg ? (cfg as unknown as Record<string, unknown>) : null);
-              }
+              if (ok) onDeleted();
             }}
           >
-            Enregistrer pour la classe
+            Supprimer {cls.name}
           </button>
-          {saved && <span className="text-[14px]">Enregistré ✓</span>}
-        </div>
-      </section>
-
-      <details className="fold sec">
-        <summary>Supprimer cette classe</summary>
-        <p className="mt-2 text-[13px] leading-snug">Efface la classe, ses élèves et tous leurs scores. Cette action est définitive.</p>
-        <button
-          type="button"
-          className="btn btn-ghost mt-2"
-          onClick={async () => {
-            if (!window.confirm(`Supprimer définitivement la classe « ${cls.name} » et tous ses élèves ?`)) return;
-            const ok = await act(async () => {
-              await T.deleteClass(cls.id);
-              return true;
-            });
-            if (ok) onDeleted();
-          }}
-        >
-          Supprimer {cls.name}
-        </button>
-      </details>
+        </section>
+      )}
 
       {/* Fiche imprimable : visible uniquement à l'impression */}
       <section className="print-only" aria-hidden="true">
@@ -644,4 +720,3 @@ function ClassPanel({
     </>
   );
 }
-

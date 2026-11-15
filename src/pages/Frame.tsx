@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 
 /** Cadre commun des pages hors jeu (accueil, connexion, espace école) : la même feuille sur le même bureau. */
-export function Frame({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
+export function Frame({ children, wide = false, fill = false }: { children: ReactNode; wide?: boolean; fill?: boolean }) {
   return (
     <div className="desk">
       <main className="sheet">
         <div className="page">
-          <div className={wide ? 'page-in page-wide' : 'page-in'}>{children}</div>
+          <div className={`page-in${wide ? ' page-wide' : ''}${fill ? ' page-fill' : ''}`}>{children}</div>
         </div>
       </main>
     </div>
