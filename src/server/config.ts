@@ -9,5 +9,5 @@
  *
  * N'écris JAMAIS ici la clé « secret » ou « service_role ».
  */
-export const SERVER_URL: string = '';
-export const SERVER_KEY: string = '';
+export const SERVER_URL: string = 'https://gyjlwbspvqcqilhxocty.supabase.co';
+export const SERVER_KEY: string = 'sb_publishable_ffB8Hm-yJ0CGYilJYwd-Bw_xMrJiw2a';
