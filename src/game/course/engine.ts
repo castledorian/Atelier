@@ -1185,7 +1185,7 @@ export class CourseGame {
     const showBonus = this.mode === 'play' && !this.compact;
     let fs = Math.round(clamp(qH * 0.56, 24, 50));
     c.font = `700 ${fs}px ${F_NUM}`;
-    const room = w - 24 - (showBonus ? 90 : 0);
+    const room = w - 24 - (showBonus ? 156 : 0); // place réservée des DEUX côtés : le calcul reste toujours au centre
     while (c.measureText(s).width > room && fs > 16) {
       fs -= 2;
       c.font = `700 ${fs}px ${F_NUM}`;
@@ -1193,8 +1193,8 @@ export class CourseGame {
     c.lineJoin = 'round';
     c.lineWidth = 9;
     c.strokeStyle = PAPER_HI;
-    c.strokeText(s, showBonus ? W / 2 - 38 : W / 2, y0 + (qH - 6) / 2 + 2);
-    c.fillText(s, showBonus ? W / 2 - 38 : W / 2, y0 + (qH - 6) / 2 + 2);
+    c.strokeText(s, W / 2, y0 + (qH - 6) / 2 + 2);
+    c.fillText(s, W / 2, y0 + (qH - 6) / 2 + 2);
     // bonus de vitesse : il fond au fil du temps
     if (this.mode === 'play' && g && g.state === 0) {
       const p = clamp((this.t - g.t0) / g.T, 0, 1);
