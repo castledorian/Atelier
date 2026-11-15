@@ -74,10 +74,11 @@ const INK = '#1b1915';
 const INK_HI = '#2d2a24';
 const PAPER = '#efe6d2';
 const PAPER_HI = '#faf5e8';
-const LINE = '#c4cdd6';
 const RED = '#c9341f';
 const GREEN = '#1f6b3f';
 const GOLD = '#d49a1a';
+/** doré foncé pour le texte : lisible sur le papier (contraste ≥ 4,5:1) */
+const GOLD_D = '#8a5a00';
 const F_DISP = '"Special Elite", "Courier New", monospace';
 const F_NUM = '"Courier Prime", "Courier New", monospace';
 const PART_COLORS = [INK, RED, GREEN, GOLD, PAPER_HI];
@@ -446,24 +447,20 @@ export class CourseGame {
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
     c.fillStyle = PAPER;
     c.fillRect(0, 0, W, H);
-    // trois colonnes : bandes alternées + traits pointillés
-    for (let l = 0; l < 3; l += 2) {
-      c.fillStyle = 'rgba(27,25,21,0.04)';
-      c.fillRect(l * this.colW, this.topY - 6, this.colW, H);
-    }
-    c.strokeStyle = LINE;
-    c.lineWidth = 2;
-    c.setLineDash([8, 8]);
+    // papier uniforme comme dans « Frappe ! » : lignes de cahier sur toute la hauteur
+    c.fillStyle = 'rgba(120,150,180,0.16)';
+    for (let y = this.hudH + 34; y < H; y += 34) c.fillRect(0, Math.round(y), W, 1);
+    // séparations de colonnes : à peine visibles
+    c.strokeStyle = 'rgba(120,150,180,0.32)';
+    c.lineWidth = 1.5;
+    c.setLineDash([6, 10]);
     for (let l = 1; l < 3; l++) {
       c.beginPath();
-      c.moveTo(Math.round(l * this.colW), this.topY - 6);
-      c.lineTo(Math.round(l * this.colW), H);
+      c.moveTo(Math.round(l * this.colW) + 0.5, this.hudH + 2);
+      c.lineTo(Math.round(l * this.colW) + 0.5, H);
       c.stroke();
     }
     c.setLineDash([]);
-    // lignes de cahier horizontales, très discrètes
-    c.fillStyle = 'rgba(120,150,180,0.16)';
-    for (let y = this.topY; y < H; y += 34) c.fillRect(0, Math.round(y), W, 1);
     // marge rouge sous la plume
     c.fillStyle = 'rgba(201,52,31,0.45)';
     c.fillRect(0, Math.round(this.penY + 40 * this.u), W, 2);
@@ -568,8 +565,8 @@ export class CourseGame {
     const p = stageOf(this.asked);
     this.banner = `PAGE ${p + 1} / ${PAGES}`;
     this.bannerSub = PAGE_TITLES[this.level][p];
-    this.bannerDur = 2.1;
-    this.bannerT = 2.1;
+    this.bannerDur = 1.7;
+    this.bannerT = 1.7;
   }
 
   /** Les 6 pages sont finies : le cahier est terminé. */
@@ -753,7 +750,7 @@ export class CourseGame {
     if (this.texts.length > 12) this.texts.shift();
     const half = s.length * size * 0.32;
     const cx = half * 2 > this.W - 16 ? this.W / 2 : clamp(x, half + 8, this.W - half - 8);
-    this.texts.push({ x: cx, y, s, c, size: Math.round(size * this.u), age: 0, life: 1 });
+    this.texts.push({ x: cx, y, s, c: c === GOLD ? GOLD_D : c, size: Math.round(size * this.u), age: 0, life: 1 });
   }
 
   private fx(dt: number) {
@@ -847,8 +844,8 @@ export class CourseGame {
   /** Colonne choisie : un faisceau doré de la plume vers le haut. */
   private drawBeam(c: CanvasRenderingContext2D) {
     if (this.mode !== 'play') return;
-    c.fillStyle = 'rgba(212,154,26,0.14)';
-    c.fillRect(this.penX - this.colW / 2, this.topY - 6, this.colW, this.penY - this.topY + 50 * this.u);
+    c.fillStyle = 'rgba(212,154,26,0.07)';
+    c.fillRect(this.penX - this.colW / 2, this.hudH + 2, this.colW, this.penY - this.hudH + 40 * this.u - 2);
   }
 
   private drawInk(c: CanvasRenderingContext2D) {
@@ -1016,7 +1013,7 @@ export class CourseGame {
           alpha = 1 - Math.max(0, k - 0.4) / 0.6;
           y += k * 10;
         } else {
-          alpha = 1 - k;
+          alpha = 1 - clamp((k - 0.35) / 0.65, 0, 1);
           y += k * 24;
         }
       }
@@ -1086,56 +1083,82 @@ export class CourseGame {
     }
   }
 
+  /** En-tête sobre, comme « Frappe ! » : petit libellé au-dessus d'un grand chiffre. */
   private drawHud(c: CanvasRenderingContext2D) {
     const { W, hudH, u } = this;
     c.textBaseline = 'middle';
     if (this.mode !== 'play') return;
-    const fs = Math.round(clamp(hudH * 0.42, 15, 24));
     const drill = this.drillTotal > 0;
-    const ty = drill ? hudH / 2 : hudH / 2 - 3;
-    c.fillStyle = INK;
-    c.font = `${fs}px ${F_DISP}`;
-    c.textAlign = 'left';
-    c.fillText(`SCORE ${fmt(this.score)}`, 14, ty);
-    c.textAlign = 'center';
-    if (drill) {
-      c.fillText('ENTRAÎNEMENT', W / 2, ty);
-    } else {
-      c.fillText(`PAGE ${Math.min(PAGES, stageOf(this.asked) + 1)}/${PAGES}`, W / 2, ty);
-      // progression : une case par page, qui se remplit au fil des calculs
-      const gap = 4;
-      const bw = (W - 28 - gap * (PAGES - 1)) / PAGES;
-      for (let i = 0; i < PAGES; i++) {
-        const x = 14 + i * (bw + gap);
-        const f = clamp((this.asked - i * PER_PAGE) / PER_PAGE, 0, 1);
-        c.fillStyle = 'rgba(27,25,21,0.16)';
-        c.fillRect(x, hudH - 11, bw, 5);
-        if (f > 0) {
-          c.fillStyle = f >= 1 ? INK : GOLD;
-          c.fillRect(x, hudH - 11, bw * f, 5);
-        }
-      }
-    }
     const mult = Math.min(5, 1 + Math.floor(this.streak / 3));
-    c.textAlign = 'right';
-    if (this.streak > 0) {
-      c.fillStyle = mult > 1 ? GOLD : INK;
-      const word = W >= 560 ? 'SÉRIE ' : '';
-      c.fillText(`${mult > 1 ? `×${mult} ` : ''}${word}${this.streak}`, W - (this.shield ? 100 : 66), ty);
+    const right = W - 62; // le bouton pause occupe la droite
+    const page = `${Math.min(PAGES, stageOf(this.asked) + 1)}/${PAGES}`;
+    const label = (txt: string, x: number, y: number, al: CanvasTextAlign) => {
+      c.textAlign = al;
+      c.font = `${Math.round(clamp(hudH * 0.2, 9, 11))}px ${F_DISP}`;
+      c.fillStyle = 'rgba(27,25,21,0.62)';
+      c.fillText(txt, x, y);
+    };
+    const value = (txt: string, x: number, y: number, al: CanvasTextAlign, col = INK) => {
+      c.textAlign = al;
+      c.font = `${Math.round(clamp(hudH * 0.4, 16, 24))}px ${F_DISP}`;
+      c.fillStyle = col;
+      c.fillText(txt, x, y);
+    };
+    if (this.compact) {
+      // écran bas : une seule ligne
+      const y = hudH / 2 - (drill ? 0 : 2);
+      c.font = `${Math.round(clamp(hudH * 0.42, 14, 18))}px ${F_DISP}`;
+      c.fillStyle = INK;
+      c.textAlign = 'left';
+      c.fillText(`SCORE ${fmt(this.score)}`, 14, y);
+      c.textAlign = 'center';
+      c.fillText(drill ? 'ENTRAÎNEMENT' : `PAGE ${page}`, W / 2, y);
+      if (mult > 1) {
+        c.fillStyle = GOLD_D;
+        c.textAlign = 'right';
+        c.fillText(`×${mult}`, right, y);
+      }
+    } else {
+      label('SCORE', 14, hudH * 0.28, 'left');
+      value(fmt(this.score), 14, hudH * 0.62, 'left');
+      label(drill ? 'MODE' : 'PAGE', W / 2, hudH * 0.28, 'center');
+      value(drill ? 'ENTRAÎNEMENT' : page, W / 2, hudH * 0.62, 'center');
+      if (mult > 1) {
+        label(`SÉRIE ${this.streak}`, right, hudH * 0.28, 'right');
+        value(`×${mult}`, right, hudH * 0.62, 'right', GOLD_D);
+      }
     }
     if (this.shield) {
       c.fillStyle = GOLD;
       c.strokeStyle = INK;
       c.lineWidth = 2;
       c.beginPath();
-      c.arc(W - 78, ty, 9 * u, 0, TAU);
+      c.arc(right - (mult > 1 ? 58 : 6), hudH / 2, 8 * u, 0, TAU);
       c.fill();
       c.stroke();
+    }
+    if (!drill) {
+      // progression : une case par page, qui s'arrête avant le bouton pause
+      const gap = 4;
+      const x0 = 14;
+      const x1 = right + 6;
+      const bw = (x1 - x0 - gap * (PAGES - 1)) / PAGES;
+      for (let i = 0; i < PAGES; i++) {
+        const x = x0 + i * (bw + gap);
+        const f = clamp((this.asked - i * PER_PAGE) / PER_PAGE, 0, 1);
+        c.fillStyle = 'rgba(27,25,21,0.14)';
+        c.fillRect(x, hudH - 9, bw, 4);
+        if (f > 0) {
+          c.fillStyle = f >= 1 ? INK : GOLD;
+          c.fillRect(x, hudH - 9, bw * f, 4);
+        }
+      }
     }
     c.textAlign = 'left';
   }
 
   private drawQuestion(c: CanvasRenderingContext2D) {
+    if (this.mode === 'demo') return;
     const g = this.gate;
     const { W, qH } = this;
     const y0 = this.hudH + 4;
@@ -1173,7 +1196,7 @@ export class CourseGame {
         const bx = (W + w) / 2 - 14;
         c.textAlign = 'right';
         c.font = `${Math.round(clamp(qH * 0.3, 14, 20))}px ${F_DISP}`;
-        c.fillStyle = bonus > 8 ? GOLD : 'rgba(27,25,21,0.5)';
+        c.fillStyle = bonus > 8 ? GOLD_D : 'rgba(27,25,21,0.6)';
         c.fillText(`+${bonus}`, bx, y0 + (qH - 6) / 2 - 8);
         c.font = `${Math.round(clamp(qH * 0.2, 10, 13))}px ${F_DISP}`;
         c.fillStyle = 'rgba(27,25,21,0.55)';
@@ -1216,8 +1239,8 @@ export class CourseGame {
     c.textAlign = 'center';
     c.textBaseline = 'middle';
     c.lineJoin = 'round';
-    const y = this.topY + (this.penY - this.topY) * 0.45;
-    let fs = Math.round(Math.min(54 * this.u, this.W * 0.13) * pop);
+    const y = this.topY + (this.penY - this.topY) * 0.4;
+    let fs = Math.round(Math.min((this.won ? 50 : 36) * this.u, this.W * (this.won ? 0.12 : 0.09)) * pop);
     c.font = `${fs}px ${F_DISP}`;
     while (c.measureText(this.banner).width > this.W - 24 && fs > 16) {
       fs -= 2;
@@ -1226,7 +1249,7 @@ export class CourseGame {
     c.lineWidth = 9;
     c.strokeStyle = PAPER_HI;
     c.strokeText(this.banner, this.W / 2, y);
-    c.fillStyle = this.won ? GOLD : RED;
+    c.fillStyle = this.won ? GOLD_D : RED;
     c.fillText(this.banner, this.W / 2, y);
     if (this.bannerSub) {
       let sf = Math.round(clamp(fs * 0.5, 15, 26));

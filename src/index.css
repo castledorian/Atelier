@@ -1591,10 +1591,11 @@ html[data-text='xlarge'] .card .title {
 }
 .vb-main {
   flex: 1 1 auto;
-  background: var(--color-ink);
-  color: var(--color-paper-hi);
+  background: var(--color-paper-hi);
+  color: var(--color-ink);
   font-size: 24px;
   letter-spacing: 0.04em;
+  box-shadow: 0 3px 0 #c9341f;
 }
 .vb-main small {
   margin-left: 10px;

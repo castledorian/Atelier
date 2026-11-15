@@ -399,6 +399,6 @@ export function travelTime(level: Level, n: number): number {
 }
 
 export const LEVELS: Array<{ id: Level; label: string; hint: string }> = [
-  { id: 'cm1', label: 'CM1', hint: 'Tables, compléments, × 10 / 100 / 1 000, divisions, premiers décimaux' },
+  { id: 'cm1', label: 'CM1', hint: 'Tables, compléments, ×\u00a010\u00a0/\u00a0100\u00a0/\u00a01\u00a0000, divisions, premiers décimaux' },
   { id: 'cm2', label: 'CM2', hint: 'Calcul astucieux, décimaux, fractions simples, pourcentages' },
 ];
