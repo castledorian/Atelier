@@ -13,7 +13,16 @@ export type SfxName =
   | 'wave'
   | 'clear'
   | 'over'
-  | 'start';
+  | 'start'
+  | 'n0'
+  | 'n1'
+  | 'n2'
+  | 'n3'
+  | 'n4'
+  | 'n5'
+  | 'n6'
+  | 'n7'
+  | 'n8';
 
 /** Durée de chaque effet (secondes), pour le pré-calcul. */
 const LENGTH: Record<SfxName, number> = {
@@ -31,7 +40,18 @@ const LENGTH: Record<SfxName, number> = {
   clear: 0.6,
   over: 1.45,
   start: 1.15,
+  n0: 0.36,
+  n1: 0.36,
+  n2: 0.36,
+  n3: 0.36,
+  n4: 0.36,
+  n5: 0.36,
+  n6: 0.36,
+  n7: 0.36,
+  n8: 0.36,
 };
+/** Les neuf notes (gamme pentatonique) des taches de « Mémoire d'encre ». */
+const NOTES = [523, 587, 659, 784, 880, 1047, 1175, 1319, 1568];
 const NAMES = Object.keys(LENGTH) as SfxName[];
 
 /** Petit synthétiseur : écrit un effet dans un contexte audio (en direct ou hors ligne). */
@@ -89,6 +109,13 @@ class Synth {
   }
 
   play(name: SfxName) {
+    if (name.length === 2 && name[0] === 'n') {
+      const f = NOTES[Number(name[1])] ?? 523;
+      this.tone('triangle', f, f, 0.3, 0.24);
+      this.tone('sine', f * 2, f * 2, 0.16, 0.06);
+      this.burst('bandpass', 2400, 1500, 0.03, 0.2);
+      return;
+    }
     switch (name) {
       case 'key':
         this.burst('bandpass', 2700, 1800, 0.035, 0.55, 0, 1.4);

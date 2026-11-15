@@ -421,7 +421,7 @@ function ClassPanel({
   const exportRuns = async () => {
     const runs = await act(() => T.classRuns(cls.id));
     if (!runs) return;
-    const GAME: Record<string, string> = { typing: 'Frappe !', math: 'Course à l’encre' };
+    const GAME: Record<string, string> = { typing: 'Frappe !', math: 'Course à l’encre', memory: 'Mémoire d’encre' };
     downloadText(
       `resultats-${cls.name.replace(/[^\w-]+/g, '_')}.csv`,
       toCsv(
@@ -511,6 +511,9 @@ function ClassPanel({
                     <th scope="col" className="num c-mid">
                       Record calcul
                     </th>
+                    <th scope="col" className="num c-mid">
+                      Record mémoire
+                    </th>
                     <th scope="col" className="num c-sm">
                       Mots/min
                     </th>
@@ -536,6 +539,7 @@ function ClassPanel({
                       <td className="num c-mid">{r.games}</td>
                       <td className="num">{r.best_typing != null ? fmt(r.best_typing) : '–'}</td>
                       <td className="num c-mid">{r.best_math != null ? fmt(r.best_math) : '–'}</td>
+                      <td className="num c-mid">{r.best_memory != null ? fmt(r.best_memory) : '–'}</td>
                       <td className="num c-sm">{r.avg_wpm != null ? Math.round(r.avg_wpm) : '–'}</td>
                       <td className="num c-lo">{r.avg_acc != null ? `${Math.round(r.avg_acc)} %` : '–'}</td>
                       <td className="num c-lo">{r.seconds ? dur(r.seconds) : '–'}</td>

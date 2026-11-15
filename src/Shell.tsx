@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import App from './App';
 import { useInstall } from './install';
 import Course from './games/Course';
+import Memory from './games/Memory';
 import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -11,7 +12,7 @@ import { loadTeacher, signOut, takeAuthHash } from './server/teacher';
 import type { TeacherSession } from './server/teacher';
 import type { StudentAccount } from './server/types';
 
-type View = 'home' | 'login' | 'dashboard' | 'typing' | 'math';
+type View = 'home' | 'login' | 'dashboard' | 'typing' | 'math' | 'memory';
 
 // Lien reçu par email (confirmation d'inscription / mot de passe oublié) : lu une seule fois, au chargement de la page.
 const ARRIVAL = serverEnabled() ? takeAuthHash() : null;
@@ -87,6 +88,7 @@ export default function Shell() {
 
   if (view === 'typing') return <App account={student} onHome={home} onSessionLost={sessionLost} install={install} />;
   if (view === 'math') return <Course account={student} onHome={home} onSessionLost={sessionLost} />;
+  if (view === 'memory') return <Memory account={student} onHome={home} onSessionLost={sessionLost} />;
 
   return (
     <Home

@@ -1,4 +1,4 @@
-export type GameId = 'typing' | 'math';
+export type GameId = 'typing' | 'math' | 'memory';
 
 export interface StudentAccount {
   token: string;
@@ -65,6 +65,8 @@ export interface Overview {
   drills: number;
   best_typing: number | null;
   best_math: number | null;
+  /** absent tant que la mise à jour SQL « mémoire » n'a pas été appliquée */
+  best_memory?: number | null;
   avg_wpm: number | null;
   avg_acc: number | null;
   seconds: number;

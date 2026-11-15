@@ -396,6 +396,7 @@ begin
              count(r.id) filter (where r.kind = 'drill') as drills,
              max(r.score) filter (where r.kind = 'game' and r.mode <> 'perso' and r.game = 'typing') as best_typing,
              max(r.score) filter (where r.kind = 'game' and r.mode <> 'perso' and r.game = 'math')   as best_math,
+             max(r.score) filter (where r.kind = 'game' and r.mode <> 'perso' and r.game = 'memory') as best_memory,
              round(avg(r.wpm) filter (where r.kind = 'game' and r.game = 'typing'), 1) as avg_wpm,
              round(avg(r.acc) filter (where r.kind = 'game' and r.game = 'typing'), 1) as avg_acc,
              coalesce(sum(r.duration), 0)::integer as seconds,

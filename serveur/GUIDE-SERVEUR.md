@@ -118,6 +118,10 @@ Adresse du site : `https://votrenom.github.io/nom-du-depot/` (c'est cette adress
 6. Créez une 2ᵉ école avec un autre email, vérifiez qu'elle ne voit rien de la première.
 7. Mode avion sur le téléphone de l'élève : jouez, remettez le réseau : le score doit arriver tout seul.
 
+### 7 bis. Mise à jour « Mémoire d'encre » (si votre base est déjà installée)
+
+Le 3ᵉ jeu envoie ses scores sans rien changer côté serveur. Pour afficher sa colonne « Record mémoire » dans le tableau de bord enseignant : **SQL Editor → New query**, collez le contenu de **`serveur/mise-a-jour-memoire.sql`**, **Run**. Elle ne touche à aucune donnée et peut être relancée sans risque. (Une installation neuve avec `schema.sql` l'inclut déjà.)
+
 ## 8. Installer sur PC et téléphone
 
 Le site est une **application installable (PWA)**, sans magasin d'applications :
