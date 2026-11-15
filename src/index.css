@@ -1644,3 +1644,10 @@ html[data-text='xlarge'] .card .title {
     display: inline;
   }
 }
+
+/* Astuce de fin de partie : masquée quand la place manque (petits écrans). */
+@media (max-height: 600px) and (max-width: 500px), (max-height: 460px) {
+  .tip-opt {
+    display: none;
+  }
+}

@@ -3,22 +3,24 @@ import {
   MAX_LIVES,
   PAGES,
   PAGE_TITLES,
-  PER_PAGE,
   casesShow,
   digitToCell,
+  extendSuite,
   makeCases,
-  makeSuite,
+  perPage,
   spanOf,
   stageOf,
+  suiteLen,
   suiteStep,
+  totalOf,
 } from './rounds';
 import type { Mode } from './rounds';
 
 /**
  * Moteur de « Mémoire d'encre » (canvas 2D).
- * Une grille de PIÈCES de papier. Quand une tache d'encre doit être retenue, la pièce se RETOURNE comme au pile ou face
- * et laisse voir une tache aux yeux vivants (ils regardent partout, clignent, suivent le doigt).
- * Le joueur refait la suite (La Suite) ou retrouve les places des taches (Les Cases).
+ * Une grille de TACHES D'ENCRE. Au repos, chaque tache est pâle et dort (yeux fermés) ; quand elle doit être retenue,
+ * elle se retourne, se réveille, noircit et ouvre des yeux vivants (ils regardent partout, clignent, suivent le doigt).
+ * Le joueur refait la suite (La Suite, qui s'allonge d'une tache à chaque réussite) ou retrouve les places (Les Cases).
  */
 
 export interface MemoryResult {
@@ -94,7 +96,6 @@ interface Mote {
 const TAU = Math.PI * 2;
 const INK = '#1b1915';
 const INK_HI = '#2d2a24';
-const PAPER = '#efe6d2';
 const PAPER_HI = '#faf5e8';
 const RED = '#c9341f';
 const GREEN = '#1f6b3f';
@@ -103,8 +104,11 @@ const GOLD_D = '#8a5a00';
 const F_DISP = '"Special Elite", "Courier New", monospace';
 const PART_COLORS = [INK, RED, GREEN, GOLD, PAPER_HI];
 const MAX_PARTS = 200;
-const LEAD = 0.75; // pause avant la première tache de la suite
-const FLIP = 0.26; // durée d'un retournement de pièce (s)
+const LEAD = 0.6; // pause avant la première tache de la suite
+const FLIP = 0.2; // durée d'un retournement (s)
+const VARIANTS = 6; // formes de taches différentes
+/** Teinte du papier : elle change très doucement à chaque page, pour sentir qu'on avance. */
+const TINTS = ['#efe6d2', '#ece8d3', '#e8eadb', '#e6e9e2', '#ebe6e2', '#f2e6cf'];
 const WIN_BONUS = 100;
 const PERFECT_PAGE = 50;
 const OK_WORDS = ['Bravo !', 'Bien joué !', 'Super !', 'Excellent !'];
@@ -150,6 +154,8 @@ export class MemoryGame {
   private gs = 300;
 
   private shakeOn = true;
+  private reduced = false;
+  private ts = 1;
   private shake = 0;
   private run: 'demo' | 'play' = 'demo';
   private paused = false;
@@ -166,6 +172,12 @@ export class MemoryGame {
   private wrong = 0;
   private maxSpan = 0;
   private pageLost = 0;
+  private record = 0; // meilleure suite déjà réussie sur cet appareil (La Suite)
+  private recordShown = false;
+  private nearMiss = false;
+  private scoreDisp = 0;
+  private scorePop = 0;
+  private bgStage = -1;
   private over = false;
   private won = false;
   private overT = 0;
@@ -212,6 +224,9 @@ export class MemoryGame {
   private ph = new Float32Array(9); // phase propre à chaque pièce (yeux, flottement)
   private hold = new Float32Array(9); // pièce retenue face visible un instant après un bon choix
   private mark = new Uint8Array(9); // 0 rien · 1 juste · 2 faux · 3 indice
+  private awk = new Float32Array(9); // tache endormie qui ouvre les yeux quand on la survole
+  private gz = { lx: 0, ly: 0, blink: 0 };
+  private halo: HTMLCanvasElement | null = null;
   private faces: HTMLCanvasElement[] = [];
   private faceR = 0;
   private faceDpr = 0;
@@ -223,6 +238,11 @@ export class MemoryGame {
     this.ctx = c;
     this.sfx = sfx;
     this.cb = cb;
+    try {
+      this.reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch {
+      /* ignoré */
+    }
     this.resize();
     if (typeof ResizeObserver !== 'undefined') {
       this.ro = new ResizeObserver(this.resize);
@@ -240,8 +260,14 @@ export class MemoryGame {
     window.removeEventListener('resize', this.resize);
   }
 
-  setOptions(o: { shake?: boolean }) {
+  setOptions(o: { shake?: boolean; best?: number }) {
     if (o.shake !== undefined) this.shakeOn = o.shake;
+    if (o.best !== undefined) this.record = Math.max(0, Math.floor(o.best));
+  }
+
+  /** Pour les tests automatiques : accélère le temps. */
+  debugSpeed(k: number) {
+    this.ts = clamp(k, 0.25, 6);
   }
 
   // ───────────────────────── Commandes ─────────────────────────
@@ -336,7 +362,7 @@ export class MemoryGame {
       mode: this.mode,
       run: this.run,
       n: this.n,
-      page: stageOf(this.n) + 1,
+      page: stageOf(this.mode, this.n) + 1,
       size: this.size,
       /** cases à toucher, dans l'ordre */
       solution: this.mode === 'suite' ? this.seq.slice(this.k) : this.targets.filter((c) => !this.found.has(c)),
@@ -347,6 +373,8 @@ export class MemoryGame {
       won: this.won,
       paused: this.paused,
       quality: this.quality,
+      record: this.record,
+      len: this.seq.length,
     };
   }
 
@@ -361,6 +389,11 @@ export class MemoryGame {
     this.wrong = 0;
     this.maxSpan = 0;
     this.pageLost = 0;
+    this.seq = [];
+    this.recordShown = false;
+    this.nearMiss = false;
+    this.scoreDisp = 0;
+    this.scorePop = 0;
     this.over = false;
     this.won = false;
     this.overT = 0;
@@ -378,6 +411,7 @@ export class MemoryGame {
     this.botK = 0;
     this.promptKey = '';
     this.setGrid(3, true);
+    this.tintBg();
   }
 
   /** (Ré)initialise les pièces. Si la taille ne change pas, elles gardent leur face (elles se retourneront en douceur). */
@@ -394,6 +428,7 @@ export class MemoryGame {
       this.ph = new Float32Array(len);
       this.hold = new Float32Array(len);
       this.mark = new Uint8Array(len);
+      this.awk = new Float32Array(len);
     }
     if (changed || force) {
       for (let i = 0; i < len; i++) {
@@ -401,6 +436,7 @@ export class MemoryGame {
         this.shown[i] = FRONT;
         this.flipT[i] = -1;
         this.land[i] = 0;
+        this.awk[i] = 0;
         this.born[i] = -0.045 * i; // les pièces apparaissent l'une après l'autre
       }
     }
@@ -412,23 +448,34 @@ export class MemoryGame {
 
   // ───────────────────────── Déroulement ─────────────────────────
 
-  private pageBanner() {
-    const p = stageOf(this.n);
-    this.st = 'banner';
-    this.tt = 0;
-    this.bannerText = `PAGE ${p + 1} / ${PAGES}`;
-    this.bannerSub = PAGE_TITLES[this.mode][p];
-    this.bannerDur = this.first ? 2.0 : 1.7;
+  /** Change la teinte du papier quand on change de page. */
+  private tintBg() {
+    if (this.W <= 0) return;
+    if (stageOf(this.mode, this.n) !== this.bgStage) {
+      this.buildBg();
+      this.dirty = true;
+    }
   }
 
-  /** Prépare une nouvelle manche (ou rejoue la même après une erreur en mode La Suite). */
-  private beginRound(retry = false) {
+  private pageBanner() {
+    const p = stageOf(this.mode, this.n);
+    this.tintBg();
+    this.st = 'banner';
+    this.tt = 0;
+    this.bannerText = this.mode === 'suite' ? `PALIER ${p + 1} / ${PAGES}` : `PAGE ${p + 1} / ${PAGES}`;
+    this.bannerSub = PAGE_TITLES[this.mode][p];
+    this.bannerDur = this.first ? 1.9 : 1.5;
+  }
+
+  /** Prépare une nouvelle manche (ou rejoue la même après une erreur : La Suite garde sa suite, Les Cases en tirent une nouvelle). */
+  private beginRound() {
     this.found.clear();
     this.k = 0;
     this.lastLit = -1;
     if (this.mode === 'suite') {
       this.setGrid(3);
-      if (!retry || this.seq.length === 0) this.seq = makeSuite(this.n, Math.random);
+      // la suite GARDE son début et gagne une tache de plus à chaque manche réussie
+      this.seq = extendSuite(this.seq, suiteLen(this.n), Math.random);
       this.targets = [];
       this.rankOf = [];
     } else {
@@ -440,6 +487,7 @@ export class MemoryGame {
       this.rankOf = new Array(r.size * r.size).fill(-1);
       r.cells.forEach((c, i) => (this.rankOf[c] = i));
     }
+    this.nearMiss = false;
     this.st = 'show';
     this.tt = 0;
     this.first = false;
@@ -450,11 +498,21 @@ export class MemoryGame {
     if (this.run === 'play') this.sfx.play(`n${i % 9}` as SfxName);
   }
 
+  /** Changement de face immédiat (réponse à un toucher) : pas de retournement, la réaction doit être instantanée. */
+  private snap(i: number, face: number) {
+    if (this.shown[i] === face && this.flipT[i] < 0) return;
+    this.shown[i] = face;
+    this.flipT[i] = -1;
+    this.land[i] = 0.22;
+    this.landed(i);
+  }
+
   private tap(i: number) {
     if (this.st !== 'input') return;
     if (this.mode === 'suite') {
       if (i === this.seq[this.k]) {
         this.hold[i] = 0.42;
+        this.snap(i, BLOT);
         this.note(i);
         this.k++;
         if (this.k >= this.seq.length) this.roundOk();
@@ -466,6 +524,7 @@ export class MemoryGame {
       if (this.targets.includes(i)) {
         this.found.add(i);
         this.mark[i] = 1;
+        this.snap(i, OK);
         this.note(i);
         if (this.found.size >= this.targets.length) this.roundOk();
       } else {
@@ -482,16 +541,38 @@ export class MemoryGame {
     this.best = Math.max(this.best, this.streak);
     this.maxSpan = Math.max(this.maxSpan, span);
     const mult = Math.min(5, 1 + Math.floor((this.streak - 1) / 3));
-    const pts = span * 10 * mult;
-    this.score += pts;
-    this.okWord = OK_WORDS[this.n % OK_WORDS.length];
+    const base = span * 10 * mult;
+    // bonus « éclair » : on a répondu avec aisance (récompense la maîtrise, pas le hasard)
+    const par = this.mode === 'suite' ? 0.5 + 0.55 * span : 1.4 + 0.9 * span;
+    const fast = this.run === 'play' && this.tt < par;
+    const bonus = fast ? span * 5 : 0;
+    this.score += base + bonus;
+    this.scorePop = 1;
+    // le mot d'encouragement : on pousse à battre SON propre record (La Suite)
+    let word = OK_WORDS[this.n % OK_WORDS.length];
+    let newRecord = false;
+    if (this.run === 'play' && this.mode === 'suite' && this.record > 0) {
+      if (span > this.record && !this.recordShown) {
+        this.recordShown = true;
+        newRecord = true;
+        word = 'Nouveau record !';
+      } else if (span === this.record && !this.recordShown) word = 'Record égalé !';
+      else if (span + 1 === this.record) word = 'Plus qu’une !';
+    }
+    if (!newRecord && mult > 1 && this.streak % 3 === 1 && word === OK_WORDS[this.n % OK_WORDS.length]) word = `Série ×${mult} !`;
+    this.okWord = word;
     this.st = 'ok';
     this.tt = 0;
     this.flash = 0.5;
     this.flashC = GREEN;
-    this.sfx.play(this.streak % 3 === 0 ? 'mult' : 'ding');
-    this.text(this.W / 2, this.gy + this.gs * 0.5, `+${pts}${mult > 1 ? ` ×${mult}` : ''}`, GREEN, 34);
-    // petite vague de joie : toutes les pièces sautillent
+    this.sfx.play(newRecord ? 'clear' : this.streak % 3 === 0 ? 'mult' : 'ding');
+    this.text(this.W / 2, this.gy + this.gs * 0.5, `+${base}${mult > 1 ? ` ×${mult}` : ''}`, GREEN, 34);
+    if (bonus > 0) this.text(this.W / 2, this.gy + this.gs * 0.74, `ÉCLAIR ! +${bonus}`, GOLD, 22);
+    if (newRecord) {
+      this.text(this.W / 2, this.gy + this.gs * 0.28, 'NOUVEAU RECORD !', GOLD, 28);
+      for (let k = 0; k < 5; k++) this.burst(rand(this.gx, this.gx + this.gs), rand(this.gy, this.gy + this.gs * 0.6), 6, 3);
+    }
+    // petite vague de joie : toutes les taches sautillent
     for (let i = 0; i < this.size * this.size; i++) {
       if (this.flipT[i] < 0) this.land[i] = 0.22 + 0.02 * ((i * 7) % 5);
     }
@@ -502,7 +583,13 @@ export class MemoryGame {
     this.streak = 0;
     this.pageLost++;
     this.lives--;
+    // « presque ! » : l'erreur est arrivée tout au bout (on le dit gentiment, ça donne envie de réessayer)
+    this.nearMiss =
+      this.mode === 'suite'
+        ? this.seq.length >= 3 && this.seq.length - this.k <= 1
+        : this.targets.length >= 3 && this.targets.length - this.found.size <= 1;
     this.mark[i] = 2;
+    this.snap(i, BAD);
     if (this.mode === 'suite') {
       this.mark[this.seq[this.k]] = 3;
     } else {
@@ -523,12 +610,14 @@ export class MemoryGame {
 
   private nextRound() {
     this.n++;
-    if (this.n % PER_PAGE === 0) {
-      // page terminée
-      const done = this.n / PER_PAGE;
+    const per = perPage(this.mode);
+    if (this.n % per === 0) {
+      // page (ou palier) terminé
+      const done = this.n / per;
       if (this.pageLost === 0 && this.run === 'play') {
         this.score += PERFECT_PAGE;
-        this.text(this.W / 2, this.gy + this.gs * 0.3, `PAGE PARFAITE ! +${PERFECT_PAGE}`, GOLD, 28);
+        this.scorePop = 1;
+        this.text(this.W / 2, this.gy + this.gs * 0.3, `${this.mode === 'suite' ? 'PALIER' : 'PAGE'} PARFAIT${this.mode === 'suite' ? '' : 'E'} ! +${PERFECT_PAGE}`, GOLD, 28);
       }
       if (this.pageLost === 0 && this.lives < MAX_LIVES) {
         this.lives++;
@@ -570,7 +659,7 @@ export class MemoryGame {
   private frame = (now: number) => {
     this.raf = requestAnimationFrame(this.frame);
     const ms = now - this.last;
-    const dt = Math.min(0.05, Math.max(0, ms / 1000));
+    const dt = Math.min(0.05, Math.max(0, ms / 1000)) * this.ts;
     this.last = now;
     if (!this.paused) this.watchSpeed(ms);
     if (this.run === 'demo' && this.demoStill) {
@@ -641,13 +730,26 @@ export class MemoryGame {
 
   private buildBg() {
     const { W, H, dpr } = this;
+    const stage = stageOf(this.mode, this.n);
+    this.bgStage = stage;
     const b = this.bg;
     b.width = Math.round(W * dpr);
     b.height = Math.round(H * dpr);
     const c = b.getContext('2d')!;
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
-    c.fillStyle = PAPER;
+    c.fillStyle = TINTS[stage];
     c.fillRect(0, 0, W, H);
+    // bords du papier un peu plus sombres : le regard est attiré vers la grille, la page est plus reposante
+    const v = c.createRadialGradient(W / 2, H * 0.55, Math.min(W, H) * 0.3, W / 2, H * 0.55, Math.max(W, H) * 0.78);
+    v.addColorStop(0, 'rgba(140,105,50,0)');
+    v.addColorStop(1, 'rgba(140,105,50,0.17)');
+    c.fillStyle = v;
+    c.fillRect(0, 0, W, H);
+    // grain du papier
+    for (let k = 0, n = Math.round((W * H) / 1100); k < n; k++) {
+      c.fillStyle = k % 2 ? 'rgba(27,25,21,0.04)' : 'rgba(255,255,255,0.06)';
+      c.fillRect(rand(0, W), rand(this.hudH, H), 1.5, 1.5);
+    }
     c.fillStyle = 'rgba(120,150,180,0.16)';
     for (let y = this.hudH + 34; y < H; y += 34) c.fillRect(0, Math.round(y), W, 1);
     c.fillStyle = 'rgba(201,52,31,0.45)';
@@ -658,124 +760,121 @@ export class MemoryGame {
     c.fillRect(0, this.hudH - 2, W, 2);
   }
 
-  /** Dessins prêts à l'emploi des faces de la pièce (recalculés seulement si la taille change). */
+  /** Dessins prêts à l'emploi des taches (6 formes × 5 faces) et de leur halo d'encre — recalculés seulement si la taille change. */
   private layoutGrid() {
     if (this.W <= 0) return;
     const R = this.coinR();
-    if (Math.abs(R - this.faceR) < 0.5 && this.dpr === this.faceDpr && this.faces.length === 5) return;
+    if (Math.abs(R - this.faceR) < 0.5 && this.dpr === this.faceDpr && this.faces.length === 6 * VARIANTS) return;
     this.faceR = R;
     this.faceDpr = this.dpr;
     const dpr = this.dpr;
-    const D = Math.ceil(2 * R * dpr) + 4;
-    const mk = (draw: (c: CanvasRenderingContext2D) => void) => {
+    const D = Math.ceil(2 * R * dpr) + 8;
+    const mk = (size: number, draw: (c: CanvasRenderingContext2D) => void) => {
       const cv = document.createElement('canvas');
-      cv.width = D;
-      cv.height = D;
+      cv.width = size;
+      cv.height = size;
       const c = cv.getContext('2d')!;
-      c.translate(D / 2, D / 2);
+      c.translate(size / 2, size / 2);
       c.scale(dpr, dpr);
+      c.lineJoin = 'round';
       draw(c);
       return cv;
     };
-    const disc = (c: CanvasRenderingContext2D, r: number) => {
+    /** Contour d'une tache : un cercle irrégulier, différent pour chaque forme v. */
+    const blotPath = (c: CanvasRenderingContext2D, r: number, v: number) => {
+      const N = 56;
       c.beginPath();
-      c.arc(0, 0, r, 0, TAU);
+      for (let k = 0; k <= N; k++) {
+        const a = (k / N) * TAU;
+        const rr = r * (0.88 + 0.065 * Math.sin(3 * a + v * 1.7) + 0.04 * Math.sin(5 * a + v * 2.9) + 0.025 * Math.sin(2 * a + v * 0.8));
+        const x = Math.cos(a) * rr;
+        const y = Math.sin(a) * rr;
+        if (k === 0) c.moveTo(x, y);
+        else c.lineTo(x, y);
+      }
+      c.closePath();
     };
     const rimW = Math.max(2.5, R * 0.05);
-    const front = mk((c) => {
+    const grad = (c: CanvasRenderingContext2D, a: string, b: string) => {
       const g = c.createRadialGradient(-R * 0.3, -R * 0.35, R * 0.1, 0, 0, R);
-      g.addColorStop(0, '#fffaf0');
-      g.addColorStop(1, '#eadfc4');
-      disc(c, R - rimW / 2);
-      c.fillStyle = g;
+      g.addColorStop(0, a);
+      g.addColorStop(1, b);
+      return g;
+    };
+    const faces: HTMLCanvasElement[] = [];
+    const make = (draw: (c: CanvasRenderingContext2D, v: number) => void) => {
+      for (let v = 0; v < VARIANTS; v++) faces.push(mk(D, (c) => draw(c, v)));
+    };
+    const ink = (c: CanvasRenderingContext2D, v: number) => {
+      blotPath(c, R * 0.97, v);
+      c.fillStyle = grad(c, INK_HI, INK);
       c.fill();
       c.strokeStyle = INK;
       c.lineWidth = rimW;
       c.stroke();
-      c.strokeStyle = 'rgba(27,25,21,0.26)';
-      c.lineWidth = 1.5;
-      c.setLineDash([2, 6]);
-      disc(c, R * 0.78);
-      c.stroke();
-      c.setLineDash([]);
-      // petite goutte d'encre en filigrane
-      c.fillStyle = 'rgba(27,25,21,0.15)';
+      // reflet brillant et grain d'encre
+      c.fillStyle = 'rgba(250,245,232,0.17)';
       c.beginPath();
-      c.moveTo(0, -R * 0.36);
-      c.bezierCurveTo(R * 0.3, -R * 0.02, R * 0.3, R * 0.32, 0, R * 0.32);
-      c.bezierCurveTo(-R * 0.3, R * 0.32, -R * 0.3, -R * 0.02, 0, -R * 0.36);
+      c.ellipse(-R * 0.4, -R * 0.46, R * 0.27, R * 0.12, -0.65, 0, TAU);
       c.fill();
-      // reflet
-      c.strokeStyle = 'rgba(255,255,255,0.75)';
-      c.lineWidth = Math.max(2, R * 0.05);
-      c.lineCap = 'round';
-      c.beginPath();
-      c.arc(0, 0, R * 0.62, Math.PI * 1.08, Math.PI * 1.42);
-      c.stroke();
-    });
-    const blotBase = (c: CanvasRenderingContext2D) => {
-      const g = c.createRadialGradient(-R * 0.3, -R * 0.35, R * 0.1, 0, 0, R);
-      g.addColorStop(0, INK_HI);
-      g.addColorStop(1, INK);
-      disc(c, R - rimW / 2);
-      c.fillStyle = g;
-      c.fill();
-      c.strokeStyle = INK;
-      c.lineWidth = rimW;
-      c.stroke();
-      c.strokeStyle = 'rgba(250,245,232,0.22)';
-      c.lineWidth = 2;
-      disc(c, R * 0.86);
-      c.stroke();
-      // grain d'encre
-      c.fillStyle = 'rgba(250,245,232,0.08)';
+      c.fillStyle = 'rgba(250,245,232,0.07)';
       for (let k = 0; k < 12; k++) {
         const a = k * 2.399;
-        const d = R * (0.5 + 0.38 * ((k * 0.618) % 1));
+        const d = R * (0.45 + 0.38 * ((k * 0.618) % 1));
         c.beginPath();
         c.arc(Math.cos(a) * d, Math.sin(a) * d, R * (0.03 + 0.025 * ((k * 0.37) % 1)), 0, TAU);
         c.fill();
       }
     };
-    const blot = mk(blotBase);
-    const hint = mk((c) => {
-      blotBase(c);
-      c.strokeStyle = GOLD;
-      c.lineWidth = Math.max(4, R * 0.09);
-      disc(c, R - rimW);
+    // 0 · tache pâle qui dort (lavis d'encre séché)
+    make((c, v) => {
+      blotPath(c, R * 0.97, v);
+      c.fillStyle = grad(c, '#fffaf0', '#e4d9bc');
+      c.fill();
+      c.strokeStyle = 'rgba(27,25,21,0.62)';
+      c.lineWidth = rimW;
+      c.stroke();
+      c.save();
+      c.scale(0.74, 0.74);
+      blotPath(c, R * 0.97, v);
+      c.strokeStyle = 'rgba(27,25,21,0.13)';
+      c.lineWidth = 2;
+      c.setLineDash([3, 6]);
+      c.stroke();
+      c.restore();
+      c.strokeStyle = 'rgba(255,255,255,0.8)';
+      c.lineWidth = Math.max(2, R * 0.05);
+      c.lineCap = 'round';
+      c.beginPath();
+      c.arc(0, 0, R * 0.66, Math.PI * 1.1, Math.PI * 1.4);
       c.stroke();
     });
-    const ok = mk((c) => {
-      const g = c.createRadialGradient(-R * 0.3, -R * 0.35, R * 0.1, 0, 0, R);
-      g.addColorStop(0, '#f0faf3');
-      g.addColorStop(1, '#cde7d4');
-      disc(c, R - rimW / 2);
-      c.fillStyle = g;
+    // 1 · tache d'encre réveillée
+    make((c, v) => ink(c, v));
+    // 2 · juste : encre verte et coche
+    make((c, v) => {
+      blotPath(c, R * 0.97, v);
+      c.fillStyle = grad(c, '#f0faf3', '#bfe0c8');
       c.fill();
       c.strokeStyle = GREEN;
       c.lineWidth = rimW + 0.5;
       c.stroke();
-      c.strokeStyle = GREEN;
       c.lineWidth = R * 0.17;
       c.lineCap = 'round';
-      c.lineJoin = 'round';
       c.beginPath();
       c.moveTo(-R * 0.36, R * 0.02);
       c.lineTo(-R * 0.1, R * 0.28);
       c.lineTo(R * 0.38, -R * 0.28);
       c.stroke();
     });
-    const bad = mk((c) => {
-      const g = c.createRadialGradient(-R * 0.3, -R * 0.35, R * 0.1, 0, 0, R);
-      g.addColorStop(0, '#fdeae5');
-      g.addColorStop(1, '#f0c4b8');
-      disc(c, R - rimW / 2);
-      c.fillStyle = g;
+    // 3 · faux : encre rouge et croix
+    make((c, v) => {
+      blotPath(c, R * 0.97, v);
+      c.fillStyle = grad(c, '#fdeae5', '#f0b9ab');
       c.fill();
       c.strokeStyle = RED;
       c.lineWidth = rimW + 0.5;
       c.stroke();
-      c.strokeStyle = RED;
       c.lineWidth = R * 0.17;
       c.lineCap = 'round';
       c.beginPath();
@@ -785,7 +884,42 @@ export class MemoryGame {
       c.lineTo(-R * 0.3, R * 0.3);
       c.stroke();
     });
-    this.faces = [front, blot, ok, bad, hint];
+    // 4 · indice : la bonne tache, cerclée d'or
+    make((c, v) => {
+      ink(c, v);
+      blotPath(c, R * 0.97, v);
+      c.strokeStyle = GOLD;
+      c.lineWidth = Math.max(4, R * 0.09);
+      c.stroke();
+    });
+    // 5 · tache pâle qui dort : yeux fermés dessinés d'avance (rien à dessiner à chaque image)
+    make((c, v) => {
+      c.save();
+      c.scale(1 / dpr, 1 / dpr);
+      c.drawImage(faces[v], -D / 2, -D / 2);
+      c.restore();
+      c.strokeStyle = 'rgba(27,25,21,0.58)';
+      c.lineWidth = Math.max(2, R * 0.05);
+      c.lineCap = 'round';
+      const er = R * 0.17;
+      for (const sx of [-1, 1]) {
+        c.beginPath();
+        c.arc(sx * R * 0.3, -R * 0.03 - er * 0.2, er * 0.95, Math.PI * 0.12, Math.PI * 0.88);
+        c.stroke();
+      }
+    });
+    this.faces = faces;
+    // halo : l'encre « bave » doucement autour d'une tache réveillée
+    const HD = Math.ceil(2 * R * 1.75 * dpr) + 4;
+    this.halo = mk(HD, (c) => {
+      const g = c.createRadialGradient(0, 0, R * 0.7, 0, 0, R * 1.75);
+      g.addColorStop(0, 'rgba(27,25,21,0.3)');
+      g.addColorStop(1, 'rgba(27,25,21,0)');
+      c.fillStyle = g;
+      c.beginPath();
+      c.arc(0, 0, R * 1.75, 0, TAU);
+      c.fill();
+    });
   }
 
   // ───────────────────────── Mise à jour ─────────────────────────
@@ -810,7 +944,7 @@ export class MemoryGame {
           maxSpan: this.maxSpan,
           time: this.t,
           won: this.won,
-          page: this.won ? PAGES : stageOf(this.n) + 1,
+          page: this.won ? PAGES : stageOf(this.mode, this.n) + 1,
           lives: Math.max(0, this.lives),
         });
       }
@@ -920,17 +1054,17 @@ export class MemoryGame {
     } else if (this.st === 'input') {
       if (this.run === 'demo') this.botStep(dt);
     } else if (this.st === 'ok') {
-      if (this.tt >= (this.run === 'demo' ? 0.8 : 1.1)) {
+      if (this.tt >= (this.run === 'demo' ? 0.8 : 0.95)) {
         if (this.run === 'demo') {
-          this.n = (this.n + 1) % 5;
+          this.n = (this.n + 1) % 6;
           this.beginRound();
         } else this.nextRound();
       }
     } else if (this.st === 'bad') {
       if (this.over) return;
-      if (this.tt >= 1.8) {
+      if (this.tt >= 1.7) {
         this.mark.fill(0);
-        this.beginRound(true);
+        this.beginRound();
       }
     }
   }
@@ -962,6 +1096,9 @@ export class MemoryGame {
   private fx(dt: number) {
     this.shake = Math.max(0, this.shake - 26 * dt);
     this.flash = Math.max(0, this.flash - dt * 2.2);
+    this.scorePop = Math.max(0, this.scorePop - dt * 3.2);
+    const sd = this.score - this.scoreDisp;
+    this.scoreDisp = Math.abs(sd) < 0.5 ? this.score : this.scoreDisp + sd * Math.min(1, dt * 9);
     const ps = this.parts;
     for (let i = ps.length - 1; i >= 0; i--) {
       const p = ps[i];
@@ -1033,7 +1170,7 @@ export class MemoryGame {
   }
 
   private coinR() {
-    return this.tileSize() * 0.5 - 1;
+    return this.tileSize() * 0.47;
   }
 
   private tileRect(i: number): { x: number; y: number; s: number } | null {
@@ -1065,7 +1202,7 @@ export class MemoryGame {
     const { W, H, dpr } = this;
     let ox = 0;
     let oy = 0;
-    if (this.shakeOn && this.shake > 0.5) {
+    if (this.shakeOn && !this.reduced && this.shake > 0.5) {
       ox = Math.round(rand(-1, 1) * this.shake);
       oy = Math.round(rand(-1, 1) * this.shake);
     }
@@ -1073,7 +1210,7 @@ export class MemoryGame {
     c.drawImage(this.bg, 0, 0);
     c.setTransform(dpr, 0, 0, dpr, Math.round(ox * dpr), Math.round(oy * dpr));
     this.drawMotes(c);
-    this.drawCoins(c);
+    this.drawBlots(c);
     this.drawRings(c);
     this.drawParts(c);
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1082,7 +1219,7 @@ export class MemoryGame {
     this.drawTexts(c);
     this.drawBanner(c);
     if (this.flash > 0.02) {
-      c.globalAlpha = this.flash * 0.18;
+      c.globalAlpha = this.flash * (this.reduced ? 0.07 : 0.12);
       c.fillStyle = this.flashC;
       c.fillRect(0, 0, W, H);
       c.globalAlpha = 1;
@@ -1100,18 +1237,20 @@ export class MemoryGame {
     c.globalAlpha = 1;
   }
 
-  private drawCoins(c: CanvasRenderingContext2D) {
+  private drawBlots(c: CanvasRenderingContext2D) {
     const n = this.size;
     const R = this.coinR();
     const faces = this.faces;
-    if (faces.length < 5) return;
+    const halo = this.halo;
+    if (faces.length < 6 * VARIANTS || !halo) return;
     const fw = faces[0].width / this.dpr;
+    const hw = halo.width / this.dpr;
     const playing = this.run === 'play' && !this.over;
     for (let i = 0; i < n * n; i++) {
       const r = this.tileRect(i)!;
       const cx = r.x + r.s / 2;
       let cy = r.y + r.s / 2;
-      // apparition de la grille
+      // apparition de la grille : les taches « poussent » l'une après l'autre
       const b = this.born[i];
       if (b <= 0) continue;
       const appear = backOut(clamp(b / 0.32, 0, 1));
@@ -1119,46 +1258,67 @@ export class MemoryGame {
       const flipping = this.flipT[i] >= 0;
       const th = flipping ? Math.PI * smooth(clamp(this.flipT[i], 0, 1)) : 0;
       const sinT = Math.sin(th);
-      const sx = Math.abs(Math.cos(th));
+      const sx = Math.max(0.04, Math.abs(Math.cos(th)));
       const face = this.shown[i];
-      const isBlot = face === BLOT || face === HINT;
-      // survol / curseur : la pièce se soulève
+      const dark = face === BLOT || face === HINT;
+      const v = (i * 5 + 2) % VARIANTS;
+      // survol / curseur : la tache se soulève et, si elle dormait, ouvre les yeux pour regarder le doigt
       const hovered =
         playing &&
         this.st === 'input' &&
         ((this.lookX >= 0 && Math.hypot(this.lookX - cx, this.lookY - cy) < R) || (this.showCursor && i === this.cursor));
+      this.awk[i] += ((hovered ? 1 : 0) - this.awk[i]) * 0.25;
       const lift = sinT * R * 0.3 + (hovered ? R * 0.06 : 0);
-      const idle = isBlot ? 0 : Math.sin(this.pulse * 1.5 + ph) * 1.4;
-      cy += idle;
+      cy += dark ? 0 : Math.sin(this.pulse * 1.5 + ph) * 1.4;
       // rebond à l'atterrissage (écrasement puis étirement)
       const lk = this.land[i] / 0.22;
-      const squash = lk > 0 ? Math.sin(lk * Math.PI) * 0.08 : 0;
-      const sc = appear * (1 + sinT * 0.1 + (hovered ? 0.05 : 0));
-      const jelly = isBlot && !flipping ? 0.018 * Math.sin(this.pulse * 8 + ph) : 0;
-      const rot = isBlot && !flipping ? 0.035 * Math.sin(this.pulse * 4.5 + ph) : 0;
+      const squash = lk > 0 ? Math.sin(lk * Math.PI) * 0.1 : 0;
+      const breathe = 0;
+      const jelly = dark && !flipping ? 0.02 * Math.sin(this.pulse * 8 + ph) : 0;
+      const sc = appear * (1 + sinT * 0.08 + (hovered ? 0.05 : 0));
+      const tilt = dark && !flipping ? 0.035 * Math.sin(this.pulse * 4.5 + ph) : 0;
+      let y = cy - lift;
+      // au repos, on pose la tache sur un pixel entier : l'image est recopiée telle quelle (beaucoup plus rapide sur les vieux ordinateurs)
+      const rest = !flipping && !dark && lk <= 0 && appear >= 0.999 && !hovered;
+      if (rest) y = Math.round(y * this.dpr) / this.dpr;
 
       // ombre au sol
       c.fillStyle = INK;
-      c.globalAlpha = (0.2 - 0.08 * sinT) * Math.min(1, appear);
+      c.globalAlpha = (dark ? 0.26 : 0.16) * Math.min(1, appear) * (1 - 0.4 * sinT);
       c.beginPath();
-      c.ellipse(cx, r.y + r.s / 2 + R * 0.9 + 2, R * 0.8 * (1 - 0.2 * sinT) * sc, R * 0.2 * sc, 0, 0, TAU);
+      c.ellipse(cx, r.y + r.s / 2 + R * 0.92 + 2, R * 0.78 * (1 - 0.2 * sinT) * sc, R * 0.2 * sc, 0, 0, TAU);
       c.fill();
+      // halo d'encre
+      if (dark) {
+        const hs = hw * sc;
+        c.globalAlpha = (0.8 + 0.1 * Math.sin(this.pulse * 3 + ph)) * Math.min(1, appear) * (flipping ? sx : 1);
+        c.drawImage(halo, cx - hs / 2, y - hs / 2, hs, hs);
+      }
       c.globalAlpha = 1;
 
       c.save();
-      c.translate(cx, cy - lift);
-      c.rotate(rot);
-      c.scale(sc * sx * (1 + squash + jelly), sc * (1 - squash - jelly));
-      // tranche de la pièce quand elle est de côté
-      if (sinT > 0.05) {
-        c.fillStyle = INK;
-        c.beginPath();
-        c.ellipse(0, 0, R + (R * 0.16 * sinT) / Math.max(sx, 0.08), R, 0, 0, TAU);
-        c.fill();
+      c.translate(rest ? Math.round(cx * this.dpr) / this.dpr : cx, y);
+      if (tilt !== 0) c.rotate(tilt);
+      c.scale(sc * sx * (1 + squash + jelly + breathe), sc * (1 - squash - jelly + breathe + sinT * 0.06));
+      const asleep = face === FRONT && this.awk[i] < 0.08;
+      c.drawImage(faces[(asleep ? 5 : face) * VARIANTS + v], -fw / 2, -fw / 2, fw, fw);
+      if (sx > 0.3) {
+        if (dark) this.drawEyes(c, R, ph, cx, y, face === HINT);
+        else if (face === FRONT && !asleep) this.drawSleepEyes(c, R, i, ph, cx, y);
       }
-      c.drawImage(faces[face], -fw / 2, -fw / 2, fw, fw);
-      if (isBlot && sx > 0.25) this.drawEyes(c, R, ph, cx, cy - lift, face === HINT);
       c.restore();
+
+      // petites gouttes qui flottent autour d'une tache réveillée, et jaillissent quand elle se pose
+      if (face === BLOT && !flipping) {
+        c.fillStyle = INK;
+        for (let k = 0; k < 3; k++) {
+          const a = ph + k * 2.1 + Math.sin(this.pulse * 1.4 + k + ph) * 0.3;
+          const d = R * (1.1 + 0.04 * Math.sin(this.pulse * 2.2 + k * 1.7 + ph)) + R * 0.35 * Math.max(0, lk);
+          c.beginPath();
+          c.arc(cx + Math.cos(a) * d * sc, y + Math.sin(a) * d * sc, R * (0.05 + 0.022 * k) * sc, 0, TAU);
+          c.fill();
+        }
+      }
 
       // curseur clavier : anneau doré qui tourne
       if (this.showCursor && i === this.cursor && playing) {
@@ -1167,18 +1327,16 @@ export class MemoryGame {
         c.setLineDash([10, 7]);
         c.lineDashOffset = -this.pulse * 26;
         c.beginPath();
-        c.arc(cx, cy - lift, R + 6, 0, TAU);
+        c.arc(cx, y, R + 6, 0, TAU);
         c.stroke();
         c.setLineDash([]);
       }
     }
   }
 
-  /** Deux yeux vivants : ils regardent autour d'eux, suivent le doigt, clignent et froncent les sourcils. */
-  private drawEyes(c: CanvasRenderingContext2D, R: number, ph: number, wx: number, wy: number, dim: boolean) {
-    const er = R * 0.2;
+  /** Regard d'une tache : balade lente, attiré par le doigt / la souris, avec des clignements. Résultat dans this.gz. */
+  private gaze(R: number, ph: number, wx: number, wy: number) {
     const t = this.pulse;
-    // regard : balade lente + attraction par le doigt / la souris
     let lx = Math.sin(t * 1.7 + ph * 3) * 0.55 + Math.sin(t * 0.55 + ph) * 0.35;
     let ly = Math.cos(t * 1.3 + ph * 2) * 0.45;
     if (this.lookX >= 0) {
@@ -1189,9 +1347,18 @@ export class MemoryGame {
       lx = lx * 0.25 + (dx / d) * k;
       ly = ly * 0.25 + (dy / d) * k;
     }
-    // clignement
     const bt = (t * 0.85 + ph) % 3.6;
-    const blink = bt < 0.14 ? Math.sin((bt / 0.14) * Math.PI) : 0;
+    this.gz.lx = lx;
+    this.gz.ly = ly;
+    this.gz.blink = bt < 0.14 ? Math.sin((bt / 0.14) * Math.PI) : 0;
+  }
+
+  /** Deux yeux vivants : ils regardent autour d'eux, suivent le doigt, clignent et froncent les sourcils. */
+  private drawEyes(c: CanvasRenderingContext2D, R: number, ph: number, wx: number, wy: number, dim: boolean) {
+    const er = R * 0.2;
+    const t = this.pulse;
+    this.gaze(R, ph, wx, wy);
+    const { lx, ly, blink } = this.gz;
     c.globalAlpha = dim ? 0.8 : 1;
     for (const sx of [-1, 1]) {
       const ex = sx * R * 0.3;
@@ -1223,6 +1390,42 @@ export class MemoryGame {
     c.globalAlpha = 1;
   }
 
+  /** Tache endormie : deux petits arcs (yeux fermés) ; quand le doigt s'approche, elle ouvre les yeux et le suit. */
+  private drawSleepEyes(c: CanvasRenderingContext2D, R: number, i: number, ph: number, wx: number, wy: number) {
+    const a = this.awk[i];
+    const er = R * 0.17;
+    const ey = -R * 0.03;
+    c.lineCap = 'round';
+    if (a < 0.08) {
+      c.strokeStyle = 'rgba(27,25,21,0.58)';
+      c.lineWidth = Math.max(2, R * 0.05);
+      for (const sx of [-1, 1]) {
+        c.beginPath();
+        c.arc(sx * R * 0.3, ey - er * 0.2, er * 0.95, Math.PI * 0.12, Math.PI * 0.88);
+        c.stroke();
+      }
+      return;
+    }
+    this.gaze(R, ph, wx, wy);
+    const { lx, ly } = this.gz;
+    for (const sx of [-1, 1]) {
+      const ex = sx * R * 0.3;
+      c.fillStyle = PAPER_HI;
+      c.strokeStyle = 'rgba(27,25,21,0.85)';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.ellipse(ex, ey, er, Math.max(1.2, er * a), 0, 0, TAU);
+      c.fill();
+      c.stroke();
+      if (a > 0.5) {
+        c.fillStyle = INK;
+        c.beginPath();
+        c.arc(ex + lx * er * 0.4, ey + ly * er * 0.35, er * 0.5, 0, TAU);
+        c.fill();
+      }
+    }
+  }
+
   private drawRings(c: CanvasRenderingContext2D) {
     for (const r of this.rings) {
       const p = r.age / 0.5;
@@ -1247,37 +1450,56 @@ export class MemoryGame {
     c.globalAlpha = 1;
   }
 
-  /** En-tête sobre : libellé au-dessus d'un grand chiffre, cœurs, progression. */
+  /** En-tête sobre : libellé au-dessus d'un grand chiffre, cœurs, progression vers la page (ou le palier) suivant. */
   private drawHud(c: CanvasRenderingContext2D) {
     const { W, hudH, u } = this;
     c.textBaseline = 'middle';
     if (this.run !== 'play') return;
     const right = W - 62;
-    const page = `${Math.min(PAGES, stageOf(this.n) + 1)}/${PAGES}`;
+    const suite = this.mode === 'suite';
+    const per = perPage(this.mode);
+    const maxLen = totalOf('suite');
+    const page = `${Math.min(PAGES, stageOf(this.mode, this.n) + 1)}/${PAGES}`;
+    const len = Math.min(maxLen, this.n + 1);
+    const midLabel = suite ? (this.record > 0 ? `SUITE · RECORD ${this.record}` : 'SUITE') : 'PAGE';
+    const midValue = suite ? String(len) : page;
     const label = (txt: string, x: number, y: number, al: CanvasTextAlign) => {
       c.textAlign = al;
       c.font = `${Math.round(clamp(hudH * 0.2, 9, 11))}px ${F_DISP}`;
       c.fillStyle = 'rgba(27,25,21,0.62)';
       c.fillText(txt, x, y);
     };
-    const value = (txt: string, x: number, y: number, al: CanvasTextAlign) => {
+    const value = (txt: string, x: number, y: number, al: CanvasTextAlign, k = 1) => {
       c.textAlign = al;
-      c.font = `${Math.round(clamp(hudH * 0.4, 16, 24))}px ${F_DISP}`;
+      c.font = `${Math.round(clamp(hudH * 0.4, 16, 24) * k)}px ${F_DISP}`;
       c.fillStyle = INK;
       c.fillText(txt, x, y);
     };
+    const mult = this.streak > 0 ? Math.min(5, 1 + Math.floor((this.streak - 1) / 3)) : 1;
+    const scoreTxt = fmt(this.scoreDisp);
+    const pop = 1 + 0.2 * this.scorePop;
     if (this.compact) {
-      c.font = `${Math.round(clamp(hudH * 0.42, 14, 18))}px ${F_DISP}`;
+      c.font = `${Math.round(clamp(hudH * 0.42, 14, 18) * pop)}px ${F_DISP}`;
       c.fillStyle = INK;
       c.textAlign = 'left';
-      c.fillText(`SCORE ${fmt(this.score)}`, 14, hudH / 2 - 2);
+      c.fillText(`SCORE ${scoreTxt}`, 14, hudH / 2 - 2);
       c.textAlign = 'center';
-      c.fillText(`PAGE ${page}`, W / 2, hudH / 2 - 2);
+      c.font = `${Math.round(clamp(hudH * 0.42, 14, 18))}px ${F_DISP}`;
+      c.fillText(suite ? `SUITE ${midValue}` : `PAGE ${page}`, W / 2, hudH / 2 - 2);
     } else {
       label('SCORE', 14, hudH * 0.28, 'left');
-      value(fmt(this.score), 14, hudH * 0.62, 'left');
-      label('PAGE', W / 2, hudH * 0.28, 'center');
-      value(page, W / 2, hudH * 0.62, 'center');
+      value(scoreTxt, 14, hudH * 0.62, 'left', pop);
+      label(midLabel, W / 2, hudH * 0.28, 'center');
+      value(midValue, W / 2, hudH * 0.62, 'center');
+    }
+    // série en cours : un badge doré qui bat doucement
+    if (mult > 1) {
+      c.font = `${Math.round(clamp(hudH * 0.4, 16, 24))}px ${F_DISP}`;
+      const bx = 14 + c.measureText(this.compact ? `SCORE ${scoreTxt}` : scoreTxt).width + 12;
+      c.font = `${Math.round(clamp(hudH * 0.36, 14, 20) * (1 + 0.08 * Math.sin(this.pulse * 6)))}px ${F_DISP}`;
+      c.textAlign = 'left';
+      c.fillStyle = GOLD_D;
+      c.fillText(`×${mult}`, bx, this.compact ? hudH / 2 - 2 : hudH * 0.62);
     }
     // vies : la dernière bat comme un cœur
     for (let i = 0; i < MAX_LIVES; i++) {
@@ -1294,7 +1516,7 @@ export class MemoryGame {
       c.lineWidth = 2;
       c.stroke();
     }
-    // progression : une case par page, qui se remplit au fil des manches
+    // progression : une case par page, qui se remplit au fil des manches (la dernière manche d'une page fait clignoter la case)
     const gap = 4;
     const x0 = 14;
     const x1 = right + 6;
@@ -1302,12 +1524,15 @@ export class MemoryGame {
     const done = this.over && !this.won ? this.n : this.n + (this.st === 'ok' ? 1 : 0);
     for (let i = 0; i < PAGES; i++) {
       const x = x0 + i * (bw + gap);
-      const f = clamp((done - i * PER_PAGE) / PER_PAGE, 0, 1);
+      const f = clamp((done - i * per) / per, 0, 1);
       c.fillStyle = 'rgba(27,25,21,0.14)';
       c.fillRect(x, hudH - 9, bw, 4);
       if (f > 0) {
+        const last = f < 1 && (1 - f) * per < 1.5;
+        c.globalAlpha = last ? 0.65 + 0.35 * Math.sin(this.pulse * 7) : 1;
         c.fillStyle = f >= 1 ? INK : GOLD;
-        c.fillRect(x, hudH - 9, bw * f, 4);
+        c.fillRect(x, hudH - 9, bw * f, last ? 5 : 4);
+        c.globalAlpha = 1;
       }
     }
     c.textAlign = 'left';
@@ -1322,7 +1547,7 @@ export class MemoryGame {
     else if (this.st === 'show') s = 'Regarde bien…';
     else if (this.st === 'input') s = 'À toi !';
     else if (this.st === 'ok') s = this.okWord;
-    else if (this.st === 'bad') s = this.mode === 'suite' ? 'Réécoute…' : 'Pas de panique !';
+    else if (this.st === 'bad') s = this.nearMiss ? 'Presque\u00a0!' : this.mode === 'suite' ? 'Réécoute…' : 'Pas de panique !';
     if (s !== this.promptKey) {
       this.promptKey = s;
       this.promptT = 0;
@@ -1366,8 +1591,8 @@ export class MemoryGame {
         filled = clamp(Math.floor((this.tt - LEAD) / suiteStep(this.n)) + 1, 0, total);
         col = GOLD_D;
       }
-      const pr = clamp(qH * 0.075, 3.5, 6);
-      const sp = pr * 3.3;
+      const sp = Math.min(clamp(qH * 0.075, 3.5, 6) * 3.3, (W - 48) / total);
+      const pr = Math.min(clamp(qH * 0.075, 3.5, 6), sp * 0.38);
       const py = ty + fs * 1.18;
       const x00 = W / 2 - ((total - 1) * sp) / 2;
       for (let i = 0; i < total; i++) {

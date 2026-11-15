@@ -29,6 +29,8 @@ type Cloud = 'off' | 'sending' | 'sent' | 'queued';
 const TEXT_LABEL: Record<TextSize, string> = { normal: 'normal', large: 'grand', xlarge: 'très grand' };
 const NEXT_SIZE: Record<TextSize, TextSize> = { normal: 'large', large: 'xlarge', xlarge: 'normal' };
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+/** Plus longue suite (ou plus grand nombre de taches) déjà réussie sur cet appareil. */
+const bestSpan = (m: Mode) => loadMemoryScores(m).reduce((a, x) => Math.max(a, x.span), 0);
 const modeLabel = (m: Mode) => MODES.find((x) => x.id === m)?.label ?? m;
 const spanLabel = (m: Mode) => (m === 'suite' ? 'Suite max' : 'Cases max');
 
@@ -152,6 +154,7 @@ export default function Memory({ account, onHome, onSessionLost }: Props) {
       saveMemoryMode(m);
       setMode(m);
       live.current.mode = m;
+      gameRef.current?.setOptions({ best: bestSpan(m) });
       gameRef.current?.start(m);
       setRun(null);
       setPhase('play');
@@ -403,12 +406,12 @@ function MenuScreen({ view, setView, mode, setMode, settings, account, onChange,
           <li className="howto">
             <kbd className="kbd">👁</kbd>
             <span>
-              <strong>La Suite</strong>&nbsp;: refais les taches dans le même ordre. <strong>Les Cases</strong>&nbsp;: retrouve leurs places.
+              <strong>La Suite</strong>&nbsp;: refais la suite des taches, qui s’allonge d’une tache à chaque réussite. <strong>Les Cases</strong>&nbsp;: retrouve leurs places.
             </span>
           </li>
           <li className="howto">
             <kbd className="kbd">♥</kbd>
-            <span>3 vies&nbsp;: une erreur en coûte une, puis tu réessaies. Une page sans erreur en rend une&nbsp;! Termine les 6 pages pour un bonus.</span>
+            <span>3 vies&nbsp;: une erreur en coûte une, puis tu réessaies. Une page sans erreur en rend une&nbsp;! Bats ton propre record.</span>
           </li>
           <li className="howto howto-opt">
             <kbd className="kbd kbd-sym">← ↑ ↓ →</kbd>
@@ -667,6 +670,24 @@ function Board({ account, mode, refreshKey }: { account: StudentAccount; mode: M
 
 // ───────────────────────── Fin de partie ─────────────────────────
 
+/** Petites stratégies de mémorisation (regroupement, image mentale, répétition) : on en montre une après chaque partie. */
+const TIPS: Record<Mode, string[]> = {
+  suite: [
+    'invente un petit chemin ou un dessin avec les taches (un zigzag, un L, un escalier…).',
+    'répète la suite dans ta tête, ou à voix basse, pendant que tu regardes.',
+    'regroupe les taches par 2 ou par 3, comme on retient un numéro de téléphone.',
+    'la suite garde toujours le même début : ne l’oublie pas, il revient à chaque manche.',
+    'écoute les notes de musique : chaque case a la sienne.',
+  ],
+  cases: [
+    'repère des formes (une ligne, un coin, un triangle) plutôt que des taches une par une.',
+    'balaie la grille par rangées, de gauche à droite, comme pour lire.',
+    'respire et ne te précipite pas : tu as le temps de regarder.',
+    'retiens d’abord les taches des coins, elles servent de repères.',
+  ],
+};
+const tipFor = (m: Mode, k: number) => TIPS[m][Math.abs(k) % TIPS[m].length];
+
 interface OverProps {
   run: Run;
   account: StudentAccount | null;
@@ -716,7 +737,7 @@ function OverScreen({ run, account, cloud, onRestart, onMenu, onHome }: OverProp
                 {fmt(r.score)}
               </div>
               <div className="pb-2 text-[13px] uppercase tracking-[0.12em] text-ink/65">
-                points{run.rank > 0 ? ` · n° ${run.rank}` : ''} · page {r.page}/{PAGES}
+                points{run.rank > 0 ? ` · n° ${run.rank}` : ''} · {r.mode === 'suite' ? 'palier' : 'page'} {r.page}/{PAGES}
               </div>
             </div>
             <dl className="mt-2 grid grid-cols-3 border-2 border-ink">
@@ -738,6 +759,11 @@ function OverScreen({ run, account, cloud, onRestart, onMenu, onHome }: OverProp
                   ? `Tu as retenu une suite de ${r.maxSpan} taches.`
                   : `Tu as retrouvé jusqu’à ${r.maxSpan} taches sur la grille.`}
             </p>
+            {!r.won && (
+              <p className="tip-opt mt-1 text-[14px] leading-snug text-ink/70">
+                <strong>Astuce&nbsp;:</strong> {tipFor(r.mode, r.score + r.correct)}
+              </p>
+            )}
           </>
         ) : (
           <div className="mt-2">
