@@ -542,7 +542,7 @@ export class MemoryGame {
       if (this.targets.includes(i)) {
         this.found.add(i);
         this.mark[i] = 1;
-        this.snap(i, OK);
+        this.snap(i, BLOT);
         this.note(i);
         this.buzz(8);
         if (this.found.size >= this.targets.length) this.roundOk();
@@ -1004,10 +1004,10 @@ export class MemoryGame {
   private desired(i: number, litNow: number): number {
     const m = this.mark[i];
     if (m === 2) return BAD;
-    if (m === 1) return OK;
+    if (m === 1) return BLOT; // case trouvée : la tache d'encre noire apparaît, comme dans La Suite
     if (m === 3) return HINT;
     if (this.hold[i] > 0) return BLOT;
-    if (this.won && this.over) return this.overT > 0.15 + (i % 7) * 0.05 ? OK : FRONT;
+    if (this.won && this.over) return this.overT > 0.15 + (i % 7) * 0.05 ? BLOT : FRONT;
     if (this.st === 'show') {
       if (this.mode === 'suite') return i === litNow ? BLOT : FRONT;
       const r = this.rankOf[i];
