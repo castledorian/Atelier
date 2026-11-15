@@ -5,7 +5,7 @@ import { Check } from '../components/Screens';
 import { Sfx } from '../game/audio';
 import { CourseGame } from '../game/course/engine';
 import type { CourseResult } from '../game/course/engine';
-import { LEVELS } from '../game/course/questions';
+import { LEVELS, PAGES, fmtNum } from '../game/course/questions';
 import type { Level, Missed } from '../game/course/questions';
 import {
   addCourseScore,
@@ -204,7 +204,7 @@ export default function Course({ account, onHome, onSessionLost }: Props) {
         } else if (k === 'arrowright' || k === 'd') {
           e.preventDefault();
           game.step(1);
-        } else if (k === 'enter' || k === ' ' || k === 'arrowdown' || k === 's') {
+        } else if (k === 'enter' || k === ' ' || k === 'arrowup' || k === 'arrowdown' || k === 's') {
           e.preventDefault();
           if (!e.repeat) game.validate();
         } else if (k === '1' || k === '2' || k === '3') {
@@ -257,12 +257,36 @@ export default function Course({ account, onHome, onSessionLost }: Props) {
   }, [studentId, token]);
 
   // Toucher / souris : la plume va sur la ligne touchée
-  const onPointer = (e: React.PointerEvent<HTMLCanvasElement>) => {
+  // Glisser vers le haut valide (comme la flèche ↑) ; glisser sur le côté change de colonne.
+  const touch = useRef<{ x: number; y: number; done: boolean } | null>(null);
+  const onDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (live.current.phase !== 'play') return;
-    if (e.type === 'pointermove' && e.buttons === 0) return;
     const r = e.currentTarget.getBoundingClientRect();
     sfx.unlock();
+    touch.current = { x: e.clientX, y: e.clientY, done: false };
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignoré */
+    }
     gameRef.current?.moveToX(e.clientX - r.left);
+  };
+  const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const t = touch.current;
+    if (!t || live.current.phase !== 'play') return;
+    const dx = e.clientX - t.x;
+    const dy = e.clientY - t.y;
+    if (!t.done && dy < -44 && -dy > 1.4 * Math.abs(dx)) {
+      t.done = true;
+      gameRef.current?.validate();
+      return;
+    }
+    if (t.done || Math.abs(dx) < 14 || Math.abs(dx) < Math.abs(dy)) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    gameRef.current?.moveToX(e.clientX - r.left);
+  };
+  const onUp = () => {
+    touch.current = null;
   };
 
   const status =
@@ -284,8 +308,10 @@ export default function Course({ account, onHome, onSessionLost }: Props) {
             style={{ touchAction: 'none' }}
             role="img"
             aria-label="Zone de jeu : des étiquettes de calcul tombent sur trois colonnes ; la plume se place sous la bonne réponse pendant que l’encre monte."
-            onPointerDown={onPointer}
-            onPointerMove={onPointer}
+            onPointerDown={onDown}
+            onPointerMove={onMove}
+            onPointerUp={onUp}
+            onPointerCancel={onUp}
           />
           {phase === 'play' && (
             <button type="button" className="pause-btn" tabIndex={-1} aria-label="Pause" onClick={pause}>
@@ -425,11 +451,11 @@ function MenuScreen({ view, setView, level, setLevel, settings, account, onChang
           </li>
           <li className="howto">
             <kbd className="kbd">↵</kbd>
-            <span>Entrée ou bouton Valider&nbsp;: l’étiquette tombe tout de suite. Plus tu es rapide, plus tu gagnes de points&nbsp;!</span>
+            <span>Entrée, ↑ ou glisser vers le haut&nbsp;: l’étiquette tombe tout de suite. Plus tu es rapide, plus tu gagnes de points&nbsp;!</span>
           </li>
           <li className="howto">
             <kbd className="kbd">✓</kbd>
-            <span>Une erreur fait monter l’encre ; si elle atteint la plume, c’est perdu. Les séries font ×2, ×3… et donnent un bouclier.</span>
+            <span>6 pages de plus en plus difficiles. Une erreur fait monter l’encre&nbsp;; si elle atteint la plume, c’est perdu. Termine le cahier pour un bonus&nbsp;!</span>
           </li>
           <li className="howto howto-opt">
             <kbd className="kbd">Échap</kbd>
@@ -489,8 +515,24 @@ function MenuScreen({ view, setView, level, setLevel, settings, account, onChang
             <BackButton onClick={onHome} />
           </div>
           <p className="eyebrow">Calcul mental · CM1 et CM2</p>
-          <h1 id="game-title" className="title-sm">
-            Course à l’encre
+          <h1 id="game-title" className="title title-2l" aria-label="Course à l’encre">
+            <span className="tl" aria-hidden="true">
+              {'COURSE'.split('').map((ch, i) => (
+                <span key={i} style={{ animationDelay: `${80 + i * 70}ms` }}>
+                  {ch}
+                </span>
+              ))}
+            </span>{' '}
+            <span className="tl" aria-hidden="true">
+              <span className="text-ribbon" style={{ animationDelay: '520ms' }}>
+                À
+              </span>
+              {'\u00a0L’ENCRE'.split('').map((ch, i) => (
+                <span key={i} style={{ animationDelay: `${590 + i * 70}ms` }}>
+                  {ch}
+                </span>
+              ))}
+            </span>
           </h1>
           <div className="rule" aria-hidden="true" />
           <p className="tagline">Choisis la bonne réponse avant qu’elle ne tombe, et fais reculer l’encre&nbsp;!</p>
@@ -689,7 +731,7 @@ function OverScreen({ run, account, cloud, onRestart, onDrill, onMenu, onHome }:
   }, []);
   const scores = loadCourseScores(r.level);
   const total = r.correct + r.wrong;
-  const title = r.drill ? 'Bravo, bien travaillé !' : r.score === 0 ? 'Rattrapé par l’encre' : run.record ? 'Nouveau record !' : 'Rattrapé par l’encre';
+  const title = r.drill ? 'Bravo, bien travaillé !' : r.won ? 'Cahier terminé !' : run.record ? 'Nouveau record !' : 'Rattrapé par l’encre';
   const showMissed = r.missed.slice(0, 4);
 
   return (
@@ -720,7 +762,7 @@ function OverScreen({ run, account, cloud, onRestart, onDrill, onMenu, onHome }:
                   {fmt(r.score)}
                 </div>
                 <div className="pb-2 text-[13px] uppercase tracking-[0.12em] text-ink/65">
-                  points{run.rank > 0 ? ` · n° ${run.rank}` : ''}
+                  points{run.rank > 0 ? ` · n° ${run.rank}` : ''} · page {r.page}/{PAGES}
                 </div>
               </div>
             )}
@@ -742,7 +784,7 @@ function OverScreen({ run, account, cloud, onRestart, onDrill, onMenu, onHome }:
                 <ul className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-[15px]">
                   {showMissed.map((m) => (
                     <li key={m.text} className="num">
-                      {m.text.includes('?') ? m.text.replace('?', String(m.answer)) : m.text}
+                      {m.text.replace('?', fmtNum(m.answer))}
                     </li>
                   ))}
                 </ul>

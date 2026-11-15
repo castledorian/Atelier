@@ -1624,3 +1624,22 @@ html[data-text='xlarge'] .card .title {
     font-size: 20px;
   }
 }
+
+/* Titre animé de « Course à l'encre » : deux lignes, mêmes lettres tamponnées que « Frappe ! » */
+.title-2l {
+  font-size: clamp(32px, min(13vw, 9.5vh), 78px);
+  line-height: 0.95;
+  white-space: normal;
+}
+.title-2l .tl {
+  display: block;
+  white-space: nowrap;
+}
+@media (max-height: 560px) {
+  .title-2l {
+    font-size: clamp(24px, 9vh, 40px);
+  }
+  .title-2l .tl {
+    display: inline;
+  }
+}

@@ -20,7 +20,7 @@ Sur le site : **Je suis élève**, taper son code, choisir un jeu. Plus rien à 
 - Dans chaque jeu, le bouton **← Accueil** (toujours en haut à gauche) ramène à la liste des jeux.
 - Ils se comparent **dans leur classe** et **dans leur école** (onglets *Classe* / *École*).
 - Les scores sont gardés sur le serveur : ils retrouvent leur courbe de progression sur n'importe quel appareil.
-- **Course à l'encre** (maths, niveaux CM1 et CM2) : l'élève place sa plume sous la bonne réponse parmi trois étiquettes qui tombent (flèches, 1-2-3 ou toucher), puis valide (Entrée ou bouton Valider) pour gagner un bonus de vitesse ; l'encre monte à chaque erreur. À la fin, le jeu affiche les calculs ratés et propose de s'entraîner dessus. Les scores apparaissent dans le tableau de bord (colonne maths).
+- **Course à l'encre** (maths, niveaux CM1 et CM2) : l'élève place sa plume sous la bonne réponse parmi trois étiquettes qui tombent (flèches, 1-2-3 ou toucher), puis valide (Entrée, flèche ↑ ou glisser vers le haut sur tablette/téléphone) pour gagner un bonus de vitesse ; l'encre monte à chaque erreur. Une partie = un cahier de 6 pages de 8 calculs, de plus en plus difficiles (environ 5 minutes) ; terminer le cahier donne un bonus. Les calculs suivent les repères annuels de cycle 3 : CM1 (tables, doubles et moitiés, compléments à 100 et 1 000, ×10/100/1 000, multiples de 25 et 50, quotients et restes, premiers décimaux) ; CM2 (calcul astucieux, décimaux ×/÷ 10, 100, 1 000, compléments, fractions simples, pourcentages 10/25/50/75 %). À la fin, le jeu affiche les calculs ratés et propose de s'entraîner dessus. Les scores apparaissent dans le tableau de bord (colonne maths).
 
 ## 4. Suivre et exporter
 

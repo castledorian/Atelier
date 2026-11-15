@@ -1,5 +1,5 @@
 import type { Sfx } from '../audio';
-import { fromMissed, makeChoices, makeQuestion, stageOf, travelTime } from './questions';
+import { PAGES, PAGE_TITLES, PER_PAGE, TOTAL, fmtNum, fromMissed, makeChoices, makeQuestion, stageOf, travelTime } from './questions';
 import type { Level, Missed, Question } from './questions';
 
 /**
@@ -21,6 +21,10 @@ export interface CourseResult {
   /** entraînement ciblé terminé sans être rattrapé */
   cleared: boolean;
   drill: boolean;
+  /** les 6 pages ont été terminées */
+  won: boolean;
+  /** dernière page atteinte (1 à 6) */
+  page: number;
 }
 
 export interface CourseCallbacks {
@@ -85,6 +89,8 @@ const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
+const WIN_BONUS = 100;
+const PERFECT_PAGE = 50;
 
 function backOut(p: number) {
   const s = 1.7;
@@ -173,7 +179,11 @@ export class CourseGame {
   private overT = 0;
   private reported = false;
   private banner = '';
+  private bannerSub = '';
   private bannerT = 0;
+  private bannerDur = 1.5;
+  private pageWrong = 0;
+  private won = false;
   private hintOff = false;
   private flash = 0;
   private flashC = RED;
@@ -300,6 +310,8 @@ export class CourseGame {
       flood: this.flood,
       streak: this.streak,
       asked: this.asked,
+      page: stageOf(this.asked) + 1,
+      won: this.won,
       mode: this.mode,
       quality: this.quality,
       paused: this.paused,
@@ -329,7 +341,10 @@ export class CourseGame {
     this.overT = 0;
     this.reported = false;
     this.banner = '';
+    this.bannerSub = '';
     this.bannerT = 0;
+    this.pageWrong = 0;
+    this.won = false;
     this.hintOff = false;
     this.flash = 0;
     this.parts.length = 0;
@@ -480,7 +495,8 @@ export class CourseGame {
     }
     if (this.over) {
       this.overT += dt;
-      if (this.overT > 1.1 && !this.reported) {
+      if (this.won && this.overT < 2 && Math.random() < dt * 7) this.burst(rand(this.W * 0.1, this.W * 0.9), this.topY + rand(0, 80), 10, 3, 300);
+      if (this.overT > (this.won ? 2.4 : 1.1) && !this.reported) {
         this.reported = true;
         this.cb.onOver(this.result(false));
       }
@@ -512,6 +528,7 @@ export class CourseGame {
       } else if (g.age > 0.65) {
         this.gate = null;
         this.spawnIn = this.mode === 'demo' ? 0.4 : 0.3;
+        if (this.mode === 'play' && !this.drillQueue && this.asked >= TOTAL) this.victory();
       }
     } else {
       this.spawnIn -= dt;
@@ -540,11 +557,38 @@ export class CourseGame {
     const y = this.topY + this.gh / 2;
     this.gate = { q, choices, correct, y, speed: (this.resolveY - y) / T, t0: this.t, T, state: 0, picked: -1, age: 0, retry, bonus: 0 };
     this.demoWait = rand(1.4, 2.6);
-    if (this.mode === 'play' && !this.drillQueue && this.asked > 0 && this.asked % 7 === 0) {
-      this.banner = `PAGE ${stageOf(this.asked) + 1}`;
-      this.bannerT = 1.5;
-      this.sfx.play('wave');
+    if (this.mode === 'play' && !this.drillQueue && this.asked % PER_PAGE === 0) {
+      this.pageBanner();
+      this.pageWrong = 0;
+      if (this.asked > 0) this.sfx.play('wave');
     }
+  }
+
+  private pageBanner() {
+    const p = stageOf(this.asked);
+    this.banner = `PAGE ${p + 1} / ${PAGES}`;
+    this.bannerSub = PAGE_TITLES[this.level][p];
+    this.bannerDur = 2.1;
+    this.bannerT = 2.1;
+  }
+
+  /** Les 6 pages sont finies : le cahier est terminé. */
+  private victory() {
+    if (this.over) return;
+    const bonus = WIN_BONUS + Math.round(clamp(this.flood, 0, 1) * 100) + (this.shield ? 50 : 0);
+    this.score += bonus;
+    this.won = true;
+    this.over = true;
+    this.overT = 0;
+    this.flood = 1;
+    this.banner = 'CAHIER TERMINÉ !';
+    this.bannerSub = `Bonus +${bonus}`;
+    this.bannerDur = 2.4;
+    this.bannerT = 2.4;
+    this.flash = 0.8;
+    this.flashC = GOLD;
+    this.sfx.play('clear');
+    for (let k = 0; k < 4; k++) this.burst(rand(this.W * 0.15, this.W * 0.85), this.topY + 40, 14, 3, 320);
   }
 
   /** L'étiquette atteint la plume : la colonne choisie est-elle la bonne ? */
@@ -575,6 +619,11 @@ export class CourseGame {
       this.burst(x, y, 9, 4, 220);
       const ty = this.resolveY - this.gh * 0.75;
       this.text(x, ty, `+${pts}`, GREEN, 32);
+      if (!this.drillQueue && this.asked % PER_PAGE === 0 && this.pageWrong === 0 && this.asked < TOTAL) {
+        this.score += PERFECT_PAGE;
+        this.text(this.W / 2, this.topY + (this.penY - this.topY) * 0.3, `PAGE PARFAITE ! +${PERFECT_PAGE}`, GOLD, 30);
+        this.sfx.play('ding');
+      }
       if (g.bonus >= MAX_BONUS * 0.6) this.text(x, ty - 34 * this.u, 'RAPIDE !', GOLD, 22);
       this.shake = Math.max(this.shake, 3);
       this.sfx.play('kill');
@@ -595,13 +644,14 @@ export class CourseGame {
         return;
       }
       this.wrong++;
+      this.pageWrong++;
       const m = this.missed.get(g.q.text);
       if (m) m.count++;
       else this.missed.set(g.q.text, { text: g.q.text, answer: g.q.answer, near: g.q.near, count: 1 });
       this.burst(x, y, 26, 1, 330);
       this.burst(x, y, 10, 0, 250);
       this.stain(x, y, 30 * this.u);
-      this.text(this.W / 2, this.topY + (this.penY - this.topY) * 0.4, `C’était ${g.q.answer}`, RED, 26);
+      this.text(this.W / 2, this.topY + (this.penY - this.topY) * 0.4, `C’était ${fmtNum(g.q.answer)}`, RED, 26);
       if (this.shield) {
         this.shield = false;
         this.text(x, y - 40 * this.u, 'BOUCLIER CASSÉ', GOLD, 22);
@@ -652,6 +702,8 @@ export class CourseGame {
       missed: [...this.missed.values()].sort((a, b) => b.count - a.count),
       cleared,
       drill: this.drillTotal > 0,
+      won: this.won,
+      page: this.won ? PAGES : stageOf(this.asked) + 1,
     };
   }
 
@@ -744,7 +796,7 @@ export class CourseGame {
 
   /** Hauteur de la surface de la mare : plus la jauge est basse, plus elle monte vers la plume. */
   private inkTop() {
-    if (this.over && this.mode === 'play') {
+    if (this.over && !this.won && this.mode === 'play') {
       const p = clamp(this.overT / 0.9, 0, 1);
       return lerp(this.penY + 14, -30, p * p);
     }
@@ -997,7 +1049,7 @@ export class CourseGame {
       c.fill();
       c.stroke();
       c.fillStyle = ink;
-      const txt = String(g.choices[l]);
+      const txt = fmtNum(g.choices[l]);
       let fs = Math.round(clamp(gh * 0.58, 24, 54));
       c.font = `700 ${fs}px ${F_NUM}`;
       while (c.measureText(txt).width > gw - 20 && fs > 14) {
@@ -1038,24 +1090,45 @@ export class CourseGame {
     const { W, hudH, u } = this;
     c.textBaseline = 'middle';
     if (this.mode !== 'play') return;
-    const fs = Math.round(clamp(hudH * 0.46, 16, 26));
+    const fs = Math.round(clamp(hudH * 0.42, 15, 24));
+    const drill = this.drillTotal > 0;
+    const ty = drill ? hudH / 2 : hudH / 2 - 3;
     c.fillStyle = INK;
     c.font = `${fs}px ${F_DISP}`;
     c.textAlign = 'left';
-    c.fillText(`SCORE ${fmt(this.score)}`, 14, hudH / 2);
+    c.fillText(`SCORE ${fmt(this.score)}`, 14, ty);
+    c.textAlign = 'center';
+    if (drill) {
+      c.fillText('ENTRAÎNEMENT', W / 2, ty);
+    } else {
+      c.fillText(`PAGE ${Math.min(PAGES, stageOf(this.asked) + 1)}/${PAGES}`, W / 2, ty);
+      // progression : une case par page, qui se remplit au fil des calculs
+      const gap = 4;
+      const bw = (W - 28 - gap * (PAGES - 1)) / PAGES;
+      for (let i = 0; i < PAGES; i++) {
+        const x = 14 + i * (bw + gap);
+        const f = clamp((this.asked - i * PER_PAGE) / PER_PAGE, 0, 1);
+        c.fillStyle = 'rgba(27,25,21,0.16)';
+        c.fillRect(x, hudH - 11, bw, 5);
+        if (f > 0) {
+          c.fillStyle = f >= 1 ? INK : GOLD;
+          c.fillRect(x, hudH - 11, bw * f, 5);
+        }
+      }
+    }
     const mult = Math.min(5, 1 + Math.floor(this.streak / 3));
     c.textAlign = 'right';
     if (this.streak > 0) {
       c.fillStyle = mult > 1 ? GOLD : INK;
-      const word = W >= 520 ? 'SÉRIE ' : '';
-      c.fillText(`${mult > 1 ? `×${mult} ` : ''}${word}${this.streak}`, W - (this.shield ? 100 : 66), hudH / 2);
+      const word = W >= 560 ? 'SÉRIE ' : '';
+      c.fillText(`${mult > 1 ? `×${mult} ` : ''}${word}${this.streak}`, W - (this.shield ? 100 : 66), ty);
     }
     if (this.shield) {
       c.fillStyle = GOLD;
       c.strokeStyle = INK;
       c.lineWidth = 2;
       c.beginPath();
-      c.arc(W - 78, hudH / 2, 9 * u, 0, TAU);
+      c.arc(W - 78, ty, 9 * u, 0, TAU);
       c.fill();
       c.stroke();
     }
@@ -1067,7 +1140,7 @@ export class CourseGame {
     const { W, qH } = this;
     const y0 = this.hudH + 4;
     let s = '';
-    if (g) s = g.state === 0 || g.state === 2 ? g.q.text : g.q.text.replace('?', String(g.q.answer));
+    if (g) s = g.state === 0 || g.state === 2 ? g.q.text : g.q.text.replace('?', fmtNum(g.q.answer));
     else if (this.mode === 'play' && this.t < 1) s = 'Prêt ?';
     if (!s) return;
     const w = Math.min(W - 20, 560);
@@ -1136,19 +1209,37 @@ export class CourseGame {
 
   private drawBanner(c: CanvasRenderingContext2D) {
     if (this.bannerT <= 0) return;
-    const p = 1 - this.bannerT / 1.5;
-    const a = p < 0.15 ? p / 0.15 : p > 0.75 ? (1 - p) / 0.25 : 1;
+    const p = 1 - this.bannerT / this.bannerDur;
+    const a = p < 0.12 ? p / 0.12 : p > 0.78 ? (1 - p) / 0.22 : 1;
+    const pop = p < 0.12 ? 0.7 + (p / 0.12) * 0.3 : 1;
     c.globalAlpha = clamp(a, 0, 1);
-    c.font = `${Math.round(Math.min(58 * this.u, this.W * 0.14))}px ${F_DISP}`;
     c.textAlign = 'center';
     c.textBaseline = 'middle';
-    c.lineWidth = 9;
     c.lineJoin = 'round';
+    const y = this.topY + (this.penY - this.topY) * 0.45;
+    let fs = Math.round(Math.min(54 * this.u, this.W * 0.13) * pop);
+    c.font = `${fs}px ${F_DISP}`;
+    while (c.measureText(this.banner).width > this.W - 24 && fs > 16) {
+      fs -= 2;
+      c.font = `${fs}px ${F_DISP}`;
+    }
+    c.lineWidth = 9;
     c.strokeStyle = PAPER_HI;
-    const y = this.topY + (this.penY - this.topY) * 0.5;
     c.strokeText(this.banner, this.W / 2, y);
-    c.fillStyle = RED;
+    c.fillStyle = this.won ? GOLD : RED;
     c.fillText(this.banner, this.W / 2, y);
+    if (this.bannerSub) {
+      let sf = Math.round(clamp(fs * 0.5, 15, 26));
+      c.font = `${sf}px ${F_DISP}`;
+      while (c.measureText(this.bannerSub).width > this.W - 28 && sf > 12) {
+        sf -= 1;
+        c.font = `${sf}px ${F_DISP}`;
+      }
+      c.lineWidth = 6;
+      c.strokeText(this.bannerSub, this.W / 2, y + fs * 0.8);
+      c.fillStyle = INK;
+      c.fillText(this.bannerSub, this.W / 2, y + fs * 0.8);
+    }
     c.globalAlpha = 1;
     c.textAlign = 'left';
   }
@@ -1159,7 +1250,7 @@ export class CourseGame {
     c.textAlign = 'center';
     c.textBaseline = 'middle';
     const touch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    const lines = touch ? ['Touche une colonne', 'puis appuie sur VALIDER'] : ['← → pour choisir une colonne', 'Entrée pour valider'];
+    const lines = touch ? ['Touche une colonne, puis', 'glisse vers le haut pour valider'] : ['← → pour choisir une colonne', 'Entrée ou ↑ pour valider'];
     const size = Math.round(clamp(this.W * 0.036, 15, 22));
     c.font = `${size}px ${F_DISP}`;
     const w = Math.max(...lines.map((l) => c.measureText(l).width)) + 30;
