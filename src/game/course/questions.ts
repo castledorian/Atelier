@@ -176,10 +176,10 @@ export function makeChoices(question: Question, r: Rng = Math.random): { choices
   return { choices, correct: choices.indexOf(question.answer) };
 }
 
-/** Durée (secondes) pendant laquelle les portes avancent avant d'atteindre la plume : elle diminue avec les calculs. */
+/** Durée (secondes) que met l'étiquette à tomber jusqu'à la plume si l'élève ne valide pas : elle diminue avec les calculs. */
 export function travelTime(level: Level, n: number): number {
-  const floor = level === 'cm1' ? 2.7 : 2.3;
-  return Math.max(floor, 3.8 - 0.05 * n);
+  const floor = level === 'cm1' ? 6.5 : 5.5;
+  return Math.max(floor, 11 - 0.1 * n);
 }
 
 export const LEVELS: Array<{ id: Level; label: string; hint: string }> = [

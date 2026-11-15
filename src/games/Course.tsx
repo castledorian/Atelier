@@ -198,12 +198,15 @@ export default function Course({ account, onHome, onSessionLost }: Props) {
         if (k === 'escape' || k === 'p') {
           e.preventDefault();
           pause();
-        } else if (k === 'arrowup' || k === 'z' || k === 'w' || k === 'k') {
+        } else if (k === 'arrowleft' || k === 'q' || k === 'a') {
           e.preventDefault();
           game.step(-1);
-        } else if (k === 'arrowdown' || k === 's' || k === 'j') {
+        } else if (k === 'arrowright' || k === 'd') {
           e.preventDefault();
           game.step(1);
+        } else if (k === 'enter' || k === ' ' || k === 'arrowdown' || k === 's') {
+          e.preventDefault();
+          if (!e.repeat) game.validate();
         } else if (k === '1' || k === '2' || k === '3') {
           e.preventDefault();
           game.moveTo(Number(k) - 1);
@@ -259,7 +262,7 @@ export default function Course({ account, onHome, onSessionLost }: Props) {
     if (e.type === 'pointermove' && e.buttons === 0) return;
     const r = e.currentTarget.getBoundingClientRect();
     sfx.unlock();
-    gameRef.current?.moveToY(e.clientY - r.top);
+    gameRef.current?.moveToX(e.clientX - r.left);
   };
 
   const status =
@@ -280,7 +283,7 @@ export default function Course({ account, onHome, onSessionLost }: Props) {
             className="absolute inset-0 block h-full w-full"
             style={{ touchAction: 'none' }}
             role="img"
-            aria-label="Zone de jeu : une plume sur trois lignes de cahier choisit la bonne réponse pendant qu’une tache d’encre la poursuit."
+            aria-label="Zone de jeu : des étiquettes de calcul tombent sur trois colonnes ; la plume se place sous la bonne réponse pendant que l’encre monte."
             onPointerDown={onPointer}
             onPointerMove={onPointer}
           />
@@ -290,6 +293,19 @@ export default function Course({ account, onHome, onSessionLost }: Props) {
               <span />
             </button>
           )}
+        </div>
+
+        <div className="validate-bar" aria-hidden={phase !== 'play'} style={{ visibility: phase === 'play' ? 'visible' : 'hidden' }}>
+          <button type="button" className="vb-side" tabIndex={-1} aria-label="Colonne de gauche" onMouseDown={(e) => e.preventDefault()} onClick={() => gameRef.current?.step(-1)}>
+            ◀
+          </button>
+          <button type="button" className="vb-main" tabIndex={-1} onMouseDown={(e) => e.preventDefault()} onClick={() => gameRef.current?.validate()}>
+            Valider <span aria-hidden="true">✓</span>
+            <small>Entrée</small>
+          </button>
+          <button type="button" className="vb-side" tabIndex={-1} aria-label="Colonne de droite" onMouseDown={(e) => e.preventDefault()} onClick={() => gameRef.current?.step(1)}>
+            ▶
+          </button>
         </div>
 
         {phase === 'menu' && (
@@ -404,16 +420,16 @@ function MenuScreen({ view, setView, level, setLevel, settings, account, onChang
       body = (
         <ul className="howto-list">
           <li className="howto">
-            <kbd className="kbd kbd-sym">↑↓</kbd>
-            <span>Place la plume sur la ligne de la bonne réponse. Clavier&nbsp;: ↑ ↓ ou 1 2 3. Tablette&nbsp;: touche une ligne.</span>
+            <kbd className="kbd kbd-sym">← →</kbd>
+            <span>Place la plume sous la bonne réponse (flèches, 1 2 3, ou touche une colonne).</span>
           </li>
           <li className="howto">
-            <kbd className="kbd">✗</kbd>
-            <span>Une erreur&nbsp;: la tache bondit. Si elle attrape la plume, c’est perdu.</span>
+            <kbd className="kbd">↵</kbd>
+            <span>Entrée ou bouton Valider&nbsp;: l’étiquette tombe tout de suite. Plus tu es rapide, plus tu gagnes de points&nbsp;!</span>
           </li>
           <li className="howto">
             <kbd className="kbd">✓</kbd>
-            <span>Une bonne réponse repousse la tache. En série&nbsp;: points ×2, ×3… et bouclier tous les 5.</span>
+            <span>Une erreur fait monter l’encre ; si elle atteint la plume, c’est perdu. Les séries font ×2, ×3… et donnent un bouclier.</span>
           </li>
           <li className="howto howto-opt">
             <kbd className="kbd">Échap</kbd>
@@ -477,7 +493,7 @@ function MenuScreen({ view, setView, level, setLevel, settings, account, onChang
             Course à l’encre
           </h1>
           <div className="rule" aria-hidden="true" />
-          <p className="tagline">Place la plume sur la ligne de la bonne réponse et fuis la tache d’encre&nbsp;!</p>
+          <p className="tagline">Choisis la bonne réponse avant qu’elle ne tombe, et fais reculer l’encre&nbsp;!</p>
           <div className="tools" data-n="3" role="group" aria-label="Plus d’options">
             <button type="button" className="tool" onClick={() => setView('howto')}>
               <span aria-hidden="true">?</span> Comment jouer

@@ -20,7 +20,7 @@ Sur le site : **Je suis élève**, taper son code, choisir un jeu. Plus rien à 
 - Dans chaque jeu, le bouton **← Accueil** (toujours en haut à gauche) ramène à la liste des jeux.
 - Ils se comparent **dans leur classe** et **dans leur école** (onglets *Classe* / *École*).
 - Les scores sont gardés sur le serveur : ils retrouvent leur courbe de progression sur n'importe quel appareil.
-- **Course à l'encre** (maths, niveaux CM1 et CM2) : l'élève place sa plume sur la ligne de la bonne réponse (flèches, chiffres 1-2-3 ou toucher) pendant qu'une tache d'encre la poursuit. À la fin, le jeu affiche les calculs ratés et propose de s'entraîner dessus. Les scores apparaissent dans le tableau de bord (colonne maths).
+- **Course à l'encre** (maths, niveaux CM1 et CM2) : l'élève place sa plume sous la bonne réponse parmi trois étiquettes qui tombent (flèches, 1-2-3 ou toucher), puis valide (Entrée ou bouton Valider) pour gagner un bonus de vitesse ; l'encre monte à chaque erreur. À la fin, le jeu affiche les calculs ratés et propose de s'entraîner dessus. Les scores apparaissent dans le tableau de bord (colonne maths).
 
 ## 4. Suivre et exporter
 
