@@ -33,7 +33,7 @@ export const CASES_COUNT = [3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6, 7, 7, 7, 8, 8, 8, 9
 export const stageOf = (n: number) => Math.min(PAGES - 1, Math.floor(n / PER_PAGE));
 
 /** Durée entre deux taches de la suite (s) : un peu plus rapide à chaque manche. */
-export const suiteStep = (n: number) => Math.max(0.5, 0.9 - 0.018 * n);
+export const suiteStep = (n: number) => Math.max(0.58, 0.95 - 0.016 * n);
 
 /** Durée pendant laquelle les taches restent visibles dans Les Cases (s). */
 export const casesShow = (n: number) => Math.max(1.3, 1.0 + 0.2 * CASES_COUNT[Math.min(n, TOTAL - 1)] - 0.02 * n);

@@ -1028,15 +1028,27 @@ export class CourseGame {
         rr(c, -gw / 2 - 7, -gh / 2 - 7, gw + 14, gh + 14, 14);
         c.fill();
       }
-      // étiquette : ombre portée, papier, trou de ficelle
-      c.fillStyle = 'rgba(27,25,21,0.85)';
-      rr(c, -gw / 2 + 3, -gh / 2 + 4, gw, gh, 10);
-      c.fill();
-      c.fillStyle = fill;
+      // étiquette : ombre douce, papier légèrement dégradé, reflet, trou de ficelle
+      for (let k = 0; k < 4; k++) {
+        c.fillStyle = `rgba(27,25,21,${selected ? 0.07 : 0.055})`;
+        rr(c, -gw / 2 - k * 2.5, -gh / 2 + 3 + k * 2.5 + (selected ? 3 : 0), gw + k * 5, gh + k * 2, 12 + k * 2);
+        c.fill();
+      }
+      const grad = c.createLinearGradient(0, -gh / 2, 0, gh / 2);
+      grad.addColorStop(0, fill);
+      grad.addColorStop(1, fill === PAPER_HI ? '#efe5cc' : fill);
+      c.fillStyle = grad;
       c.strokeStyle = selected ? GOLD : ink;
-      c.lineWidth = selected ? 4 : 3;
-      rr(c, -gw / 2, -gh / 2, gw, gh, 10);
+      c.lineWidth = selected ? 4 : 2.5;
+      rr(c, -gw / 2, -gh / 2, gw, gh, 12);
       c.fill();
+      c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,0.7)';
+      c.lineWidth = 2;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(-gw / 2 + 14, -gh / 2 + 7);
+      c.lineTo(-gw / 2 + gw * 0.38, -gh / 2 + 7);
       c.stroke();
       c.fillStyle = PAPER;
       c.strokeStyle = ink;
@@ -1168,15 +1180,6 @@ export class CourseGame {
     if (!s) return;
     const w = Math.min(W - 20, 560);
     c.fillStyle = INK;
-    rr(c, (W - w) / 2 + 3, y0 + 4, w, qH - 6, 12);
-    c.fill();
-    c.fillStyle = PAPER_HI;
-    c.strokeStyle = INK;
-    c.lineWidth = 3;
-    rr(c, (W - w) / 2, y0, w, qH - 6, 12);
-    c.fill();
-    c.stroke();
-    c.fillStyle = INK;
     c.textAlign = 'center';
     c.textBaseline = 'middle';
     const showBonus = this.mode === 'play' && !this.compact;
@@ -1187,6 +1190,10 @@ export class CourseGame {
       fs -= 2;
       c.font = `700 ${fs}px ${F_NUM}`;
     }
+    c.lineJoin = 'round';
+    c.lineWidth = 9;
+    c.strokeStyle = PAPER_HI;
+    c.strokeText(s, showBonus ? W / 2 - 38 : W / 2, y0 + (qH - 6) / 2 + 2);
     c.fillText(s, showBonus ? W / 2 - 38 : W / 2, y0 + (qH - 6) / 2 + 2);
     // bonus de vitesse : il fond au fil du temps
     if (this.mode === 'play' && g && g.state === 0) {
@@ -1202,10 +1209,11 @@ export class CourseGame {
         c.fillStyle = 'rgba(27,25,21,0.55)';
         c.fillText('VITESSE', bx, y0 + (qH - 6) / 2 + 12);
       }
+      const bw = Math.min(w - 16, 380);
       c.fillStyle = 'rgba(27,25,21,0.14)';
-      c.fillRect((W - w) / 2 + 8, y0 + qH - 12, w - 16, 4);
+      c.fillRect((W - bw) / 2, y0 + qH - 12, bw, 4);
       c.fillStyle = bonus > 8 ? GOLD : INK;
-      c.fillRect((W - w) / 2 + 8, y0 + qH - 12, (w - 16) * (1 - p), 4);
+      c.fillRect((W - bw) / 2, y0 + qH - 12, bw * (1 - p), 4);
     }
     c.textAlign = 'left';
   }
