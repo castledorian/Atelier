@@ -454,7 +454,7 @@ create table if not exists public.balance_runs (
   id           bigint generated always as identity primary key,
   played_at    timestamptz not null default now(),
   game         text not null check (game in ('typing', 'math', 'memory', 'spelling')),
-  level        text check (level is null or level in ('cm1', 'cm2')),
+  level        text check (level is null or level in ('cp', 'ce1', 'ce2', 'cm1', 'cm2')),
   difficulty   text not null check (difficulty ~ '^[a-z0-9_-]{1,20}$'),   -- apprenti / standard / expert, ou le mode (suite / cases)
   custom       boolean not null default false,                            -- réglages personnalisés ou séance : exclus des moyennes
   version      integer not null default 1 check (version between 0 and 999),

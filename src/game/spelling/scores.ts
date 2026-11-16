@@ -1,4 +1,4 @@
-import { isCourseDiff } from '../course/questions';
+import { isCourseDiff, isLevel } from '../course/questions';
 import type { BoardKey, CourseDiff, Level } from '../course/questions';
 
 /** Meilleurs scores de « Chasse aux fautes » (5 par niveau et difficulté) et dernier réglage choisi : sur cet appareil seulement. */
@@ -46,7 +46,7 @@ export function addSpellingScore(board: BoardKey, entry: SpellingScore): number 
 export function loadSpellingPrefs(): { level: Level; diff: CourseDiff } {
   try {
     const v = JSON.parse(localStorage.getItem(PREFS) ?? 'null') as { level?: unknown; diff?: unknown } | null;
-    return { level: v?.level === 'cm2' ? 'cm2' : 'cm1', diff: isCourseDiff(v?.diff) ? v.diff : 'standard' };
+    return { level: isLevel(v?.level) ? v.level : 'cm1', diff: isCourseDiff(v?.diff) ? v.diff : 'standard' };
   } catch {
     return { level: 'cm1', diff: 'standard' };
   }

@@ -1,3 +1,5 @@
+import type { Grade } from '../grade';
+
 /**
  * Calculs de « Course à l'encre ». Le contenu suit les repères annuels de progression de mathématiques du cycle 3
  * (Éduscol) pour le CALCUL MENTAL :
@@ -7,11 +9,19 @@
  *  CM2 — calcul astucieux (×9, ×11, ×19, ×21, ×5, ×50 par distributivité), multiplier/diviser les décimaux par
  *        10, 100, 1 000, compléments au nombre entier supérieur, additions/soustractions de décimaux,
  *        fractions simples d'une quantité, pourcentages 10 %, 25 %, 50 %, 75 %, ×0,1 et ×0,5.
+ *  Cycle 2 (programme 2024, calcul mental) :
+ *  CP  — ajouter 1, compléments à 10, doubles, additions et soustractions jusqu'à 20 puis 60, dizaines entières.
+ *  CE1 — tables d'addition, tables de 2, 3, 4, 5 et 10, ajouter/retrancher 10, compléments à 100 (dizaines).
+ *  CE2 — toutes les tables et premières divisions, doubles et moitiés, compléments à 100 et à 1 000, ×10 et ×100.
+ *  Au CP et au CE1, les calculs ne s'écrivent qu'avec des chiffres et des signes : aucune lecture n'est nécessaire.
  * Pour chaque calcul, deux fausses réponses PLAUSIBLES (les erreurs que font vraiment les élèves).
  * Une partie = 6 « pages » de 8 calculs : un thème par page, de plus en plus difficile.
  */
 
-export type Level = 'cm1' | 'cm2';
+/** Le niveau de contenu est la classe : CP, CE1, CE2, CM1, CM2. */
+export type Level = Grade;
+export const LEVEL_IDS: readonly Level[] = ['cp', 'ce1', 'ce2', 'cm1', 'cm2'];
+export const isLevel = (v: unknown): v is Level => LEVEL_IDS.includes(v as Level);
 export type Rng = () => number;
 
 export interface Question {
@@ -319,7 +329,173 @@ const mul2d =
     return q(`${a} × ${b} = ?`, a * b, [a * (b + 1), a * (b - 1), noCarry]);
   };
 
+// ───────── Cycle 2 : petits nombres, écrits seulement avec des chiffres et des signes ─────────
+
+/** a + b, avec un total compris entre `minTotal` et `max`. */
+const addMax =
+  (max: number, minTotal = 3): Gen =>
+  (r) => {
+    const total = ri(r, minTotal, max);
+    const a = ri(r, 1, total - 1);
+    return q(`${a} + ${total - a} = ?`, total, [total + 1, total - 1, total + 2, a], true);
+  };
+
+/** a − b, avec un départ compris entre `minTotal` et `max` (le résultat reste au moins 1). */
+const subMax =
+  (max: number, minTotal = 3): Gen =>
+  (r) => {
+    const total = ri(r, minTotal, max);
+    const b = ri(r, 1, total - 1);
+    return q(`${total} − ${b} = ?`, total - b, [total - b + 1, total - b - 1, total + b], true);
+  };
+
+const plus1 =
+  (xmin: number, xmax: number): Gen =>
+  (r) => {
+    const x = ri(r, xmin, xmax);
+    return q(`${x} + 1 = ?`, x + 1, [x, x + 2], true);
+  };
+
+const minus1 =
+  (xmin: number, xmax: number): Gen =>
+  (r) => {
+    const x = ri(r, xmin, xmax);
+    return q(`${x} − 1 = ?`, x - 1, [x, x - 2], true);
+  };
+
+/** Complément : « 7 + ? = 10 ». */
+const compTo =
+  (target: number): Gen =>
+  (r) => {
+    const x = ri(r, 1, target - 1);
+    const a = target - x;
+    return q(`${x} + ? = ${target}`, a, [x, a + 1, a - 1], true);
+  };
+
+/** Complément à 100 avec des dizaines : « 60 + ? = 100 ». */
+const compH =
+  (target: number, step: number): Gen =>
+  (r) => {
+    const x = ri(r, 1, target / step - 1) * step;
+    const a = target - x;
+    return q(`${x} + ? = ${target}`, a, [a + 10, a - 10, x], true);
+  };
+
+/** Double écrit « n + n ». */
+const dblR =
+  (min: number, max: number): Gen =>
+  (r) => {
+    const n = ri(r, min, max);
+    return q(`${n} + ${n} = ?`, 2 * n, [2 * n + 2, 2 * n - 2, n], true);
+  };
+
+const addTens: Gen = (r) => {
+  const a = ri(r, 1, 8);
+  const b = ri(r, 1, 9 - a + 1);
+  return q(`${10 * a} + ${10 * b} = ?`, 10 * (a + b), [10 * (a + b) + 10, 10 * (a + b) - 10, a + b], true);
+};
+
+const subTens: Gen = (r) => {
+  const a = ri(r, 3, 10);
+  const b = ri(r, 1, a - 1);
+  return q(`${10 * a} − ${10 * b} = ?`, 10 * (a - b), [10 * (a - b) + 10, 10 * (a - b) - 10, a - b], true);
+};
+
+const plusTen =
+  (xmin: number, xmax: number): Gen =>
+  (r) => {
+    const x = ri(r, xmin, xmax);
+    return q(`${x} + 10 = ?`, x + 10, [x + 1, x + 20, x - 10], true);
+  };
+
+const minusTen =
+  (xmin: number, xmax: number): Gen =>
+  (r) => {
+    const x = ri(r, xmin, xmax);
+    return q(`${x} − 10 = ?`, x - 10, [x - 1, x - 20, x + 10], true);
+  };
+
+/** Un nombre à deux chiffres plus des unités, sans retenue : 34 + 5. */
+const addUnits =
+  (xmin: number, xmax: number): Gen =>
+  (r) => {
+    const x = ri(r, xmin, xmax);
+    const u = x % 10;
+    const b = ri(r, 1, Math.max(1, 9 - u));
+    return q(`${x} + ${b} = ?`, x + b, [x + b + 10, x + b - 10, x + b + 1], true);
+  };
+
+/** Un nombre à deux chiffres moins des unités, sans passer la dizaine : 38 − 5. */
+const subUnits =
+  (xmin: number, xmax: number): Gen =>
+  (r) => {
+    const x = ri(r, xmin, xmax);
+    const u = Math.max(2, x % 10);
+    const b = ri(r, 1, u - 1);
+    return q(`${x} − ${b} = ?`, x - b, [x - b + 10, x - b - 10, x - b - 1], true);
+  };
+
+/** Addition avec passage de la dizaine : 38 + 27. */
+const addC =
+  (xmin: number, xmax: number, ymin: number, ymax: number): Gen =>
+  (r) => {
+    const x = ri(r, xmin, xmax);
+    const y = ri(r, ymin, ymax);
+    return q(`${x} + ${y} = ?`, x + y, [x + y + 10, x + y - 10, x + y + 1], true);
+  };
+
+/** Soustraction : x − y avec x > y. */
+const subC =
+  (xmin: number, xmax: number, ymin: number, ymax: number): Gen =>
+  (r) => {
+    const x = ri(r, xmin, xmax);
+    const y = ri(r, ymin, Math.min(ymax, x - 2));
+    return q(`${x} − ${y} = ?`, x - y, [x - y + 10, x - y - 10, x - y + 1], true);
+  };
+
 const GENS: Record<Level, Gen[][]> = {
+  cp: [
+    // 1 · Échauffement : jusqu'à 10
+    [addMax(6), addMax(10), plus1(2, 19), minus1(3, 20), compTo(10), compTo(10)],
+    // 2 · Jusqu'à 20
+    [addMax(20), addMax(20), subMax(10), subMax(20), dblR(2, 10), compTo(20)],
+    // 3 · Doubles et compléments
+    [dblR(2, 10), dblR(3, 10), compTo(10), compTo(20), subMax(20), addMax(20)],
+    // 4 · Les dizaines
+    [addTens, subTens, plusTen(10, 80), minusTen(20, 90), plus1(20, 59), minus1(21, 60)],
+    // 5 · Jusqu'à 60
+    [addUnits(20, 55), subUnits(23, 59), plusTen(10, 50), minusTen(20, 60), compTo(20), addTens],
+    // 6 · Le grand défi
+    [addMax(20), subMax(20), addUnits(20, 80), subUnits(30, 90), addTens, subTens, compTo(10), dblR(5, 10)],
+  ],
+  ce1: [
+    // 1 · Échauffement
+    [addMax(10), addMax(20), subMax(20), compTo(10), compTo(20), dblR(3, 10)],
+    // 2 · Tables d'addition (on passe la dizaine)
+    [addMax(20, 11), addMax(20, 11), subMax(20, 11), dblR(5, 10), plusTen(10, 90), minusTen(20, 100)],
+    // 3 · Tables de 2, 5 et 10
+    [mulT([2, 5, 10]), mulT([2, 5, 10]), mulT([2, 5, 10]), dblR(4, 15), plusTen(10, 90), minusTen(20, 100)],
+    // 4 · Tables de 3 et 4
+    [mulT([3, 4]), mulT([3, 4]), mulT([2, 3, 4, 5, 10]), mulT([2, 5, 10]), dblR(6, 20), compH(100, 10)],
+    // 5 · Les dizaines
+    [addTens, subTens, compH(100, 10), compH(100, 10), addUnits(20, 80), subUnits(30, 95)],
+    // 6 · Le grand défi
+    [addC(10, 60, 6, 30), subC(30, 90, 6, 29), compH(100, 10), mulT([2, 3, 4, 5, 10]), mulT([2, 3, 4, 5, 10]), addTens, dblR(10, 30)],
+  ],
+  ce2: [
+    // 1 · Échauffement
+    [mulT([2, 3, 4, 5, 10]), mulT([2, 5, 10]), dbl(50), half(60), addC(10, 60, 6, 30), subC(30, 90, 6, 29)],
+    // 2 · Les tables
+    [mulT(T_ALL), mulT(T_ALL), mulT([6, 7, 8, 9]), mulT([3, 4, 6, 7]), mulT([2, 5, 10]), dbl(60)],
+    // 3 · Compléments et astuces
+    [compH(100, 10), compH(100, 5), comp(100, 1), comp(1000, 100), plus9(21, 90), minus9(40, 100)],
+    // 4 · × 10 et × 100
+    [mulPow(100, 99), mulPow(100, 99), mulTens, mulT([2, 3, 4, 5]), dbl(100), half(200)],
+    // 5 · Additions et soustractions
+    [addC(25, 150, 15, 90), addC(25, 150, 15, 90), subC(60, 200, 15, 90), subC(60, 200, 15, 90), mul2d(12, 25, 2, 4), half(200)],
+    // 6 · Le grand défi
+    [mulT(T_ALL), divT([2, 3, 4, 5], 2, 10), compH(100, 10), comp(1000, 100), mulPow(100, 99), plus9(21, 90), mul2d(12, 30, 2, 5)],
+  ],
   cm1: [
     // 1 · Échauffement : tables faciles, doubles, moitiés
     [mulT([2, 5, 10]), mulT([2, 5, 10]), mulT([3, 4]), dbl(50), half(100), add(5, 30, 5, 30)],
@@ -351,6 +527,9 @@ const GENS: Record<Level, Gen[][]> = {
 };
 
 export const PAGE_TITLES: Record<Level, string[]> = {
+  cp: ['Échauffement', 'Jusqu’à 20', 'Doubles et compléments', 'Les dizaines', 'Jusqu’à 60', 'Le grand défi'],
+  ce1: ['Échauffement', 'Tables d’addition', 'Tables de 2, 5, 10', 'Tables de 3 et 4', 'Les dizaines', 'Le grand défi'],
+  ce2: ['Échauffement', 'Les tables', 'Compléments et astuces', '× 10 et × 100', 'Additions et soustractions', 'Le grand défi'],
   cm1: ['Échauffement', 'Toutes les tables', 'Compléments et astuces', '× 10, × 100, × 1 000', 'Divisions et restes', 'Défi des décimaux'],
   cm2: ['Les tables', 'Calcul astucieux', 'Décimaux : × et ÷ 10, 100', 'Compléments et décimaux', 'Fractions et pourcentages', 'Le grand défi'],
 };
@@ -442,11 +621,15 @@ export const boardKey = (level: Level, diff: CourseDiff): BoardKey => (diff === 
 
 /** Secondes que met l'étiquette à tomber si l'élève ne valide pas : un peu moins à chaque calcul. */
 export function travelTime(level: Level, n: number, diff: CourseDiff = 'standard'): number {
-  const floor = level === 'cm1' ? 6.5 : 5.5;
-  return Math.max(floor, 10 - 0.08 * n) * COURSE_TUNING[diff].time;
+  // départ et plancher (en secondes) selon la classe : plus de temps pour les plus jeunes
+  const [start, floor] = { cp: [14, 10], ce1: [12, 8.5], ce2: [11, 7.5], cm1: [10, 6.5], cm2: [10, 5.5] }[level];
+  return Math.max(floor, start - 0.08 * n) * COURSE_TUNING[diff].time;
 }
 
 export const LEVELS: Array<{ id: Level; label: string; hint: string }> = [
+  { id: 'cp', label: 'CP', hint: 'Jusqu’à 20 puis 60, compléments à 10, doubles, dizaines' },
+  { id: 'ce1', label: 'CE1', hint: 'Tables d’addition, tables de 2, 3, 4, 5 et 10, compléments à 100' },
+  { id: 'ce2', label: 'CE2', hint: 'Toutes les tables, compléments, × 10 et × 100' },
   { id: 'cm1', label: 'CM1', hint: 'Tables, compléments, ×\u00a010\u00a0/\u00a0100\u00a0/\u00a01\u00a0000, divisions, premiers décimaux' },
   { id: 'cm2', label: 'CM2', hint: 'Calcul astucieux, décimaux, fractions simples, pourcentages' },
 ];

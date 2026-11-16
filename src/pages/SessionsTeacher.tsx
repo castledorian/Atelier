@@ -8,6 +8,7 @@ import type { CustomConfig, Difficulty } from '../game/difficulty';
 import { downloadText, fmtDate, toCsv } from '../game/history';
 import { MODES, PAGES, PAGE_TITLES } from '../game/memory/rounds';
 import type { Mode } from '../game/memory/rounds';
+import { AVAILABLE } from '../game/grade';
 import { GAME_NAMES, describeConfig, parseMath, parseMemory, parseTyping } from '../game/sessionConfig';
 import type { GameKind } from '../game/sessionConfig';
 import type { Settings } from '../game/storage';
@@ -239,7 +240,7 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
             )}
             {draft.game === 'spelling' && (
               <>
-                <Seg label="Niveau" value={draft.level} options={LEVELS.map((l) => [l.id, l.label] as [Level, string])} onChange={(level) => set({ level })} />
+                <Seg label="Niveau" value={draft.level} options={LEVELS.filter((l) => AVAILABLE.spelling.includes(l.id)).map((l) => [l.id, l.label] as [Level, string])} onChange={(level) => set({ level })} />
                 <Seg label="Difficulté" value={draft.courseDiff} options={COURSE_DIFFS.map((d) => [d.id, d.label] as [CourseDiff, string])} onChange={(courseDiff) => set({ courseDiff })} />
                 <p className="text-[14px] leading-snug text-ink/70">Dix phrases par essai. La difficulté règle le nombre de propositions et la présence de l’indice.</p>
               </>

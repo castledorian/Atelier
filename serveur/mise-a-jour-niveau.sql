@@ -32,3 +32,8 @@ begin
 end $$;
 
 grant execute on function public.my_sessions(text) to anon, authenticated;
+
+-- Résumés anonymes d'équilibrage : accepter aussi les niveaux du cycle 2 (CP, CE1, CE2).
+alter table public.balance_runs drop constraint if exists balance_runs_level_check;
+alter table public.balance_runs add constraint balance_runs_level_check
+  check (level is null or level in ('cp', 'ce1', 'ce2', 'cm1', 'cm2'));

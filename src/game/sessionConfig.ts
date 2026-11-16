@@ -1,6 +1,6 @@
 import { isDifficulty, sanitizeCustom } from './difficulty';
 import type { CustomConfig, Difficulty } from './difficulty';
-import { COURSE_DIFFS, LEVELS, isCourseDiff } from './course/questions';
+import { COURSE_DIFFS, LEVELS, isCourseDiff, isLevel } from './course/questions';
 import type { CourseDiff, Level } from './course/questions';
 import { MODES, PAGES } from './memory/rounds';
 import type { Mode } from './memory/rounds';
@@ -36,7 +36,7 @@ export function parseTyping(v: unknown): TypingCfg {
 
 export function parseMath(v: unknown): MathCfg {
   const o = obj(v);
-  return { level: o.level === 'cm2' ? 'cm2' : 'cm1', diff: isCourseDiff(o.diff) ? o.diff : 'standard' };
+  return { level: isLevel(o.level) ? o.level : 'cm1', diff: isCourseDiff(o.diff) ? o.diff : 'standard' };
 }
 
 /** Chasse aux fautes : mêmes réglages que Course à l'encre (niveau et difficulté). */

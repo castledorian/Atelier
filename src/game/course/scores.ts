@@ -1,4 +1,4 @@
-import { isCourseDiff } from './questions';
+import { LEVEL_IDS, isCourseDiff, isLevel } from './questions';
 import type { BoardKey, CourseDiff, Level } from './questions';
 
 /** Tableau des meilleurs scores de « Course à l'encre », gardé sur cet appareil (un classement par niveau). */
@@ -15,7 +15,7 @@ const KEY = 'atelier.course.scores.v1';
 const LEVEL_KEY = 'atelier.course.level.v1';
 export const MAX_COURSE_SCORES = 10;
 
-const KEYS: BoardKey[] = ['cm1', 'cm1-apprenti', 'cm1-expert', 'cm2', 'cm2-apprenti', 'cm2-expert'];
+const KEYS: BoardKey[] = LEVEL_IDS.flatMap((l): BoardKey[] => [l, `${l}-apprenti`, `${l}-expert`]);
 type Store = Record<BoardKey, CourseScore[]>;
 
 function read(): Store {
@@ -69,7 +69,8 @@ export function clearCourseScores(level: BoardKey): CourseScore[] {
 
 export function loadCourseLevel(): Level {
   try {
-    return localStorage.getItem(LEVEL_KEY) === 'cm2' ? 'cm2' : 'cm1';
+    const v = localStorage.getItem(LEVEL_KEY);
+    return isLevel(v) ? v : 'cm1';
   } catch {
     return 'cm1';
   }
