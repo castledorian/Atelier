@@ -16,7 +16,7 @@ import { newRunId } from '../game/history';
 import { parseSpelling } from '../game/sessionConfig';
 import { loadSettings, saveSettings } from '../game/storage';
 import type { Settings } from '../game/storage';
-import { BOON_AFTER, HINT, HP, ROUNDS, choicesFor, duelItems, isFault, isPerfect, nextItem, offerBoons, pointsFor, roleOf, shuffle } from '../game/spelling/engine';
+import { BOON_AFTER, HINT, HP, RETRY_MAX, REVIVE_HP, ROUNDS, choicesFor, duelItems, isFault, isPerfect, nextItem, offerBoons, pickRetry, pointsFor, roleOf, shuffle } from '../game/spelling/engine';
 import type { Boon, Item, RoundOutcome } from '../game/spelling/engine';
 import { addSpellingScore, loadSpellingPrefs, loadSpellingScores, saveSpellingPrefs } from '../game/spelling/scores';
 import { enqueue, flush } from '../server/outbox';
@@ -59,6 +59,9 @@ interface GameState {
   missed: Item[];
   /** phrases des parties précédentes */
   avoid: Set<string>;
+  /** phrases ratées dans les parties précédentes, à revoir */
+  retry: string[];
+  revived: boolean;
   t0: number;
   /** vies (le duel de l'Encre n'en a pas : maxHp = 0) */
   hp: number;
@@ -128,6 +131,27 @@ const rememberSeen = (ids: string[]) => {
   }
 };
 
+const RETRY_KEY = 'atelier.spelling.retry.v1';
+const loadRetry = (): string[] => {
+  try {
+    const v = JSON.parse(localStorage.getItem(RETRY_KEY) ?? '[]');
+    return Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(0, RETRY_MAX) : [];
+  } catch {
+    return [];
+  }
+};
+/** Les phrases ratées reviendront la prochaine fois ; celles qu'on vient de revoir et réussies sortent de la liste. */
+const saveRetry = (before: string[], used: ReadonlySet<string>, missed: readonly Item[]) => {
+  try {
+    const kept = before.filter((id) => !used.has(id));
+    const again = missed.map((m) => m.id);
+    localStorage.setItem(RETRY_KEY, JSON.stringify([...new Set([...again, ...kept])].slice(0, RETRY_MAX)));
+  } catch {
+    /* ignoré */
+  }
+};
+const RULE_SHORT: Record<string, string> = { doublon: 'Le Doublon', jumeaux: 'Les Jumeaux', accordeur: 'L’Accordeur' };
+
 const isWord = (w: string) => /[\p{L}\p{N}]/u.test(w);
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
@@ -186,9 +210,13 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
     let summoned: RuleId | null = null;
     if (s.duel) item = s.duel.items[s.asked];
     else {
-      const n = nextItem(s.level, s.asked, s.lastOk, s.active, s.used, Math.random, s.avoid);
-      item = n.item;
-      summoned = n.summoned;
+      const back = pickRetry(s.level, s.asked, s.used, s.retry);
+      if (back) item = back;
+      else {
+        const n = nextItem(s.level, s.asked, s.lastOk, s.active, s.used, Math.random, s.avoid);
+        item = n.item;
+        summoned = n.summoned;
+      }
     }
     s.used.add(item.id);
     setSummon(summoned);
@@ -282,7 +310,9 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
         .sort((a, b) => (s.faults[b] ?? 0) - (s.faults[a] ?? 0));
       encre = { top: seen[0] ?? null, promoted: r.promoted };
     }
-    rememberSeen([...s.used]);
+    const missedIds = new Set(s.missed.map((m) => m.id));
+    rememberSeen([...s.used].filter((id) => !missedIds.has(id)));
+    if (!s.duel && !sesRef.current.sess) saveRetry(s.retry, s.used, s.missed);
     setOver({ score: s.score, okRounds: s.okRounds, total, bestStreak: s.best, rank, record, level: s.level, diff: s.diff, missed: s.missed, dead, defeated: dead ? s.asked : total, hpLeft: s.hp, maxHp: s.maxHp, ...encre });
     sfx.play(dead ? 'over' : 'clear');
     setPhase('over');
@@ -309,6 +339,8 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
         faults: {},
         missed: [],
         avoid: new Set(loadSeen()),
+        retry: duel || sx.sess ? [] : loadRetry(),
+        revived: false,
         t0: Date.now(),
         hp: duel ? 0 : HP[diff],
         maxHp: duel ? 0 : HP[diff],
@@ -345,6 +377,13 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
     s.hp = Math.max(0, s.hp - 1);
     sfx.play('breach');
     if (s.hp > 0) return { ...nr, msg: `${why} −1 vie.` };
+    if (!s.revived) {
+      // seconde chance : une seule fois par partie, l'encre rend quelques vies
+      s.revived = true;
+      s.hp = Math.min(REVIVE_HP, s.maxHp);
+      sfx.play('ding');
+      return { ...nr, msg: `Courage ! Tu repars avec ${s.hp} vies : dernière chance.` };
+    }
     // plus de vie : l'ennemi gagne cette manche
     s.faults[r.item.rule] = (s.faults[r.item.rule] ?? 0) + 1;
     s.missed.push(r.item);
@@ -642,6 +681,12 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
           <span className="subhead">
             {duel ? `Duel · ${ruleInfo((s.duel as { rule: RuleId }).rule).name} · ${counter.n}/${total}` : `Ennemi ${counter.n}/${ROUNDS}`}
           </span>
+          {!duel && (
+            <span className="rule-pill" title={ruleInfo(round.item.rule).name}>
+              {RULE_SHORT[round.item.rule] ?? ruleInfo(round.item.rule).name}
+              {s.retry.includes(round.item.id) ? ' · à revoir' : ''}
+            </span>
+          )}
           {!duel && <span className="num">{fmt(counter.score)} pts</span>}
         </div>
       </div>

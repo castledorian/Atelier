@@ -1,4 +1,5 @@
 import type { RuleId } from '../encre/rules';
+import { EXTRA } from './bank-extra';
 
 /**
  * Banque de phrases de « Chasse aux fautes ». Chaque phrase contient UN mot faux, écrit entre crochets :
@@ -9,7 +10,7 @@ import type { RuleId } from '../encre/rules';
 
 export type Entry = readonly [rule: RuleId, level: 1 | 2, template: string, tip?: string];
 
-export const BANK: readonly Entry[] = [
+const CORE: readonly Entry[] = [
   // ─── Le Doublon : une lettre double oubliée ou ajoutée ───
   ['doublon', 1, 'Je vais [apeler|appeler|apeller] mon ami.', 'Pense à « un appel ».'],
   ['doublon', 1, 'Nous allons [aprendre|apprendre|apprandre] une poésie.', 'Pense à « un apprentissage ».'],
@@ -97,3 +98,6 @@ export const BANK: readonly Entry[] = [
   ['accordeur', 2, 'Des [bijou|bijoux|bijous] brillent dans la boîte.', 'Un bijou, des bijoux.'],
   ['accordeur', 2, 'Les [journal|journaux|journals] sont sur la table.', 'Un journal, des journaux.'],
 ];
+
+/** Les phrases d'origine d'abord (leurs identifiants ne changent jamais), puis les nouvelles. */
+export const BANK: readonly Entry[] = [...CORE, ...EXTRA];

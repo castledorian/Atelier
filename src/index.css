@@ -3381,3 +3381,23 @@ html[data-comfort='on'] .title-sm {
     margin-left: 0;
   }
 }
+
+/* Étiquette de la règle travaillée */
+.rule-pill {
+  display: inline-block;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 1px 10px;
+  border: 2px solid var(--ink, #1d2a44);
+  border-radius: 999px;
+  background: #fff8d6;
+  font-size: 13px;
+  font-weight: 700;
+}
+.sp-hud .sp-info .rule-pill {
+  max-width: none;
+  flex: none;
+  overflow: visible;
+}

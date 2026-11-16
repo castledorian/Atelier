@@ -113,3 +113,39 @@ test('Chasse aux fautes : les rôles d’ennemis sont tous représentés et le b
   for (const r of ['splash', 'tache', 'pate']) assert.ok(roles.has(r as never), r);
   assert.equal(roleOf(ITEMS[0], true), 'boss');
 });
+
+import { itemsFor } from '../src/game/spelling/engine';
+
+test('Chasse aux fautes : la banque est assez grande et chaque phrase est valide', () => {
+  const rules = ['doublon', 'jumeaux', 'accordeur'] as const;
+  for (const r of rules) {
+    const l1 = ITEMS.filter((i) => i.rule === r && i.level === 1).length;
+    const all = ITEMS.filter((i) => i.rule === r).length;
+    assert.ok(l1 >= 35, `${r} : ${l1} phrases de niveau 1`);
+    assert.ok(all >= 55, `${r} : ${all} phrases`);
+  }
+  assert.ok(ITEMS.length >= 190);
+  const fixed = new Set<string>();
+  for (const i of ITEMS) {
+    assert.notEqual(i.wrong, i.right, i.fixed);
+    const extra = i.others.filter((o) => o !== i.right && o !== i.wrong);
+    assert.ok(extra.length >= 1, `Apprenti : au moins 2 propositions : ${i.fixed}`);
+    assert.ok(i.tip.length > 8, i.fixed);
+    assert.ok(!fixed.has(i.fixed), `phrase en double : ${i.fixed}`);
+    fixed.add(i.fixed);
+  }
+  // le CM1 n'a que le niveau 1 : il en reste assez pour jouer longtemps
+  assert.ok(itemsFor('cm1').length >= 120);
+});
+
+import { RETRY_SLOTS, pickRetry } from '../src/game/spelling/engine';
+
+test('Chasse aux fautes : les phrases ratées reviennent aux manches prévues, une seule fois', () => {
+  const id = ITEMS.find((i) => i.level === 1)!.id;
+  const used = new Set<string>();
+  assert.equal(pickRetry('cm1', 0, used, [id]), null);
+  assert.equal(pickRetry('cm1', RETRY_SLOTS[0], used, [id])?.id, id);
+  used.add(id);
+  assert.equal(pickRetry('cm1', RETRY_SLOTS[1], used, [id]), null);
+  assert.equal(pickRetry('cm1', RETRY_SLOTS[0], new Set(), ['inconnu']), null);
+});

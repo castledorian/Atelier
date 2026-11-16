@@ -16,6 +16,11 @@ export const HINT: Record<CourseDiff, 'free' | 'cost' | 'none'> = { apprenti: 'f
 /** Vies du joueur au début d'une partie, selon la difficulté : chaque erreur en coûte une. */
 export const HP: Record<CourseDiff, number> = { apprenti: 6, standard: 5, expert: 4 };
 /** Après combien d'ennemis vaincus on choisit un bonus (le dernier ennemi, le 10e, est le boss). */
+/** Seconde chance : à zéro vie, l'élève revient une seule fois par partie avec ce nombre de vies. */
+export const REVIVE_HP = 2;
+/** Répétition espacée : jusqu'à RETRY_MAX phrases ratées reviennent dans la partie suivante, aux manches RETRY_SLOTS. */
+export const RETRY_MAX = 6;
+export const RETRY_SLOTS: readonly number[] = [2, 5, 7];
 export const BOON_AFTER: readonly number[] = [3, 6];
 
 export type BoonId = 'vie' | 'bouclier' | 'loupe';
@@ -178,4 +183,13 @@ export function pointsFor(o: RoundOutcome, streakBefore: number): number {
   const fix = o.fixTries === 1 ? (o.hint ? 5 : 10) : o.fixTries === 2 ? 5 : 0;
   const bonus = isPerfect(o) ? 2 * Math.min(5, streakBefore + 1) : 0;
   return tap + fix + bonus;
+}
+
+/** Une phrase ratée à reproposer à cette manche (ou null) : elle existe pour ce niveau et n'a pas déjà été jouée. */
+export function pickRetry(level: Level, asked: number, used: ReadonlySet<string>, retry: readonly string[]): Item | null {
+  const k = RETRY_SLOTS.indexOf(asked);
+  if (k < 0) return null;
+  const ok = itemsFor(level);
+  const todo = retry.map((id) => ok.find((i) => i.id === id)).filter((i): i is Item => !!i && !used.has(i.id));
+  return todo[0] ?? null;
 }
