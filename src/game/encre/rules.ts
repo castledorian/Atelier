@@ -1,73 +1,70 @@
 /**
- * Le bestiaire de l'Encre : une créature par règle. Chaque faute est rangée dans une règle ; la créature
- * n'est jamais un adversaire de l'élève mais de la page, et sa « parade » est la règle qui la dissipe.
- * Voir « Atelier — Cadre de game design et lore : l'Encre ».
+ * Les règles à revoir : chaque faute est rangée dans une règle (la retenue, les homophones…), avec l'astuce qui aide
+ * à la retenir. Le suivi reste sur l'appareil de l'élève.
  */
 
 export type RuleId = 'retenue' | 'table-fantome' | 'zero-voleur' | 'doublon' | 'jumeaux' | 'accordeur';
 export type Family = 'calcul' | 'orthographe';
 
-export interface Creature {
+export interface RuleInfo {
   id: RuleId;
-  /** nom avec article : « La Retenue » */
+  /** nom de la règle : « La retenue » */
   name: string;
   family: Family;
-  /** la faute qu'elle incarne, en une phrase */
+  /** la faute fréquente, en une phrase */
   fault: string;
-  /** la règle qui la dissipe, en une phrase d'élève */
+  /** l'astuce pour la retenir, en une phrase d'élève */
   parade: string;
 }
 
-export const FAMILIES: Record<Family, string> = { calcul: 'Calcul', orthographe: 'Orthographe' };
-
-export const CREATURES: Creature[] = [
+export const RULES: RuleInfo[] = [
   {
     id: 'retenue',
-    name: 'La Retenue',
+    name: 'La retenue',
     family: 'calcul',
     fault: 'Un report oublié dans une addition ou une multiplication.',
     parade: 'Pose la retenue au-dessus de la colonne suivante.',
   },
   {
     id: 'table-fantome',
-    name: 'La Table fantôme',
+    name: 'Les tables de 6 à 9',
     family: 'calcul',
     fault: 'Un produit des tables de 6 à 9 que l’on confond.',
     parade: 'Appuie-toi sur une table connue : 9 × 7, c’est 10 × 7 moins 7.',
   },
   {
     id: 'zero-voleur',
-    name: 'Le Zéro voleur',
+    name: '× et ÷ par 10, 100, 1 000',
     family: 'calcul',
     fault: 'Un chiffre ou un zéro mal placé en multipliant ou en divisant par 10, 100, 1 000.',
     parade: '× 10, × 100, × 1 000 décalent les chiffres vers la gauche ; ÷ 10, ÷ 100, vers la droite.',
   },
   {
     id: 'doublon',
-    name: 'Le Doublon',
+    name: 'Les lettres doubles',
     family: 'orthographe',
     fault: 'Une lettre double oubliée ou ajoutée.',
     parade: 'Cherche un mot de la même famille.',
   },
   {
     id: 'jumeaux',
-    name: 'Les Jumeaux',
+    name: 'Les mots qui sonnent pareil',
     family: 'orthographe',
     fault: 'Deux mots qui sonnent pareil et que l’on échange (a / à, et / est, on / ont…).',
     parade: 'Essaie avec « avait », ou avec « était ».',
   },
   {
     id: 'accordeur',
-    name: 'L’Accordeur fantôme',
+    name: 'Les accords',
     family: 'orthographe',
     fault: 'Un accord oublié (nombre, genre, verbe).',
     parade: 'Qui fait l’action ? Accorde avec lui.',
   },
 ];
 
-export const creatureOf = (id: RuleId): Creature => CREATURES.find((c) => c.id === id) as Creature;
-export const isRuleId = (v: unknown): v is RuleId => CREATURES.some((c) => c.id === v);
-export const rulesOf = (family: Family): RuleId[] => CREATURES.filter((c) => c.family === family).map((c) => c.id);
+export const ruleInfo = (id: RuleId): RuleInfo => RULES.find((c) => c.id === id) as RuleInfo;
+export const isRuleId = (v: unknown): v is RuleId => RULES.some((c) => c.id === v);
+export const rulesOf = (family: Family): RuleId[] => RULES.filter((c) => c.family === family).map((c) => c.id);
 
 // ───────────── Classement des calculs de « Course à l'encre » ─────────────
 
@@ -75,7 +72,7 @@ const norm = (s: string) => s.replace(/[\s  ]/g, '');
 
 /**
  * Règle d'un calcul, d'après son écriture (« 7 × 8 = ? », « 3,4 × 100 = ? »…).
- * `null` : pas de règle propre (la faute reste une simple Bavure, sans créature).
+ * `null` : pas de règle propre (la faute est simplement comptée dans le score).
  */
 export function ruleOfCalc(text: string): RuleId | null {
   const t = norm(text);

@@ -1,5 +1,5 @@
-import { creatureOf } from '../encre/bestiary';
-import type { RuleId } from '../encre/bestiary';
+import { ruleInfo } from '../encre/rules';
+import type { RuleId } from '../encre/rules';
 import { shouldSummon } from '../encre/tracker';
 import type { CourseDiff, Level } from '../course/questions';
 import { BANK } from './bank';
@@ -55,7 +55,7 @@ export function parseEntry(rule: RuleId, level: 1 | 2, template: string, tip?: s
     suffix,
     right,
     others,
-    tip: tip ?? creatureOf(rule).parade,
+    tip: tip ?? ruleInfo(rule).parade,
     fixed: `${pre}${right}${suffix}${post}`.replace(/\s+/g, ' ').trim(),
   };
 }
@@ -93,9 +93,12 @@ export function nextItem(
   active: readonly RuleId[],
   used: ReadonlySet<string>,
   r: Rng = Math.random,
+  /** phrases vues dans les parties précédentes : évitées tant qu'il en reste d'autres */
+  avoid: ReadonlySet<string> = new Set(),
 ): { item: Item; summoned: RuleId | null } {
   const all = itemsFor(level);
-  const free = all.filter((i) => !used.has(i.id));
+  const fresh = all.filter((i) => !used.has(i.id) && !avoid.has(i.id));
+  const free = fresh.length >= 3 ? fresh : all.filter((i) => !used.has(i.id));
   const pool = free.length ? free : all;
   if (shouldSummon(asked, lastOk, active)) {
     const rule = active[Math.floor(r() * active.length)];

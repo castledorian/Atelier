@@ -16,12 +16,11 @@ interface HomeProps {
   onLogin: (tab: 'student' | 'teacher') => void;
   onDashboard: () => void;
   onPrivacy: () => void;
-  onBestiary: () => void;
   onLogout: () => void;
   install: InstallInfo;
 }
 
-export default function Home({ student, teacher, onPlay, onSessions, onLogin, onDashboard, onPrivacy, onBestiary, onLogout, install }: HomeProps) {
+export default function Home({ student, teacher, onPlay, onSessions, onLogin, onDashboard, onPrivacy, onLogout, install }: HomeProps) {
   const online = serverEnabled();
   const [todo, setTodo] = useState<number | null>(null);
   const token = student?.token ?? null;
@@ -134,12 +133,6 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
           <span className="gcard-name">Mémoire d’encre</span>
           <span className="gcard-text">Retiens les taches qui s’allument, puis refais la suite ou retrouve leurs places.</span>
           <span className="gcard-go">Jouer →</span>
-        </button>
-        <button type="button" className="gcard" onClick={onBestiary}>
-          <span className="gcard-tag">Carnet</span>
-          <span className="gcard-name">Le bestiaire</span>
-          <span className="gcard-text">Les taches d’encre que tu as croisées, et la parade de chacune.</span>
-          <span className="gcard-go">Ouvrir →</span>
         </button>
         <div className="gcard gcard-soon" aria-label="Autres jeux à venir">
           <span className="gcard-tag">Bientôt</span>

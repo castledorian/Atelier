@@ -1,11 +1,10 @@
-import { CREATURES, isRuleId } from './bestiary';
-import type { Family, RuleId } from './bestiary';
+import { RULES, isRuleId } from './rules';
+import type { Family, RuleId } from './rules';
 
 /**
- * Suivi LOCAL des fautes par règle. Rien n'est envoyé : le bestiaire reste sur l'appareil de l'élève.
- * Une faute isolée n'est qu'une « Bavure » ; la même règle ratée 3 fois en 10 parties devient une « Rature »
- * (la créature apparaît dans le bestiaire). Elle se dissipe en gagnant un duel, et se « dessine au crayon »
- * quand elle a été dissipée sur 3 jours différents.
+ * Suivi LOCAL des fautes par règle. Rien n'est envoyé : tout reste sur l'appareil de l'élève.
+ * Une faute isolée ne compte pas ; la même règle ratée 3 fois en 10 parties passe « à revoir ».
+ * Réussir un entraînement de 3 questions la fait « progresser » ; réussi sur 3 jours différents, elle est « acquise ».
  */
 
 /** Nombre de parties récentes regardées pour une règle. */
@@ -29,7 +28,7 @@ export interface RuleState {
 }
 
 export type Store = Partial<Record<RuleId, RuleState>>;
-export type CreatureState = 'inconnue' | 'silhouette' | 'encree' | 'palie' | 'crayon';
+export type RuleStatus = 'neuve' | 'isolee' | 'a-revoir' | 'progres' | 'acquise';
 
 const KEY = 'atelier.encre.v1';
 
@@ -59,17 +58,17 @@ export function saveStore(s: Store) {
   try {
     localStorage.setItem(KEY, JSON.stringify(s));
   } catch {
-    /* stockage refusé : le bestiaire est un bonus */
+    /* stockage refusé : le suivi des règles est un bonus */
   }
 }
 
-export function stateOf(s: RuleState | undefined): CreatureState {
-  if (!s) return 'inconnue';
+export function stateOf(s: RuleState | undefined): RuleStatus {
+  if (!s) return 'neuve';
   if (s.met) {
     const days = new Set(s.wins).size;
-    return days >= CRAYON_DAYS ? 'crayon' : days >= 1 ? 'palie' : 'encree';
+    return days >= CRAYON_DAYS ? 'acquise' : days >= 1 ? 'progres' : 'a-revoir';
   }
-  return s.total > 0 ? 'silhouette' : 'inconnue';
+  return s.total > 0 ? 'isolee' : 'neuve';
 }
 
 /** Fautes de la règle sur les dernières parties. */
@@ -96,7 +95,7 @@ export function recordGame(store: Store, rules: readonly RuleId[], faults: Parti
 }
 
 /** Enregistre un duel. Une victoire est comptée une fois par jour. */
-export function recordDuel(store: Store, id: RuleId, won: boolean, today: string): { store: Store; before: CreatureState; after: CreatureState } {
+export function recordDuel(store: Store, id: RuleId, won: boolean, today: string): { store: Store; before: RuleStatus; after: RuleStatus } {
   const prev = store[id] ?? blank();
   const before = stateOf(prev);
   const s: RuleState = { ...prev, wins: won && !prev.wins.includes(today) ? [...prev.wins, today] : prev.wins };
@@ -113,11 +112,11 @@ export const dayKey = (t: number = Date.now()): string => {
 
 /** Règles qui reviennent en jeu : une Rature apparue, pas encore dessinée au crayon. */
 export function activeRules(store: Store, family: Family): RuleId[] {
-  return CREATURES.filter((c) => c.family === family)
+  return RULES.filter((c) => c.family === family)
     .map((c) => c.id)
     .filter((id) => {
       const st = stateOf(store[id]);
-      return st === 'encree' || st === 'palie';
+      return st === 'a-revoir' || st === 'progres';
     });
 }
 

@@ -368,7 +368,7 @@ export function makeQuestion(level: Level, n: number, r: Rng = Math.random, rece
 
 /**
  * `count` calculs qui répondent à `match` (par exemple ceux d'une même règle), tirés dans toutes les pages du niveau.
- * Sert au duel contre une créature et au retour d'une Rature en cours de partie.
+ * Sert à l'entraînement sur une règle et au retour d'une règle à revoir en cours de partie.
  */
 export function questionsMatching(level: Level, match: (text: string) => boolean, count: number, r: Rng = Math.random): Question[] {
   const pool = GENS[level].flat();

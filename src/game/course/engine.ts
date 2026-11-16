@@ -1,6 +1,6 @@
 import type { Sfx } from '../audio';
-import { ruleOfCalc } from '../encre/bestiary';
-import type { RuleId } from '../encre/bestiary';
+import { ruleOfCalc } from '../encre/rules';
+import type { RuleId } from '../encre/rules';
 import { shouldSummon } from '../encre/tracker';
 import { COURSE_TUNING, PAGES, PAGE_TITLES, PER_PAGE, TOTAL, fmtNum, fromMissed, makeChoices, makeQuestion, questionsMatching, stageOf, travelTime } from './questions';
 import type { CourseDiff, Level, Missed, Question } from './questions';

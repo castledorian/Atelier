@@ -6,7 +6,6 @@ import Course from './games/Course';
 import Memory from './games/Memory';
 import Spelling from './games/Spelling';
 import Dashboard from './pages/Dashboard';
-import Bestiary from './pages/Bestiary';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Sessions from './pages/Sessions';
@@ -17,7 +16,7 @@ import { loadTeacher, saveTeacher, signOut, takeAuthHash } from './server/teache
 import type { TeacherSession } from './server/teacher';
 import type { SessionInfo, StudentAccount } from './server/types';
 
-type View = 'home' | 'login' | 'dashboard' | 'privacy' | 'sessions' | 'bestiary' | 'typing' | 'math' | 'memory' | 'spelling';
+type View = 'home' | 'login' | 'dashboard' | 'privacy' | 'sessions' | 'typing' | 'math' | 'memory' | 'spelling';
 
 // Lien reçu par email (confirmation d'inscription / mot de passe oublié) : lu une seule fois, au chargement de la page.
 const ARRIVAL = serverEnabled() ? takeAuthHash() : null;
@@ -73,7 +72,6 @@ export default function Shell() {
   }, []);
 
   if (view === 'privacy') return <Privacy onBack={home} />;
-  if (view === 'bestiary') return <Bestiary onBack={home} />;
 
   if (view === 'login') {
     return (
@@ -160,7 +158,6 @@ export default function Shell() {
       }}
       onDashboard={() => setView('dashboard')}
       onPrivacy={() => setView('privacy')}
-      onBestiary={() => setView('bestiary')}
       onLogout={logout}
       install={install}
     />

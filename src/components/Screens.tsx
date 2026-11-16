@@ -56,9 +56,6 @@ export function Options({ settings, kbOn, onChange }: OptionsProps) {
       <Check on={settings.comfort} onClick={() => onChange({ comfort: !settings.comfort })}>
         Lecture confortable
       </Check>
-      <Check on={settings.calm} onClick={() => onChange({ calm: !settings.calm })}>
-        Version calme
-      </Check>
       <button
         type="button"
         className="opt"

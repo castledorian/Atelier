@@ -1,7 +1,7 @@
 import { beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { installFakeStorage, seeded } from './helpers';
-import { CREATURES, creatureOf, ruleOfCalc, rulesOf } from '../src/game/encre/bestiary';
+import { RULES, ruleInfo, ruleOfCalc, rulesOf } from '../src/game/encre/rules';
 import * as T from '../src/game/encre/tracker';
 import { makeQuestion, questionsMatching, TOTAL } from '../src/game/course/questions';
 
@@ -10,9 +10,9 @@ beforeEach(() => {
 });
 
 test('bestiaire : chaque créature a un nom, une faute et une parade', () => {
-  for (const c of CREATURES) {
+  for (const c of RULES) {
     assert.ok(c.name && c.fault && c.parade, c.id);
-    assert.equal(creatureOf(c.id), c);
+    assert.equal(ruleInfo(c.id), c);
   }
   assert.deepEqual(rulesOf('calcul'), ['retenue', 'table-fantome', 'zero-voleur']);
 });
@@ -56,13 +56,13 @@ test('Bavure → Rature : 3 fautes sur les 10 dernières parties', () => {
   let s: T.Store = {};
   let r = T.recordGame(s, rules, { retenue: 1 });
   s = r.store;
-  assert.equal(T.stateOf(s.retenue), 'silhouette');
-  assert.equal(T.stateOf(s['table-fantome']), 'inconnue');
+  assert.equal(T.stateOf(s.retenue), 'isolee');
+  assert.equal(T.stateOf(s['table-fantome']), 'neuve');
   assert.deepEqual(r.promoted, []);
   r = T.recordGame(s, rules, { retenue: 2 });
   s = r.store;
   assert.deepEqual(r.promoted, ['retenue']);
-  assert.equal(T.stateOf(s.retenue), 'encree');
+  assert.equal(T.stateOf(s.retenue), 'a-revoir');
   // elle n'apparaît pas deux fois
   assert.deepEqual(T.recordGame(s, rules, { retenue: 5 }).promoted, []);
 });
@@ -79,25 +79,25 @@ test('fautes anciennes : sorties de la fenêtre de 10 parties', () => {
 test('duel : pâlie après une victoire, crayon après 3 jours différents', () => {
   let s: T.Store = T.recordGame({}, rulesOf('calcul'), { retenue: 3 }).store;
   let d = T.recordDuel(s, 'retenue', false, '2026-11-16');
-  assert.equal(d.after, 'encree');
+  assert.equal(d.after, 'a-revoir');
   s = d.store;
   d = T.recordDuel(s, 'retenue', true, '2026-11-16');
-  assert.deepEqual([d.before, d.after], ['encree', 'palie']);
+  assert.deepEqual([d.before, d.after], ['a-revoir', 'progres']);
   s = T.recordDuel(d.store, 'retenue', true, '2026-11-16').store; // même jour : compté une fois
-  assert.equal(T.stateOf(s.retenue), 'palie');
+  assert.equal(T.stateOf(s.retenue), 'progres');
   s = T.recordDuel(s, 'retenue', true, '2026-11-17').store;
   d = T.recordDuel(s, 'retenue', true, '2026-11-20');
-  assert.equal(d.after, 'crayon');
+  assert.equal(d.after, 'acquise');
   assert.deepEqual(T.activeRules(d.store, 'calcul'), []);
 });
 
 test('stockage : relu à l’identique, réparé s’il est abîmé', () => {
   const s = T.recordGame({}, rulesOf('calcul'), { 'zero-voleur': 4 }).store;
   T.saveStore(s);
-  assert.equal(T.stateOf(T.loadStore()['zero-voleur']), 'encree');
+  assert.equal(T.stateOf(T.loadStore()['zero-voleur']), 'a-revoir');
   localStorage.setItem('atelier.encre.v1', '{"retenue":{"hist":"x","total":-3,"met":1},"inconnue":{}}');
   const bad = T.loadStore();
-  assert.equal(T.stateOf(bad.retenue), 'inconnue');
+  assert.equal(T.stateOf(bad.retenue), 'neuve');
   assert.equal(Object.keys(bad).length, 1);
 });
 

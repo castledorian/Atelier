@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackButton } from '../components/BackButton';
-import { CreatureArt } from '../components/Creatures';
-import { DuelResult, RatureNote } from '../components/EncreNotes';
+import { DuelResult, ReviewNote } from '../components/EncreNotes';
 import type { DuelInfo } from '../components/EncreNotes';
 import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
 import { COURSE_DIFFS, LEVELS, boardKey } from '../game/course/questions';
 import type { CourseDiff, Level } from '../game/course/questions';
-import { creatureOf, rulesOf } from '../game/encre/bestiary';
-import type { RuleId } from '../game/encre/bestiary';
+import { ruleInfo, rulesOf } from '../game/encre/rules';
+import type { RuleId } from '../game/encre/rules';
 import { DUEL_SIZE, activeRules, dayKey, loadStore, recordDuel, recordGame, saveStore, stateOf } from '../game/encre/tracker';
 import { newRunId } from '../game/history';
 import { parseSpelling } from '../game/sessionConfig';
@@ -24,7 +23,7 @@ import { Frame } from '../pages/Frame';
 
 /**
  * « Chasse aux fautes » — jeu d'orthographe (CM1 / CM2) : une faute s'est glissée dans chaque phrase.
- * On touche le mot faux, puis on choisit la bonne écriture. Chaque faute se range dans une règle (une créature de l'Encre).
+ * On touche le mot faux, puis on choisit la bonne écriture. Chaque faute se range dans une règle.
  */
 
 type Phase = 'menu' | 'play' | 'over';
@@ -51,6 +50,10 @@ interface GameState {
   best: number;
   okRounds: number;
   faults: Partial<Record<RuleId, number>>;
+  /** phrases ratées, pour le récapitulatif */
+  missed: Item[];
+  /** phrases des parties précédentes */
+  avoid: Set<string>;
   t0: number;
 }
 
@@ -78,9 +81,28 @@ interface Over {
   duel?: DuelInfo;
   top: RuleId | null;
   promoted: RuleId[];
+  missed: Item[];
   level: Level;
   diff: CourseDiff;
 }
+
+const SEEN_KEY = 'atelier.spelling.seen.v1';
+const loadSeen = (): string[] => {
+  try {
+    const v = JSON.parse(localStorage.getItem(SEEN_KEY) ?? '[]');
+    return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+};
+/** On retient les dernières phrases jouées : la partie suivante en propose d'autres. */
+const rememberSeen = (ids: string[]) => {
+  try {
+    localStorage.setItem(SEEN_KEY, JSON.stringify([...loadSeen(), ...ids].slice(-30)));
+  } catch {
+    /* ignoré */
+  }
+};
 
 const isWord = (w: string) => /[\p{L}\p{N}]/u.test(w);
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -106,7 +128,6 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
     saveSettings(settings);
     document.documentElement.dataset.text = settings.textSize;
     document.documentElement.dataset.comfort = settings.comfort ? 'on' : 'off';
-    document.documentElement.dataset.calm = settings.calm ? 'on' : 'off';
   }, [settings]);
 
   // Parties envoyées sans réseau : on réessaie au démarrage et au retour du réseau
@@ -129,7 +150,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
     let summoned: RuleId | null = null;
     if (s.duel) item = s.duel.items[s.asked];
     else {
-      const n = nextItem(s.level, s.asked, s.lastOk, s.active, s.used);
+      const n = nextItem(s.level, s.asked, s.lastOk, s.active, s.used, Math.random, s.avoid);
       item = n.item;
       summoned = n.summoned;
     }
@@ -162,7 +183,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
       const d = recordDuel(loadStore(), s.duel.rule, won, dayKey());
       saveStore(d.store);
       encre = { top: null, promoted: [], duel: { rule: s.duel.rule, before: d.before, after: d.after, won } };
-      setOver({ score: 0, okRounds: s.okRounds, total, bestStreak: 0, rank: -1, record: false, level: s.level, diff: s.diff, ...encre });
+      setOver({ score: 0, okRounds: s.okRounds, total, bestStreak: 0, rank: -1, record: false, level: s.level, diff: s.diff, missed: [], ...encre });
       setPhase('over');
       return;
     }
@@ -212,11 +233,12 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
       const r = recordGame(loadStore(), rulesOf('orthographe'), s.faults);
       saveStore(r.store);
       const seen = (Object.keys(s.faults) as RuleId[])
-        .filter((k) => ['encree', 'palie'].includes(stateOf(r.store[k])))
+        .filter((k) => ['a-revoir', 'progres'].includes(stateOf(r.store[k])))
         .sort((a, b) => (s.faults[b] ?? 0) - (s.faults[a] ?? 0));
       encre = { top: seen[0] ?? null, promoted: r.promoted };
     }
-    setOver({ score: s.score, okRounds: s.okRounds, total, bestStreak: s.best, rank, record, level: s.level, diff: s.diff, ...encre });
+    rememberSeen([...s.used]);
+    setOver({ score: s.score, okRounds: s.okRounds, total, bestStreak: s.best, rank, record, level: s.level, diff: s.diff, missed: s.missed, ...encre });
     setPhase('over');
   }, [account]);
 
@@ -239,6 +261,8 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
         best: 0,
         okRounds: 0,
         faults: {},
+        missed: [],
+        avoid: new Set(loadSeen()),
         t0: Date.now(),
       };
       setOver(null);
@@ -264,7 +288,10 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
     s.score += gained;
     s.streak = isPerfect(out) ? s.streak + 1 : 0;
     s.best = Math.max(s.best, s.streak);
-    if (isFault(out)) s.faults[r.item.rule] = (s.faults[r.item.rule] ?? 0) + 1;
+    if (isFault(out)) {
+      s.faults[r.item.rule] = (s.faults[r.item.rule] ?? 0) + 1;
+      s.missed.push(r.item);
+    }
     else s.okRounds++;
     s.lastOk.push(!isFault(out));
     return { ...r, step: 'done', gained, revealed: tries === 3 };
@@ -341,9 +368,6 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
             <Check on={settings.comfort} onClick={() => setSettings((s) => ({ ...s, comfort: !s.comfort }))}>
               Lecture confortable
             </Check>
-            <Check on={settings.calm} onClick={() => setSettings((s) => ({ ...s, calm: !s.calm }))}>
-              Version calme
-            </Check>
           </div>
           <div className="mt-[var(--sp)]">
             <button type="button" className="btn btn-primary" autoFocus onClick={() => begin()}>
@@ -362,16 +386,15 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
         <section aria-label="Partie en cours">
           <div className="flex flex-wrap items-baseline justify-between gap-2 text-[15px]">
             <span className="subhead">
-              {g.current.duel ? `Duel · ${creatureOf(g.current.duel.rule).name}` : `Phrase ${counter.n} sur ${ROUNDS}`}
+              {g.current.duel ? `Duel · ${ruleInfo(g.current.duel.rule).name}` : `Phrase ${counter.n} sur ${ROUNDS}`}
               {g.current.duel ? ` · ${counter.n} sur ${g.current.duel.items.length}` : ''}
             </span>
             {!g.current.duel && <span className="num">Score : {fmt(counter.score)}</span>}
           </div>
           {summon && (
             <div className="summon-inline" role="status">
-              <CreatureArt id={summon} state="encree" calm={settings.calm} size={40} />
               <span>
-                <strong>{creatureOf(summon).name}</strong> passe par là.
+                On revoit : <strong>{ruleInfo(summon).name}</strong>.
               </span>
             </div>
           )}
@@ -542,7 +565,22 @@ function OverPanel({ over, cloud, account, onRestart, onDuel, onMenu }: { over: 
         </>
       )}
       {over.duel && <DuelResult duel={over.duel} />}
-      {over.top && !duel && <RatureNote rule={over.top} fresh={over.promoted.includes(over.top)} onDuel={onDuel} />}
+      {over.top && !duel && <ReviewNote rule={over.top} onDuel={onDuel} />}
+      {over.missed.length > 0 && !duel && (
+        <section className="mt-3" aria-labelledby="sp-recap">
+          <h2 id="sp-recap" className="subhead">
+            À retenir
+          </h2>
+          <ul className="sp-recap">
+            {over.missed.map((m) => (
+              <li key={m.id}>
+                <strong>{m.fixed}</strong>
+                <span>{m.tip}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {account && !duel && (
         <p className="mt-2 text-[14px] text-ink/75" aria-live="polite">
           {cloud === 'sending' && 'Envoi du score à la classe…'}

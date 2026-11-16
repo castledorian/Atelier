@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { BackButton, useFitRows } from '../components/BackButton';
-import { CreatureArt } from '../components/Creatures';
-import { DuelResult, RatureNote } from '../components/EncreNotes';
+import { DuelResult, ReviewNote } from '../components/EncreNotes';
 import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
 import { Sfx } from '../game/audio';
 import { CourseGame } from '../game/course/engine';
 import type { CourseResult } from '../game/course/engine';
-import { creatureOf, ruleOfCalc, rulesOf } from '../game/encre/bestiary';
-import type { RuleId } from '../game/encre/bestiary';
+import { ruleInfo, ruleOfCalc, rulesOf } from '../game/encre/rules';
+import type { RuleId } from '../game/encre/rules';
 import { DUEL_SIZE, activeRules, dayKey, loadStore, recordDuel, recordGame, saveStore, stateOf } from '../game/encre/tracker';
-import type { CreatureState } from '../game/encre/tracker';
+import type { RuleStatus } from '../game/encre/tracker';
 import { COURSE_DIFFS, LEVELS, PAGES, boardKey, fmtNum, questionsMatching } from '../game/course/questions';
 import type { BoardKey, CourseDiff, Level, Missed } from '../game/course/questions';
 import {
@@ -69,7 +68,7 @@ interface Run {
     /** Ratures apparues à la fin de cette partie */
     promoted: RuleId[];
     /** résultat du duel qui vient d'être joué */
-    duel?: { rule: RuleId; before: CreatureState; after: CreatureState; won: boolean };
+    duel?: { rule: RuleId; before: RuleStatus; after: RuleStatus; won: boolean };
   };
 }
 
@@ -148,7 +147,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
       const g = recordGame(loadStore(), rulesOf('calcul'), faults);
       saveStore(g.store);
       const seen = (Object.keys(faults) as RuleId[])
-        .filter((id) => ['encree', 'palie'].includes(stateOf(g.store[id])))
+        .filter((id) => ['a-revoir', 'progres'].includes(stateOf(g.store[id])))
         .sort((a, b) => (faults[b] ?? 0) - (faults[a] ?? 0));
       encre = { top: seen[0] ?? null, promoted: g.promoted };
     }
@@ -229,7 +228,6 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
     gameRef.current?.setOptions({ shake: settings.shake });
     document.documentElement.dataset.text = settings.textSize;
     document.documentElement.dataset.comfort = settings.comfort ? 'on' : 'off';
-    document.documentElement.dataset.calm = settings.calm ? 'on' : 'off';
   }, [settings, sfx]);
 
   const change = useCallback(
@@ -412,9 +410,8 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
           />
           {phase === 'play' && summon && (
             <div className="summon" role="status">
-              <CreatureArt id={summon} state="encree" calm={settings.calm} size={44} />
               <span>
-                <strong>{creatureOf(summon).name}</strong> passe par là. {creatureOf(summon).parade}
+                <strong>Astuce : {ruleInfo(summon).name}.</strong> {ruleInfo(summon).parade}
               </span>
             </div>
           )}
@@ -534,9 +531,6 @@ function SettingsRow({ settings, onChange }: { settings: Settings; onChange: (p:
       </Check>
       <Check on={settings.comfort} onClick={() => onChange({ comfort: !settings.comfort })}>
         Lecture confortable
-      </Check>
-      <Check on={settings.calm} onClick={() => onChange({ calm: !settings.calm })}>
-        Version calme
       </Check>
       <button
         type="button"
@@ -952,7 +946,7 @@ function OverScreen({ run, account, cloud, onRestart, onDrill, onDuel, onMenu, o
               <p className="mt-2 text-[15px] text-ink/75">{r.wrong === 0 ? 'Aucune faute : parfait !' : ''}</p>
             )}
             {run.encre?.duel && <DuelResult duel={run.encre.duel} />}
-            {run.encre?.top && !r.drill && <RatureNote rule={run.encre.top} fresh={run.encre.promoted.includes(run.encre.top)} onDuel={onDuel} />}
+            {run.encre?.top && !r.drill && <ReviewNote rule={run.encre.top} onDuel={onDuel} />}
           </>
         ) : (
           <div className="mt-2">

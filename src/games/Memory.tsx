@@ -179,7 +179,6 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
     gameRef.current?.setOptions({ shake: settings.shake });
     document.documentElement.dataset.text = settings.textSize;
     document.documentElement.dataset.comfort = settings.comfort ? 'on' : 'off';
-    document.documentElement.dataset.calm = settings.calm ? 'on' : 'off';
   }, [settings, sfx]);
 
   const change = useCallback(
@@ -431,9 +430,6 @@ function SettingsRow({ settings, onChange }: { settings: Settings; onChange: (p:
       </Check>
       <Check on={settings.comfort} onClick={() => onChange({ comfort: !settings.comfort })}>
         Lecture confortable
-      </Check>
-      <Check on={settings.calm} onClick={() => onChange({ calm: !settings.calm })}>
-        Version calme
       </Check>
       <button
         type="button"

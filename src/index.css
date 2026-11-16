@@ -1721,43 +1721,7 @@ html[data-comfort='on'] .title-sm {
   background: var(--color-ink);
 }
 
-/* Bestiaire de l'Encre */
-.bestiary {
-  display: grid;
-  gap: 10px;
-  margin-top: 8px;
-  padding: 0;
-  list-style: none;
-}
-.bcard {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  padding: 10px;
-  border: 2px solid var(--color-ink);
-  border-radius: 6px;
-  background: var(--color-paper-hi);
-}
-.bcard-name,
-.bcard-state,
-.bcard-line {
-  display: block;
-  font-size: 15px;
-  line-height: 1.35;
-}
-.bcard-name {
-  font-family: 'Special Elite', monospace;
-  font-size: 17px;
-}
-.bcard-state {
-  font-style: italic;
-  color: rgba(27, 25, 21, 0.75);
-}
-.bcard-line {
-  margin-top: 4px;
-}
-
-/* Présence d'une créature en cours de partie, et note de fin de partie */
+/* Astuce en cours de partie, et note de fin de partie */
 .summon {
   position: absolute;
   top: 8px;
@@ -1857,4 +1821,22 @@ html[data-comfort='on'] .title-sm {
   align-items: center;
   margin-top: 8px;
   font-size: 15px;
+}
+
+.sp-recap {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 0;
+  list-style: none;
+}
+.sp-recap li {
+  padding: 6px 10px;
+  border-left: 4px solid var(--color-ink);
+  font-size: 15px;
+  line-height: 1.4;
+}
+.sp-recap span {
+  display: block;
+  color: rgba(27, 25, 21, 0.8);
 }

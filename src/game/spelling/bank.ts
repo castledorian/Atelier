@@ -1,9 +1,9 @@
-import type { RuleId } from '../encre/bestiary';
+import type { RuleId } from '../encre/rules';
 
 /**
  * Banque de phrases de « Chasse aux fautes ». Chaque phrase contient UN mot faux, écrit entre crochets :
  * [mot faux | bonne écriture | autre proposition…]. Le niveau 1 sert au CM1 et au CM2, le niveau 2 au CM2 seulement.
- * `tip` : l'astuce qui permet de trouver la réponse (la « parade » de la créature sert quand il n'y en a pas).
+ * `tip` : l'astuce qui permet de trouver la réponse (l'astuce de la règle sert quand il n'y en a pas).
  * Règles du cycle 3 : lettres doubles, homophones grammaticaux (a/à, et/est, on/ont, son/sont, ou/où, ce/se), accords.
  */
 
@@ -29,6 +29,16 @@ export const BANK: readonly Entry[] = [
   ['doublon', 2, 'Le [proffesseur|professeur|proffeseur] distribue les cahiers.', 'Pense à « une profession » : un seul f.'],
   ['doublon', 2, 'Cet exercice est [dificile|difficile|difficille].', 'Pense à « une difficulté » : deux f.'],
 
+  ['doublon', 1, 'La [gome|gomme|gommme] est dans ma trousse.', 'Pense à « gommer » : deux m.'],
+  ['doublon', 1, 'Papa [appele|appelle|apelle] le médecin.', 'Dans « appeler », il y a deux p et deux l.'],
+  ['doublon', 1, 'Une [nouvele|nouvelle|nouvèle] élève arrive dans la classe.', 'Pense à « nouveau » : au féminin, « nouvelle » a deux l.'],
+  ['doublon', 1, 'Ce [colier|collier|collié] est en perles.', 'Pense à « colle » : deux l.'],
+  ['doublon', 1, 'Nous traversons le [pasage|passage|passsage] en courant.', 'Pense à « passer » : deux s.'],
+  ['doublon', 2, 'Nous habitons dans un [imeuble|immeuble|immeubble].', 'Le préfixe « im- » devant « meuble » donne deux m.'],
+  ['doublon', 2, 'Ce [terain|terrain|terrrain] est très grand.', 'Pense à « la terre » : deux r.'],
+  ['doublon', 2, 'Il a [atrapé|attrapé|attrappé] la balle.', 'Dans « attraper », deux t et un seul p.'],
+  ['doublon', 2, 'Ils visitent un [apartement|appartement|appartemment].', 'Deux p, un seul t, puis « -ement ».'],
+
   // ─── Les Jumeaux : deux mots qui sonnent pareil ───
   ['jumeaux', 1, 'Léa [à|a|as] faim après la récréation.', 'Essaie avec « avait » : Léa avait faim.'],
   ['jumeaux', 1, 'Nous allons [a|à|as] la piscine mardi.', 'Essaie avec « avait » : impossible, donc c’est « à ».'],
@@ -47,6 +57,19 @@ export const BANK: readonly Entry[] = [
   ['jumeaux', 2, 'Le chien [ce|se|ses] lave dans la cour.', 'Devant un verbe, on écrit « se » : il se lave.'],
   ['jumeaux', 2, '[Se|Ce|Ces] livre est très intéressant.', 'Devant un nom, on écrit « ce » : ce livre.'],
 
+  ['jumeaux', 1, 'Mon frère [et|est|ai] très grand.', 'Essaie avec « était » : mon frère était grand.'],
+  ['jumeaux', 1, 'Lola [à|a|as] un nouveau vélo.', 'Essaie avec « avait » : Lola avait un vélo.'],
+  ['jumeaux', 1, 'Je donne un cadeau [a|à|as] ma maman.', 'Essaie avec « avait » : impossible, donc c’est « à ».'],
+  ['jumeaux', 1, 'Les enfants [on|ont|ons] mangé des fraises.', 'Essaie avec « avaient » : ils avaient mangé.'],
+  ['jumeaux', 1, 'Ils [son|sont|sons] arrivés hier.', 'Essaie avec « étaient » : ils étaient arrivés.'],
+  ['jumeaux', 1, 'Ma sœur [et|est|es] ma meilleure amie.', 'Essaie avec « était » : ma sœur était ma meilleure amie.'],
+  ['jumeaux', 1, 'Le renard [est|et|ai] le chat sont amis.', 'On peut dire « et puis » : le renard et puis le chat.'],
+  ['jumeaux', 2, 'Je ne sais pas [ou|où|ous] il habite.', 'On parle d’un endroit : « où » avec un accent.'],
+  ['jumeaux', 2, 'Tu préfères le rouge [où|ou|ous] le bleu ?', 'Essaie avec « ou bien » : le rouge ou bien le bleu.'],
+  ['jumeaux', 2, 'Le garçon [ce|se|ses] regarde dans le miroir.', 'Devant un verbe, on écrit « se » : il se regarde.'],
+  ['jumeaux', 2, '[Se|Ce|Ces] soir, nous mangeons des crêpes.', 'Devant un nom, on écrit « ce » : ce soir.'],
+  ['jumeaux', 2, 'Mes parents [son|sont|ont] partis tôt.', 'Essaie avec « étaient » : mes parents étaient partis.'],
+
   // ─── L'Accordeur fantôme : un accord oublié ───
   ['accordeur', 1, 'Les enfants [joue|jouent|jouez] dans la cour.', 'Qui joue ? Les enfants : on accorde avec eux.'],
   ['accordeur', 1, 'Mes amis [arrive|arrivent|arrivons] demain.', 'Qui arrive ? Mes amis : plusieurs, donc « -ent ».'],
@@ -63,4 +86,14 @@ export const BANK: readonly Entry[] = [
   ['accordeur', 2, 'La maîtresse a rendu les cahiers [corrigé|corrigés|corrigée].', 'Les cahiers : masculin pluriel, donc « corrigés ».'],
   ['accordeur', 2, 'Les filles sont [parti|parties|partie].', 'Qui est parti ? Les filles : féminin pluriel, donc « parties ».'],
   ['accordeur', 2, 'Des chaussettes [bleu|bleues|bleus] sèchent sur le fil.', 'Des chaussettes : féminin pluriel, donc « bleues ».'],
+  ['accordeur', 1, 'Les chiens [aboie|aboient|aboies] dans le jardin.', 'Qui aboie ? Les chiens : plusieurs, donc « -ent ».'],
+  ['accordeur', 1, 'Mes cousines sont très [gentil|gentilles|gentils].', 'Mes cousines : féminin pluriel, donc « gentilles ».'],
+  ['accordeur', 1, 'Les nuages [passe|passent|passes] vite.', 'Qui passe ? Les nuages : plusieurs, donc « -ent ».'],
+  ['accordeur', 1, 'Je [manges|mange|mangent] une pomme.', 'Avec « je », le verbe se termine par « -e ».'],
+  ['accordeur', 1, 'Nous [chantent|chantons|chantes] une chanson.', 'Avec « nous », le verbe se termine par « -ons ».'],
+  ['accordeur', 1, 'Les petites filles sont [content|contentes|contents].', 'Les petites filles : féminin pluriel, donc « contentes ».'],
+  ['accordeur', 2, 'Les [animal|animaux|animals] vivent dans la forêt.', 'Un animal, des animaux.'],
+  ['accordeur', 2, 'Ma mère est [fatigué|fatiguée|fatigués].', 'Qui est fatiguée ? Ma mère : féminin singulier.'],
+  ['accordeur', 2, 'Des [bijou|bijoux|bijous] brillent dans la boîte.', 'Un bijou, des bijoux.'],
+  ['accordeur', 2, 'Les [journal|journaux|journals] sont sur la table.', 'Un journal, des journaux.'],
 ];
