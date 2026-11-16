@@ -18,12 +18,12 @@ import {
   recordCourseStamps,
   clearCourseScores,
   loadCourseDiff,
-  loadCourseLevel,
   loadCourseScores,
   saveCourseDiff,
   saveCourseLevel,
 } from '../game/course/scores';
 import type { CourseScore } from '../game/course/scores';
+import { levelOf, loadGrade } from '../game/grade';
 import { newRunId } from '../game/history';
 import { parseMath } from '../game/sessionConfig';
 import { loadSettings, saveSettings } from '../game/storage';
@@ -79,7 +79,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
   const [phase, setPhase] = useState<Phase>('menu');
   const [view, setView] = useState<MenuView>('main');
   const [settings, setSettings] = useState<Settings>(loadSettings);
-  const [level, setLevel] = useState<Level>(() => (session ? parseMath(session.config).level : loadCourseLevel()));
+  const [level, setLevel] = useState<Level>(() => (session ? parseMath(session.config).level : levelOf(loadGrade())));
   const [diff, setDiff] = useState<CourseDiff>(() => (session ? parseMath(session.config).diff : loadCourseDiff()));
   const ses = useSessionRun(account, session);
   const sesRef = useRef(ses);
@@ -560,12 +560,11 @@ interface MenuProps {
   onHome: () => void;
 }
 
-function MenuScreen({ view, setView, level, setLevel, diff, setDiff, settings, account, onChange, onStart, onHome }: MenuProps) {
+function MenuScreen({ view, setView, level, diff, setDiff, settings, account, onChange, onStart, onHome }: MenuProps) {
   const [scores, setScores] = useState<CourseScore[]>(() => loadCourseScores(boardKey(level, diff)));
-  const [sLevel, setSLevel] = useState<Level>(level);
   useEffect(() => {
-    setScores(loadCourseScores(boardKey(sLevel, diff)));
-  }, [sLevel, diff, view]);
+    setScores(loadCourseScores(boardKey(level, diff)));
+  }, [level, diff, view]);
 
   if (view !== 'main') {
     const titles = { howto: 'Comment jouer', scores: 'Scores', settings: 'Réglages' } as const;
@@ -594,13 +593,6 @@ function MenuScreen({ view, setView, level, setLevel, diff, setDiff, settings, a
     } else if (view === 'scores') {
       body = (
         <>
-          <div className="seg mb-2" role="tablist" aria-label="Niveau">
-            {LEVELS.map((l) => (
-              <button key={l.id} type="button" role="tab" aria-selected={sLevel === l.id} className="seg-b" onClick={() => setSLevel(l.id)}>
-                {l.label}
-              </button>
-            ))}
-          </div>
           <div className="seg mb-2" role="tablist" aria-label="Difficulté">
             {COURSE_DIFFS.map((d) => (
               <button key={d.id} type="button" role="tab" aria-selected={diff === d.id} className="seg-b" onClick={() => setDiff(d.id)}>
@@ -609,13 +601,13 @@ function MenuScreen({ view, setView, level, setLevel, diff, setDiff, settings, a
             ))}
           </div>
           <LocalTable scores={scores} limit={6} />
-          {account && <Board account={account} level={boardKey(sLevel, diff)} refreshKey="menu" />}
+          {account && <Board account={account} level={boardKey(level, diff)} refreshKey="menu" />}
           {scores.length > 0 && (
             <button
               type="button"
               className="btn btn-ghost mt-3"
               onClick={() => {
-                if (window.confirm('Effacer les scores de cet appareil pour ce niveau ?')) setScores(clearCourseScores(boardKey(sLevel, diff)));
+                if (window.confirm('Effacer les scores de cet appareil pour ce niveau ?')) setScores(clearCourseScores(boardKey(level, diff)));
               }}
             >
               Effacer les scores
@@ -649,7 +641,7 @@ function MenuScreen({ view, setView, level, setLevel, diff, setDiff, settings, a
           <div className="card-top">
             <BackButton onClick={onHome} />
           </div>
-          <p className="eyebrow">Calcul mental · CM1 et CM2</p>
+          <p className="eyebrow">Calcul mental · {levelLabel(level)}</p>
           <h1 id="game-title" className="title title-2l" aria-label="Course à l’encre">
             <span className="tl" aria-hidden="true">
               {'COURSE'.split('').map((ch, i) => (
@@ -724,25 +716,13 @@ function MenuScreen({ view, setView, level, setLevel, diff, setDiff, settings, a
             ))}
           </div>
           <p className="mt-1 text-[14px] leading-snug text-ink/75">{COURSE_DIFFS.find((d) => d.id === diff)?.hint}</p>
-          <h2 className="subhead mt-[var(--sp)]">Choisis ton niveau pour jouer</h2>
-          <div className="games games-levels" data-n="2">
-            {LEVELS.map((l) => {
-              const best = loadCourseScores(boardKey(l.id, diff))[0]?.score;
-              return (
-                <button
-                  key={l.id}
-                  type="button"
-                  className="gcard"
-                  autoFocus={l.id === level}
-                  onFocus={() => setLevel(l.id)}
-                  onClick={() => onStart(l.id)}
-                >
-                  <span className="gcard-name">{l.label}</span>
-                  <span className="gcard-text">{l.hint}</span>
-                  <span className="gcard-go">{best ? `Record : ${fmt(best)}` : 'Jouer →'}</span>
-                </button>
-              );
-            })}
+          <div className="mt-[var(--sp)]">
+            <button type="button" className="btn btn-primary" autoFocus onClick={() => onStart(level)}>
+              Jouer
+            </button>
+            {loadCourseScores(boardKey(level, diff))[0] && (
+              <span className="ml-3 text-[15px]">Record : {fmt(loadCourseScores(boardKey(level, diff))[0].score)}</span>
+            )}
           </div>
         </div>
       </section>

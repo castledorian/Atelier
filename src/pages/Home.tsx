@@ -5,6 +5,8 @@ import { serverEnabled } from '../server/api';
 import { fetchSessions } from '../server/student';
 import type { StudentAccount } from '../server/types';
 import { loadCourseStamps } from '../game/course/scores';
+import { GRADES, isAvailable, loadGrade, saveGrade } from '../game/grade';
+import type { Grade } from '../game/grade';
 import { loadTypingStamps } from '../game/storage';
 import type { TeacherSession } from '../server/teacher';
 
@@ -22,6 +24,11 @@ interface HomeProps {
 
 export default function Home({ student, teacher, onPlay, onSessions, onLogin, onDashboard, onPrivacy, onLogout, install }: HomeProps) {
   const online = serverEnabled();
+  const [grade, setGrade] = useState<Grade | null>(loadGrade);
+  const pick = (g: Grade) => {
+    saveGrade(g);
+    setGrade(g);
+  };
   const [todo, setTodo] = useState<number | null>(null);
   const token = student?.token ?? null;
   useEffect(() => {
@@ -98,48 +105,68 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
         )}
       </section>
 
-      <h2 className="subhead mt-[var(--sp)]">Choisis un jeu</h2>
-      <div className="games">
-        <button type="button" className="gcard" onClick={() => onPlay('typing')}>
-          <span className="gcard-tag">Clavier</span>
-          <span className="gcard-name">Frappe&nbsp;!</span>
-          <span className="gcard-text">Défends la marge : tape les mots avant que les taches d’encre n’arrivent.</span>
-          {loadTypingStamps() > 0 && (
+      <h2 className="subhead mt-[var(--sp)]" id="grade-h">
+        Ma classe
+      </h2>
+      <div className="seg mt-1" role="radiogroup" aria-labelledby="grade-h">
+        {GRADES.map((g) => (
+          <button key={g.id} type="button" role="radio" aria-checked={grade === g.id} className="seg-b" onClick={() => pick(g.id)}>
+            {g.label}
+          </button>
+        ))}
+      </div>
+      {grade === null && <p className="mt-2 text-[15px] leading-snug">Choisis ta classe pour voir les jeux qui te conviennent.</p>}
+
+      {grade !== null && <h2 className="subhead mt-[var(--sp)]">Choisis un jeu</h2>}
+      {grade !== null && <div className="games">
+        {isAvailable('typing', grade) && (
+          <button type="button" className="gcard" onClick={() => onPlay('typing')}>
+            <span className="gcard-tag">Clavier</span>
+            <span className="gcard-name">Frappe&nbsp;!</span>
+            <span className="gcard-text">Défends la marge : tape les mots avant que les taches d’encre n’arrivent.</span>
+            {loadTypingStamps() > 0 && (
             <span className="gcard-stamps" role="img" aria-label={`Tampons : ${loadTypingStamps()} sur 6`}>
               {Array.from({ length: 6 }, (_, k) => (k < loadTypingStamps() ? '●' : '○')).join(' ')}
             </span>
           )}
-          <span className="gcard-go">Jouer →</span>
-        </button>
-        <button type="button" className="gcard" onClick={() => onPlay('math')}>
-          <span className="gcard-tag">Maths</span>
-          <span className="gcard-name">Course à l’encre</span>
-          <span className="gcard-text">Place la plume sur la bonne réponse et fuis la tache d’encre !</span>
-          {loadCourseStamps() > 0 && (
+            <span className="gcard-go">Jouer →</span>
+          </button>
+        )}
+        {isAvailable('math', grade) && (
+          <button type="button" className="gcard" onClick={() => onPlay('math')}>
+            <span className="gcard-tag">Maths</span>
+            <span className="gcard-name">Course à l’encre</span>
+            <span className="gcard-text">Place la plume sur la bonne réponse et fuis la tache d’encre !</span>
+            {loadCourseStamps() > 0 && (
             <span className="gcard-stamps" role="img" aria-label={`Tampons : ${loadCourseStamps()} sur 6`}>
               {Array.from({ length: 6 }, (_, k) => (k < loadCourseStamps() ? '●' : '○')).join(' ')}
             </span>
           )}
-          <span className="gcard-go">Jouer →</span>
-        </button>
-        <button type="button" className="gcard" onClick={() => onPlay('spelling')}>
-          <span className="gcard-tag">Orthographe</span>
-          <span className="gcard-name">Chasse aux fautes</span>
-          <span className="gcard-text">Une faute s’est glissée dans la phrase : trouve-la, puis corrige-la.</span>
-          <span className="gcard-go">Jouer →</span>
-        </button>
-        <button type="button" className="gcard" onClick={() => onPlay('memory')}>
-          <span className="gcard-tag">Mémoire</span>
-          <span className="gcard-name">Mémoire d’encre</span>
-          <span className="gcard-text">Retiens les taches qui s’allument, puis refais la suite ou retrouve leurs places.</span>
-          <span className="gcard-go">Jouer →</span>
-        </button>
+            <span className="gcard-go">Jouer →</span>
+          </button>
+        )}
+        {isAvailable('spelling', grade) && (
+          <button type="button" className="gcard" onClick={() => onPlay('spelling')}>
+            <span className="gcard-tag">Orthographe</span>
+            <span className="gcard-name">Chasse aux fautes</span>
+            <span className="gcard-text">Une faute s’est glissée dans la phrase : trouve-la, puis corrige-la.</span>
+            <span className="gcard-go">Jouer →</span>
+          </button>
+        )}
+        {isAvailable('memory', grade) && (
+          <button type="button" className="gcard" onClick={() => onPlay('memory')}>
+            <span className="gcard-tag">Mémoire</span>
+            <span className="gcard-name">Mémoire d’encre</span>
+            <span className="gcard-text">Retiens les taches qui s’allument, puis refais la suite ou retrouve leurs places.</span>
+            <span className="gcard-go">Jouer →</span>
+          </button>
+        )}
         <div className="gcard gcard-soon" aria-label="Autres jeux à venir">
           <span className="gcard-tag">Bientôt</span>
           <span className="gcard-name">Autres jeux</span>
           <span className="gcard-text">Conjugaison, géométrie… d’autres jeux arrivent.</span>
         </div>
-      </div>
+      </div>}
 
       {(install.mode === 'prompt' || install.mode === 'ios') && (
         <section className="sec" aria-label="Installer l’application">

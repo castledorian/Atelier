@@ -4,11 +4,12 @@ import { DuelResult, ReviewNote } from '../components/EncreNotes';
 import type { DuelInfo } from '../components/EncreNotes';
 import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
-import { COURSE_DIFFS, LEVELS, boardKey } from '../game/course/questions';
+import { COURSE_DIFFS, boardKey } from '../game/course/questions';
 import type { CourseDiff, Level } from '../game/course/questions';
 import { ruleInfo, rulesOf } from '../game/encre/rules';
 import type { RuleId } from '../game/encre/rules';
 import { DUEL_SIZE, activeRules, dayKey, loadStore, recordDuel, recordGame, saveStore, stateOf } from '../game/encre/tracker';
+import { levelOf, loadGrade, gradeLabel } from '../game/grade';
 import { newRunId } from '../game/history';
 import { parseSpelling } from '../game/sessionConfig';
 import { loadSettings, saveSettings } from '../game/storage';
@@ -111,7 +112,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
   const [phase, setPhase] = useState<Phase>('menu');
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const prefs = useRef(loadSpellingPrefs());
-  const [level, setLevel] = useState<Level>(() => (session ? parseSpelling(session.config).level : prefs.current.level));
+  const [level] = useState<Level>(() => (session ? parseSpelling(session.config).level : levelOf(loadGrade())));
   const [diff, setDiff] = useState<CourseDiff>(() => (session ? parseSpelling(session.config).diff : prefs.current.diff));
   const ses = useSessionRun(account, session);
   const sesRef = useRef(ses);
@@ -337,7 +338,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
 
       {phase === 'menu' && !inSession && (
         <section aria-labelledby="sp-title">
-          <p className="eyebrow">Orthographe · CM1 / CM2</p>
+          <p className="eyebrow">Orthographe · {gradeLabel(level)}</p>
           <h1 id="sp-title" className="title">
             Chasse aux fautes
           </h1>
@@ -347,14 +348,6 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
             <li>Choisis ensuite la bonne écriture.</li>
             <li>Chaque phrase te donne une astuce pour retenir la règle.</li>
           </ol>
-          <h2 className="subhead mt-[var(--sp)]">Ton niveau</h2>
-          <div className="seg mt-1" role="radiogroup" aria-label="Niveau">
-            {LEVELS.map((l) => (
-              <button key={l.id} type="button" role="radio" aria-checked={level === l.id} className="seg-b" onClick={() => setLevel(l.id)}>
-                {l.label}
-              </button>
-            ))}
-          </div>
           <h2 className="subhead mt-[var(--sp)]">Ta difficulté</h2>
           <div className="seg mt-1" role="radiogroup" aria-label="Difficulté">
             {COURSE_DIFFS.map((d) => (
