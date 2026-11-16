@@ -2,11 +2,8 @@ import { BackButton } from '../components/BackButton';
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Frame, Notice } from './Frame';
-import { CustomPanel } from '../components/Screens';
-import { DEFAULT_CUSTOM, sanitizeCustom } from '../game/difficulty';
-import type { CustomConfig } from '../game/difficulty';
+import { SessionsPanel } from './SessionsTeacher';
 import { downloadText, fmtDate, toCsv } from '../game/history';
-import type { Settings } from '../game/storage';
 import { ApiError, explain } from '../server/api';
 import * as T from '../server/teacher';
 import type { ClassRow, NewStudent, Overview, School } from '../server/types';
@@ -175,7 +172,6 @@ export default function Dashboard({ email, onHome, onSignOut, onAccountDeleted }
                   cls={cls}
                   schoolName={school.name}
                   act={act}
-                  onSaved={(cfg) => setClasses((list) => list?.map((c) => (c.id === cls.id ? { ...c, session_config: cfg } : c)) ?? null)}
                   onDeleted={() => schoolId && void loadClasses(schoolId)}
                 />
               )}
@@ -374,13 +370,11 @@ function ClassPanel({
   cls,
   schoolName,
   act,
-  onSaved,
   onDeleted,
 }: {
   cls: ClassRow;
   schoolName: string;
   act: Act;
-  onSaved: (cfg: Record<string, unknown> | null) => void;
   onDeleted: () => void;
 }) {
   const [rows, setRows] = useState<Overview[] | null>(null);
@@ -388,8 +382,6 @@ function ClassPanel({
   const [fresh, setFresh] = useState<NewStudent[] | null>(null);
   const [msg, setMsg] = useState('');
   const [confirm, setConfirm] = useState<string | null>(null);
-  const [cfg, setCfg] = useState<CustomConfig | null>(cls.session_config ? sanitizeCustom(cls.session_config) : null);
-  const [saved, setSaved] = useState(false);
   /** une seule partie de la classe à la fois : la page reste courte */
   const [part, setPart] = useState<'results' | 'add' | 'session' | 'danger'>('results');
 
@@ -449,12 +441,10 @@ function ClassPanel({
     );
   };
 
-  const settings = { layout: 'azerty', custom: cfg ?? DEFAULT_CUSTOM } as unknown as Settings;
-
   const PARTS: Array<[typeof part, string]> = [
     ['results', 'Résultats'],
     ['add', 'Ajouter des élèves'],
-    ['session', 'Séance de la classe'],
+    ['session', 'Séances'],
     ['danger', 'Supprimer'],
   ];
 
@@ -639,52 +629,7 @@ function ClassPanel({
         </section>
       )}
 
-      {part === 'session' && (
-        <section className="sec" aria-labelledby="ses-h">
-          <h2 id="ses-h" className="subhead mb-2">
-            Séance de la classe
-          </h2>
-          <label className="opt" style={{ cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={cfg !== null}
-              onChange={(e) => {
-                setSaved(false);
-                setCfg(e.target.checked ? DEFAULT_CUSTOM : null);
-              }}
-            />
-            &nbsp;Les élèves de cette classe démarrent sur ma séance personnalisée (jeu Frappe&nbsp;!)
-          </label>
-          {cfg && (
-            <>
-              <p className="mt-2 text-[14px] leading-snug text-ink/80">
-                Vitesse, lettres autorisées, longueur des mots… Les élèves peuvent toujours choisir un autre mode, mais la séance est
-                proposée d’office. Les parties « Perso » ne comptent pas au classement.
-              </p>
-              <CustomPanel settings={settings} onChange={(p) => p.custom && (setSaved(false), setCfg(p.custom))} />
-            </>
-          )}
-          <div className="mt-3 flex items-center gap-3">
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={async () => {
-                const ok = await act(async () => {
-                  await T.saveClassSession(cls.id, cfg ? (cfg as unknown as Record<string, unknown>) : null);
-                  return true;
-                });
-                if (ok) {
-                  setSaved(true);
-                  onSaved(cfg ? (cfg as unknown as Record<string, unknown>) : null);
-                }
-              }}
-            >
-              Enregistrer pour la classe
-            </button>
-            {saved && <span className="text-[14px]">Enregistré ✓</span>}
-          </div>
-        </section>
-      )}
+      {part === 'session' && <SessionsPanel cls={cls} act={act} />}
 
       {part === 'danger' && (
         <section className="sec danger-sec" aria-labelledby="del-h">

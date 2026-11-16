@@ -63,3 +63,20 @@ Espace enseignant → **Mon compte** → **Supprimer mon compte…**. Le site vo
 ## Vérifier le code (pour la maintenance)
 
 `npm test` lance 25 tests automatiques (règles de Mémoire d'encre, calculs de Course à l'encre, classements locaux, difficultés de Frappe !). `npm run check` y ajoute la vérification des types. Ces tests tournent aussi à chaque publication : si l'un échoue, le site n'est pas mis à jour.
+
+## Séances de classe et essais limités
+
+Espace enseignant → votre classe → onglet **Séances** → **+ Nouvelle séance**.
+
+1. Donnez un **titre** (vu par les élèves), choisissez le **jeu** et ses réglages :
+   - **Frappe !** : Apprenti, Standard, Expert ou Personnalisé (vitesse, vies, mots ou lettres, longueur des mots…).
+   - **Course à l'encre** : niveau CM1 ou CM2 (les calculs suivent le programme) et difficulté Apprenti / Standard / Expert.
+   - **Mémoire d'encre** : La Suite ou Les Cases, et la page de départ.
+2. Choisissez le nombre d'**essais par élève** (1 à 3). Un essai est compté quand la partie est terminée.
+3. Les élèves retrouvent la séance dans **Mes séances** (après connexion avec leur code). **Seul leur meilleur score compte** ; vous voyez tous les essais dans **Résultats**, avec un export CSV.
+
+Vous pouvez fermer une séance (les élèves ne peuvent plus jouer) ou augmenter le nombre d'essais en la modifiant. Une séance déjà jouée garde son jeu : les résultats resteraient incomparables sinon.
+
+## Difficultés
+
+Chaque jeu propose trois niveaux : **Apprenti** (pour débuter), **Standard** (rythme de référence) et **Expert**. Dans Course à l'encre, ils se combinent avec CM1 / CM2 ; chaque difficulté a son propre classement. Mémoire d'encre est un jeu universel, sans niveau scolaire.

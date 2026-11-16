@@ -146,6 +146,86 @@ do $$ declare i int; r jsonb; begin
   raise notice 'ok  limite par adresse (30 refus / 10 min), autre adresse non bloquée';
 end $$;
 
+-- ═══ Séances de classe : essais limités, résultats, équilibrage anonyme ═══
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+insert into ctx select 'sess', public.save_class_session((select v::uuid from ctx where k='classA'), null, '  Éval   tables ', 'math', '{"level":"cm1","difficulty":"standard"}', 2, true)::text;
+select pg_temp.eq('1 séance listée', jsonb_array_length(public.list_class_sessions((select v::uuid from ctx where k='classA'))), 1);
+select pg_temp.eq('titre nettoyé', public.list_class_sessions((select v::uuid from ctx where k='classA'))->0->>'title', 'Éval tables');
+select pg_temp.fails($$select public.save_class_session((select v::uuid from ctx where k='classA'), null, 'x', 'jeu-inconnu', '{}', 2, true)$$, 'invalid_name');
+select pg_temp.fails($$select public.save_class_session((select v::uuid from ctx where k='classA'), null, 'x', 'math', '{}', 4, true)$$, 'invalid_name');
+select pg_temp.fails($$select public.save_class_session((select v::uuid from ctx where k='classA'), null, '', 'math', '{}', 2, true)$$, 'invalid_name');
+
+select pg_temp.as_user('bbbbbbbb-0000-0000-0000-000000000002');
+select pg_temp.fails($$select public.list_class_sessions((select v::uuid from ctx where k='classA'))$$, 'forbidden');
+select pg_temp.fails($$select public.save_class_session((select v::uuid from ctx where k='classA'), null, 'pirate', 'math', '{}', 2, true)$$, 'forbidden');
+select pg_temp.fails($$select public.save_class_session((select v::uuid from ctx where k='classB'), (select v::uuid from ctx where k='sess'), 'vol', 'math', '{}', 2, true)$$, 'forbidden');
+select pg_temp.fails($$select public.session_results((select v::uuid from ctx where k='sess'))$$, 'forbidden');
+select pg_temp.fails($$select public.delete_class_session((select v::uuid from ctx where k='sess'))$$, 'forbidden');
+select pg_temp.fails($$select count(*) from public.class_sessions$$, 'permission denied');   -- tout passe par les fonctions
+
+select pg_temp.as_anon();
+update ctx set v = public.student_login((select v from ctx where k='code_lea2'))->>'token' where k='tok_lea';   -- Léa s'est reconnectée avec son nouveau code
+select pg_temp.eq('l''élève voit la séance', jsonb_array_length(public.my_sessions((select v from ctx where k='tok_lea'))->'sessions'), 1);
+select pg_temp.eq('Nina (autre classe) ne voit rien', jsonb_array_length(public.my_sessions((select v from ctx where k='tok_nina'))->'sessions'), 0);
+select pg_temp.eq('jeton invalide', public.my_sessions('faux')->>'error', 'invalid_session');
+select pg_temp.eq('essai 1 Léa', public.submit_session_run((select v from ctx where k='tok_lea'), (select v::uuid from ctx where k='sess'), 'seance00001', 1000, 3, 0, 70, 30, 200)->>'attempts_used', '1');
+select pg_temp.eq('essai 2 Léa (meilleur)', public.submit_session_run((select v from ctx where k='tok_lea'), (select v::uuid from ctx where k='sess'), 'seance00002', 2400, 5, 0, 88, 40, 250,
+  null, '{"game":"math","level":"cm1","difficulty":"standard","outcome":"finished","score":2400,"rounds_ok":40,"rounds_err":3,"pages":[{"a":8,"e":0}]}')->>'attempts_used', '2');
+select pg_temp.eq('renvoi du même essai : sans effet', public.submit_session_run((select v from ctx where k='tok_lea'), (select v::uuid from ctx where k='sess'), 'seance00002', 9, 1, 0, 1, 1, 1)->>'ok', 'true');
+select pg_temp.eq('3e essai refusé (limite 2)', public.submit_session_run((select v from ctx where k='tok_lea'), (select v::uuid from ctx where k='sess'), 'seance00003', 99999, 9, 0, 99, 99, 99)->>'error', 'no_attempts_left');
+select pg_temp.eq('Nina ne peut pas jouer la séance d''une autre classe', public.submit_session_run((select v from ctx where k='tok_nina'), (select v::uuid from ctx where k='sess'), 'seance00004', 1, 1, 0, 1, 1, 1)->>'error', 'unknown_session');
+select pg_temp.eq('mon espace : 2 essais utilisés, meilleur 2400', (public.my_sessions((select v from ctx where k='tok_lea'))->'sessions'->0->>'attempts_used') || '/' || (public.my_sessions((select v from ctx where k='tok_lea'))->'sessions'->0->>'best_score'), '2/2400');
+select pg_temp.eq('Tom : aucun essai', public.my_sessions((select v from ctx where k='tok_tom'))->'sessions'->0->>'attempts_used', '0');
+
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select pg_temp.eq('résultats : meilleur de Léa = 2400 avec 2 essais', (select (r->>'best_score') || '/' || (r->>'attempts') from jsonb_array_elements(public.session_results((select v::uuid from ctx where k='sess'))) r where r->>'name'='Léa'), '2400/2');
+select pg_temp.eq('résultats : les élèves sans essai apparaissent', (select (r->>'attempts') from jsonb_array_elements(public.session_results((select v::uuid from ctx where k='sess'))) r where r->>'name'='Tom'), '0');
+-- augmenter les essais : Léa peut rejouer
+select public.save_class_session((select v::uuid from ctx where k='classA'), (select v::uuid from ctx where k='sess'), 'Éval tables', 'typing', '{"level":"cm1"}', 3, true);
+select pg_temp.eq('le jeu d''une séance déjà jouée ne change pas', public.list_class_sessions((select v::uuid from ctx where k='classA'))->0->>'game', 'math');
+select pg_temp.as_anon();
+select pg_temp.eq('3e essai accepté après réglage', public.submit_session_run((select v from ctx where k='tok_lea'), (select v::uuid from ctx where k='sess'), 'seance00005', 100, 1, 0, 50, 5, 20)->>'attempts_used', '3');
+-- séance fermée
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select public.save_class_session((select v::uuid from ctx where k='classA'), (select v::uuid from ctx where k='sess'), 'Éval tables', 'math', '{}', 3, false);
+select pg_temp.as_anon();
+select pg_temp.eq('séance fermée : refusée', public.submit_session_run((select v from ctx where k='tok_tom'), (select v::uuid from ctx where k='sess'), 'seance00006', 100, 1, 0, 50, 5, 20)->>'error', 'session_closed');
+
+-- les essais de séance ne comptent ni dans les classements libres ni dans les records du tableau de bord
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select pg_temp.eq('record « maths » du tableau de bord ignore les séances', (select (r->>'best_math') is null from jsonb_array_elements(public.class_overview((select v::uuid from ctx where k='classA'))) r where r->>'name'='Léa'), true);
+select pg_temp.as_anon();
+select pg_temp.eq('classement libre math ignore les séances', jsonb_array_length(public.class_leaderboard((select v from ctx where k='tok_lea'),'math','seance')->'rows'), 0);
+
+-- équilibrage anonyme
+select pg_temp.as_anon();
+select pg_temp.eq('partie libre avec résumé', public.submit_run((select v from ctx where k='tok_tom'),'bal0000001','math','standard','game',1200,0,0,0,30,150,null,
+  '{"game":"math","level":"cm2","difficulty":"standard","outcome":"lost","score":1200,"rounds_ok":30,"rounds_err":6,"pages":[{"a":8,"e":1},{"a":8,"e":2}]}')->>'ok','true');
+select public.submit_run((select v from ctx where k='tok_tom'),'bal0000001','math','standard','game',1200,0,0,0,30,150,null,
+  '{"game":"math","level":"cm2","difficulty":"standard","outcome":"lost","score":1200,"rounds_ok":30,"rounds_err":6}');   -- renvoi : un seul résumé
+select public.submit_run((select v from ctx where k='tok_tom'),'bal0000002','math','perso','game',10,0,0,0,3,15,null,
+  '{"game":"math","difficulty":"perso","outcome":"lost","score":10}');
+select public.submit_run((select v from ctx where k='tok_tom'),'bal0000003','math','standard','drill',10,0,0,0,3,15,null,
+  '{"game":"math","difficulty":"standard","outcome":"lost","score":10}');   -- entraînement : pas de résumé
+select public.submit_run((select v from ctx where k='tok_tom'),'bal0000004','math','standard','game',10,0,0,0,3,15,null,
+  '{"game":"danger","difficulty":"standard","outcome":"lost","score":10}');  -- résumé invalide ignoré, partie enregistrée
+select pg_temp.eq('la partie à résumé invalide est quand même enregistrée', public.submit_run((select v from ctx where k='tok_tom'),'bal0000004','math','standard','game',10,0,0,0,3,15)->>'ok','true');
+select pg_temp.as_admin();
+select pg_temp.eq('2 résumés exacts (libre + perso), ni doublon, ni entraînement, ni invalide', (select count(*) from public.balance_runs), 2::bigint);
+select pg_temp.eq('résumé « perso » exclu des moyennes', (select count(*) from public.balance_runs where custom), 1::bigint);
+select pg_temp.eq('aucune colonne ne relie le résumé à un élève', (select count(*) from information_schema.columns where table_name='balance_runs' and column_name ~ 'student|class|school|user'), 0::bigint);
+select pg_temp.eq('la requête de statistiques par page fonctionne', (select count(*) from public.balance_runs b, jsonb_array_elements(b.pages) with ordinality as p(v, ord) where not b.custom), 2::bigint);
+select pg_temp.as_anon();
+select pg_temp.fails($$select count(*) from public.balance_runs$$, 'permission denied');
+select pg_temp.fails($$select count(*) from public.class_sessions$$, 'permission denied');
+select pg_temp.fails($$insert into public.balance_runs (game, difficulty, outcome, score) values ('math','standard','lost',1)$$, 'permission denied');
+
+-- suppression d'une séance : ses essais disparaissent avec elle
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select public.delete_class_session((select v::uuid from ctx where k='sess'));
+select pg_temp.as_admin();
+select pg_temp.eq('essais de la séance supprimés avec elle', (select count(*) from public.runs where session_id is not null), 0::bigint);
+
 -- ═══ Suppression de l'école A ═══
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 select public.delete_school((select v::uuid from ctx where k='schoolA'));

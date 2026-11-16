@@ -2,13 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Progress } from './components/Extras';
 import { Keyboard } from './components/Keyboard';
 import { GameOver, Menu, Pause } from './components/Screens';
+import { SessionIntro, SessionOver, useSessionRun } from './components/SessionPanels';
 import type { InstallInfo } from './components/Screens';
 import { Sfx } from './game/audio';
-import { sanitizeCustom } from './game/difficulty';
 import type { Difficulty } from './game/difficulty';
 import { Game } from './game/engine';
 import type { RunStats } from './game/engine';
 import { addRun, loadHistory, newRunId, renameRun } from './game/history';
+import { parseTyping } from './game/sessionConfig';
 import type { RunRecord } from './game/history';
 import {
   addScore,
@@ -22,7 +23,7 @@ import {
 import type { ScoreEntry, Settings } from './game/storage';
 import { enqueue, flush } from './server/outbox';
 import { fetchMyRuns, sendRun } from './server/student';
-import type { RunPayload, StudentAccount } from './server/types';
+import type { RunPayload, SessionInfo, StudentAccount } from './server/types';
 
 type Screen = 'menu' | 'play' | 'pause' | 'over' | 'progress';
 
@@ -53,14 +54,26 @@ export interface TypingProps {
   /** la session de l'élève n'est plus valable : retour à la connexion */
   onSessionLost: () => void;
   install: InstallInfo;
+  /** séance de classe à jouer (essais limités) */
+  session?: SessionInfo | null;
+  /** retour à la liste des séances */
+  onSessions?: () => void;
 }
 
-export default function App({ account, onHome, onSessionLost, install }: TypingProps) {
+export default function App({ account, onHome, onSessionLost, install, session, onSessions }: TypingProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<Game | null>(null);
   const [sfx] = useState(() => new Sfx());
   const [screen, setScreen] = useState<Screen>('menu');
-  const [settings, setSettings] = useState<Settings>(() => settingsFromLink(loadSettings()));
+  const [settings, setSettings] = useState<Settings>(() => {
+    const s = settingsFromLink(loadSettings());
+    if (!session) return s;
+    const c = parseTyping(session.config); // la séance impose sa difficulté et ses réglages
+    return { ...s, difficulty: c.diff, custom: c.custom };
+  });
+  const ses = useSessionRun(account, session);
+  const sesRef = useRef(ses);
+  sesRef.current = ses;
   const [scores, setScores] = useState<ScoreEntry[]>(loadScores);
   const [run, setRun] = useState<RunResult | null>(null);
   const [hint, setHint] = useState<string | null>(null);
@@ -88,7 +101,7 @@ export default function App({ account, onHome, onSessionLost, install }: TypingP
   onGameOver.current = (stats) => {
     const { diff, settings: st } = live.current;
     const isDrill = live.current.drill !== null;
-    const ranked = !isDrill && diff !== 'perso';
+    const ranked = !isDrill && diff !== 'perso' && !sesRef.current.sess;
     const acct = accountRef.current;
     const name = (acct ? acct.student.name.slice(0, 12).toUpperCase() : st.name) || 'ANONYME';
     const recId = newRunId();
@@ -106,6 +119,31 @@ export default function App({ account, onHome, onSessionLost, install }: TypingP
       duration: Math.round(stats.time),
       playedMs: Date.now(),
     };
+    if (sesRef.current.sess) {
+      // séance de classe : l'essai compte pour l'évaluation, il ne va ni dans l'historique ni dans les classements libres
+      sesRef.current.submit(payload, () => {
+        lost.current = true;
+      });
+      setRun({ stats, diff, drill: false, id: null, rank: -1, recId });
+      live.current.overAt = performance.now();
+      setScreen('over');
+      return;
+    }
+    if (!isDrill && stats.correct + stats.errors > 0) {
+      payload.balance = {
+        game: 'typing',
+        difficulty: diff,
+        version: 1,
+        outcome: 'lost',
+        score: stats.score,
+        wave: stats.wave,
+        acc,
+        wpm: Math.round(stats.wpm * 10) / 10,
+        duration: payload.duration,
+        rounds_ok: stats.correct,
+        rounds_err: stats.errors,
+      };
+    }
     // Compte élève : toute partie (même entraînement) est envoyée au serveur ; seules les parties classées comptent au classement.
     const sendToServer = () => {
       if (!acct || stats.correct === 0) return false;
@@ -181,7 +219,7 @@ export default function App({ account, onHome, onSessionLost, install }: TypingP
 
   // Réglages → moteur + stockage
   useEffect(() => {
-    saveSettings(settings);
+    if (!sesRef.current.sess) saveSettings(settings); // une séance ne modifie pas les réglages de l'appareil
     sfx.enabled = settings.sound;
     gameRef.current?.setOptions({
       shake: settings.shake,
@@ -202,6 +240,8 @@ export default function App({ account, onHome, onSessionLost, install }: TypingP
 
   const begin = useCallback(
     (letters: string | null) => {
+      const s = sesRef.current;
+      if (s.sess && (s.left <= 0 || !s.sess.active)) return; // essais épuisés ou séance fermée
       sfx.unlock();
       (document.activeElement as HTMLElement | null)?.blur?.();
       live.current.diff = live.current.settings.difficulty; // la difficulté est figée pendant la partie
@@ -346,14 +386,6 @@ export default function App({ account, onHome, onSessionLost, install }: TypingP
     if (recId.current) setRuns(renameRun(recId.current, name || 'ANONYME'));
   }, []);
 
-  // Séance de la classe : si l'enseignant en a réglé une, elle est proposée d'emblée (mode « Perso »)
-  const classId = account?.class.id ?? null;
-  useEffect(() => {
-    const cfg = accountRef.current?.class.session_config;
-    if (!cfg || typeof cfg !== 'object') return;
-    setSettings((s) => ({ ...s, difficulty: 'perso', custom: sanitizeCustom(cfg) }));
-  }, [classId]);
-
   // Parties jouées sans réseau : on réessaie au démarrage et au retour du réseau
   const studentId = account?.student.id ?? null;
   const token = account?.token ?? null;
@@ -436,7 +468,10 @@ export default function App({ account, onHome, onSessionLost, install }: TypingP
           />
         )}
 
-        {screen === 'menu' && (
+        {screen === 'menu' && ses.sess && (
+          <SessionIntro session={ses.sess} left={ses.left} onStart={start} onBack={() => (onSessions ?? onHome)()} />
+        )}
+        {screen === 'menu' && !ses.sess && (
           <Menu
             scores={scores}
             settings={settings}
@@ -469,7 +504,22 @@ export default function App({ account, onHome, onSessionLost, install }: TypingP
             onChange={changeSettings}
           />
         )}
-        {screen === 'over' && run && (
+        {screen === 'over' && run && ses.sess && (
+          <SessionOver
+            session={ses.sess}
+            state={ses.state}
+            score={run.stats.score}
+            left={ses.left}
+            details={
+              <p className="mt-1 text-[15px]">
+                Vague <strong>{run.stats.wave}</strong> · Précision <strong>{Math.round(run.stats.accuracy * 100)} %</strong> · <strong>{Math.round(run.stats.wpm)}</strong> mots/min
+              </p>
+            }
+            onRetry={restart}
+            onBack={() => (onSessions ?? onHome)()}
+          />
+        )}
+        {screen === 'over' && run && !ses.sess && (
           <GameOver
             stats={run.stats}
             diff={run.diff}

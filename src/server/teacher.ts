@@ -1,5 +1,5 @@
 import { ApiError, patch, remove, request, rpc, select } from './api';
-import type { ClassRow, NewStudent, Overview, School } from './types';
+import type { ClassRow, ClassSession, NewStudent, Overview, School, SessionResultRow } from './types';
 
 // ───────────────────────── Compte enseignant (Supabase Auth) ─────────────────────────
 
@@ -179,3 +179,30 @@ export const accountDeletionPreview = () => authed((t) => rpc<DeletionPreview[]>
 
 /** Supprime le compte pour de bon. L'adresse e-mail doit être recopiée (le serveur la vérifie aussi). */
 export const deleteMyAccount = (email: string) => authed((t) => rpc('delete_my_account', { p_email: email }, t));
+
+// ───────────────────────── Séances de classe ─────────────────────────
+
+export const listSessions = (cls: string) => authed((t) => rpc<ClassSession[]>('list_class_sessions', { p_class: cls }, t));
+
+export interface SessionInput {
+  id?: string;
+  title: string;
+  game: string;
+  config: Record<string, unknown>;
+  maxAttempts: number;
+  active: boolean;
+}
+
+/** Crée (sans id) ou modifie une séance ; renvoie son identifiant. */
+export const saveSession = (cls: string, s: SessionInput) =>
+  authed((t) =>
+    rpc<string>(
+      'save_class_session',
+      { p_class: cls, p_id: s.id ?? null, p_title: s.title, p_game: s.game, p_config: s.config, p_max: s.maxAttempts, p_active: s.active },
+      t,
+    ),
+  );
+
+export const deleteSession = (id: string) => authed((t) => rpc('delete_class_session', { p_id: id }, t));
+
+export const sessionResults = (id: string) => authed((t) => rpc<SessionResultRow[]>('session_results', { p_id: id }, t));

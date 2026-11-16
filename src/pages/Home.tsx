@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Frame } from './Frame';
 import type { InstallInfo } from '../components/Screens';
 import { serverEnabled } from '../server/api';
+import { fetchSessions } from '../server/student';
 import type { StudentAccount } from '../server/types';
 import type { TeacherSession } from '../server/teacher';
 
@@ -8,6 +10,7 @@ interface HomeProps {
   student: StudentAccount | null;
   teacher: TeacherSession | null;
   onPlay: (game: 'typing' | 'math' | 'memory') => void;
+  onSessions: () => void;
   onLogin: (tab: 'student' | 'teacher') => void;
   onDashboard: () => void;
   onPrivacy: () => void;
@@ -15,8 +18,20 @@ interface HomeProps {
   install: InstallInfo;
 }
 
-export default function Home({ student, teacher, onPlay, onLogin, onDashboard, onPrivacy, onLogout, install }: HomeProps) {
+export default function Home({ student, teacher, onPlay, onSessions, onLogin, onDashboard, onPrivacy, onLogout, install }: HomeProps) {
   const online = serverEnabled();
+  const [todo, setTodo] = useState<number | null>(null);
+  const token = student?.token ?? null;
+  useEffect(() => {
+    if (!token) return;
+    let alive = true;
+    fetchSessions(token)
+      .then((r) => alive && setTodo(r.filter((s) => s.active && s.attempts_used < s.max_attempts).length))
+      .catch(() => alive && setTodo(null));
+    return () => {
+      alive = false;
+    };
+  }, [token]);
   return (
     <Frame>
       <p className="eyebrow">Jeux pour apprendre</p>
@@ -39,9 +54,14 @@ export default function Home({ student, teacher, onPlay, onLogin, onDashboard, o
                 · {student.class.name} · {student.school.name}
               </span>
             </p>
-            <button type="button" className="link" onClick={onLogout}>
-              Changer d’élève
-            </button>
+            <div className="who-actions">
+              <button type="button" className="btn btn-primary" onClick={onSessions}>
+                Mes séances{todo ? ` (${todo} à faire)` : ''}
+              </button>
+              <button type="button" className="link" onClick={onLogout}>
+                Changer d’élève
+              </button>
+            </div>
           </>
         ) : teacher ? (
           <>

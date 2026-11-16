@@ -6,14 +6,15 @@ import Memory from './games/Memory';
 import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
 import Login from './pages/Login';
+import Sessions from './pages/Sessions';
 import Privacy from './pages/Privacy';
 import { serverEnabled } from './server/api';
 import { loadStudent, saveStudent, studentLogout } from './server/student';
 import { loadTeacher, saveTeacher, signOut, takeAuthHash } from './server/teacher';
 import type { TeacherSession } from './server/teacher';
-import type { StudentAccount } from './server/types';
+import type { SessionInfo, StudentAccount } from './server/types';
 
-type View = 'home' | 'login' | 'dashboard' | 'privacy' | 'typing' | 'math' | 'memory';
+type View = 'home' | 'login' | 'dashboard' | 'privacy' | 'sessions' | 'typing' | 'math' | 'memory';
 
 // Lien reçu par email (confirmation d'inscription / mot de passe oublié) : lu une seule fois, au chargement de la page.
 const ARRIVAL = serverEnabled() ? takeAuthHash() : null;
@@ -26,8 +27,18 @@ export default function Shell() {
   const [tab, setTab] = useState<'student' | 'teacher'>('student');
   const [view, setView] = useState<View>(ARRIVAL ? (ARRIVAL.type === 'recovery' ? 'login' : 'dashboard') : 'home');
 
+  /** séance de classe en cours de jeu (null = jeu libre) */
+  const [active, setActive] = useState<SessionInfo | null>(null);
+
   const install = useInstall();
-  const home = useCallback(() => setView('home'), []);
+  const home = useCallback(() => {
+    setActive(null);
+    setView('home');
+  }, []);
+  const toSessions = useCallback(() => {
+    setActive(null);
+    setView('sessions');
+  }, []);
 
   const logout = useCallback(() => {
     if (student) {
@@ -46,6 +57,7 @@ export default function Shell() {
   const sessionLost = useCallback(() => {
     saveStudent(null);
     setStudent(null);
+    setActive(null);
     setTab('student');
     setView('login');
   }, []);
@@ -101,15 +113,35 @@ export default function Shell() {
     );
   }
 
-  if (view === 'typing') return <App account={student} onHome={home} onSessionLost={sessionLost} install={install} />;
-  if (view === 'math') return <Course account={student} onHome={home} onSessionLost={sessionLost} />;
-  if (view === 'memory') return <Memory account={student} onHome={home} onSessionLost={sessionLost} />;
+  if (view === 'sessions' && student) {
+    return (
+      <Sessions
+        account={student}
+        onBack={home}
+        onSessionLost={sessionLost}
+        onPlay={(s) => {
+          setActive(s);
+          setView(s.game);
+        }}
+      />
+    );
+  }
+
+  if (view === 'typing') {
+    return <App key={active?.id ?? 'free'} account={student} onHome={home} onSessionLost={sessionLost} install={install} session={active} onSessions={toSessions} />;
+  }
+  if (view === 'math') return <Course key={active?.id ?? 'free'} account={student} onHome={home} onSessionLost={sessionLost} session={active} onSessions={toSessions} />;
+  if (view === 'memory') return <Memory key={active?.id ?? 'free'} account={student} onHome={home} onSessionLost={sessionLost} session={active} onSessions={toSessions} />;
 
   return (
     <Home
       student={student}
       teacher={teacher}
-      onPlay={setView}
+      onPlay={(g) => {
+        setActive(null);
+        setView(g);
+      }}
+      onSessions={() => setView('sessions')}
       onLogin={(t) => {
         setTab(t);
         setView('login');

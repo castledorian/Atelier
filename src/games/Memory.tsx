@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { BackButton, useFitRows } from '../components/BackButton';
 import { Check } from '../components/Screens';
+import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
 import { Sfx } from '../game/audio';
 import { MemoryGame } from '../game/memory/engine';
 import type { MemoryResult } from '../game/memory/engine';
@@ -10,15 +11,16 @@ import type { Mode } from '../game/memory/rounds';
 import { addMemoryScore, clearMemoryScores, loadMemoryMode, loadMemoryScores, loadProgress, recordProgress, saveMemoryMode } from '../game/memory/scores';
 import type { MemoryScore } from '../game/memory/scores';
 import { newRunId } from '../game/history';
+import { parseMemory } from '../game/sessionConfig';
 import { loadSettings, saveSettings } from '../game/storage';
 import type { Settings, TextSize } from '../game/storage';
 import { explain } from '../server/api';
 import { enqueue, flush } from '../server/outbox';
 import { fetchBoard, sendRun } from '../server/student';
-import type { BoardRow, RunPayload, Scope, StudentAccount } from '../server/types';
+import type { BoardRow, RunPayload, Scope, SessionInfo, StudentAccount } from '../server/types';
 
 /**
- * « Mémoire d'encre » — jeu de mémoire (CM1 / CM2) : des taches d'encre s'allument sur une grille d'étiquettes ;
+ * « Mémoire d'encre » — jeu de mémoire (tous âges) : des taches d'encre s'allument sur une grille d'étiquettes ;
  * on refait la suite (La Suite) ou on retrouve leurs places (Les Cases).
  */
 
@@ -38,6 +40,10 @@ interface Props {
   account: StudentAccount | null;
   onHome: () => void;
   onSessionLost: () => void;
+  /** séance de classe à jouer (essais limités) */
+  session?: SessionInfo | null;
+  /** retour à la liste des séances */
+  onSessions?: () => void;
 }
 
 interface Run {
@@ -51,14 +57,17 @@ interface Run {
   stampsAfter: number;
 }
 
-export default function Memory({ account, onHome, onSessionLost }: Props) {
+export default function Memory({ account, onHome, onSessionLost, session, onSessions }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<MemoryGame | null>(null);
   const [sfx] = useState(() => new Sfx());
   const [phase, setPhase] = useState<Phase>('menu');
   const [view, setView] = useState<MenuView>('main');
   const [settings, setSettings] = useState<Settings>(loadSettings);
-  const [mode, setMode] = useState<Mode>(loadMemoryMode);
+  const [mode, setMode] = useState<Mode>(() => (session ? parseMemory(session.config).mode : loadMemoryMode()));
+  const ses = useSessionRun(account, session);
+  const sesRef = useRef(ses);
+  sesRef.current = ses;
   const [run, setRun] = useState<Run | null>(null);
   const [startPage, setStartPage] = useState(0);
   const [cloud, setCloud] = useState<Cloud>('off');
@@ -93,6 +102,31 @@ export default function Memory({ account, onHome, onSessionLost }: Props) {
       duration: Math.min(7200, Math.max(0, Math.round(result.time))),
       playedMs: Date.now(),
     };
+    if (sesRef.current.sess) {
+      // séance de classe : l'essai compte pour l'évaluation, il ne va ni dans les scores de l'appareil ni dans les classements libres
+      sesRef.current.submit(payload, () => {
+        lost.current = true;
+      });
+      live.current.overAt = performance.now();
+      setRun({ result, rank: -1, id, record: false, prevSpan: 0, stampsBefore: 0, stampsAfter: 0 });
+      setPhase('over');
+      return;
+    }
+    if (total > 0) {
+      payload.balance = {
+        game: 'memory',
+        difficulty: result.mode,
+        version: 1,
+        outcome: result.won ? 'finished' : 'lost',
+        score: result.score,
+        wave: result.maxSpan,
+        acc: payload.acc,
+        duration: payload.duration,
+        rounds_ok: result.correct,
+        rounds_err: result.wrong,
+        pages: result.pages,
+      };
+    }
     let rank = -1;
     let record = false;
     if (result.score > 0) {
@@ -156,13 +190,15 @@ export default function Memory({ account, onHome, onSessionLost }: Props) {
 
   const begin = useCallback(
     (m: Mode) => {
+      const s = sesRef.current;
+      if (s.sess && (s.left <= 0 || !s.sess.active)) return; // essais épuisés ou séance fermée
       sfx.unlock();
       (document.activeElement as HTMLElement | null)?.blur?.();
-      saveMemoryMode(m);
+      if (!s.sess) saveMemoryMode(m);
       setMode(m);
       live.current.mode = m;
-      gameRef.current?.setOptions({ best: bestSpan(m) });
-      gameRef.current?.start(m, Math.min(live.current.startPage, loadProgress(m).stamps));
+      gameRef.current?.setOptions({ best: s.sess ? 0 : bestSpan(m) });
+      gameRef.current?.start(m, s.sess ? parseMemory(s.sess.config).startPage : Math.min(live.current.startPage, loadProgress(m).stamps));
       setRun(null);
       setPhase('play');
     },
@@ -307,7 +343,10 @@ export default function Memory({ account, onHome, onSessionLost }: Props) {
           )}
         </div>
 
-        {phase === 'menu' && (
+        {phase === 'menu' && ses.sess && (
+          <SessionIntro session={ses.sess} left={ses.left} onStart={() => begin(mode)} onBack={() => (onSessions ?? onHome)()} />
+        )}
+        {phase === 'menu' && !ses.sess && (
           <MenuScreen
             view={view}
             setView={setView}
@@ -351,7 +390,22 @@ export default function Memory({ account, onHome, onSessionLost }: Props) {
             </section>
           </div>
         )}
-        {phase === 'over' && run && (
+        {phase === 'over' && run && ses.sess && (
+          <SessionOver
+            session={ses.sess}
+            state={ses.state}
+            score={run.result.score}
+            left={ses.left}
+            details={
+              <p className="mt-1 text-[15px]">
+                Plus longue suite retenue : <strong>{run.result.maxSpan}</strong> · Page {run.result.page}/{PAGES}
+              </p>
+            }
+            onRetry={() => begin(run.result.mode)}
+            onBack={() => (onSessions ?? onHome)()}
+          />
+        )}
+        {phase === 'over' && run && !ses.sess && (
           <OverScreen run={run} account={account} cloud={cloud} onRestart={() => begin(run.result.mode)} onMenu={toMenu} onHome={onHome} />
         )}
         <p className="sr-only" role="status" aria-live="polite">
@@ -485,7 +539,7 @@ function MenuScreen({ view, setView, mode, setMode, settings, account, onChange,
           <div className="card-top">
             <BackButton onClick={onHome} />
           </div>
-          <p className="eyebrow">Mémoire · CM1 et CM2</p>
+          <p className="eyebrow">Mémoire · tous âges</p>
           <h1 id="game-title" className="title title-2l" aria-label="Mémoire d’encre">
             <span className="tl" aria-hidden="true">
               {'MÉMOIRE'.split('').map((ch, i) => (

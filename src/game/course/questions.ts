@@ -392,10 +392,40 @@ export function makeChoices(question: Question, r: Rng = Math.random): { choices
   return { choices, correct: choices.indexOf(question.answer) };
 }
 
+export type CourseDiff = 'apprenti' | 'standard' | 'expert';
+export const COURSE_DIFFS: Array<{ id: CourseDiff; label: string; hint: string }> = [
+  { id: 'apprenti', label: 'Apprenti', hint: 'Plus de temps, l’encre monte doucement : pour bien démarrer.' },
+  { id: 'standard', label: 'Standard', hint: 'Le rythme de référence pour la classe.' },
+  { id: 'expert', label: 'Expert', hint: 'Peu de temps, l’encre monte vite : pour les plus rapides.' },
+];
+
+/** Réglages de chaque difficulté (les calculs, eux, ne changent pas : ils suivent le programme du niveau). */
+export interface CourseTuning {
+  /** multiplicateur du temps de chute de l'étiquette */
+  time: number;
+  /** multiplicateur de la montée lente de l'encre */
+  drain: number;
+  /** encre ajoutée par une erreur (0 à 1) */
+  wrong: number;
+  /** encre retirée par une bonne réponse (0 à 1) */
+  heal: number;
+}
+export const COURSE_TUNING: Record<CourseDiff, CourseTuning> = {
+  apprenti: { time: 1.35, drain: 0.6, wrong: 0.18, heal: 0.1 },
+  standard: { time: 1, drain: 1, wrong: 0.28, heal: 0.08 },
+  expert: { time: 0.8, drain: 1.3, wrong: 0.38, heal: 0.06 },
+};
+
+export const isCourseDiff = (v: unknown): v is CourseDiff => v === 'apprenti' || v === 'standard' || v === 'expert';
+
+/** Clé d'un classement : « cm1 » = Standard (comme avant l'ajout des difficultés), « cm1-apprenti », « cm1-expert »… */
+export type BoardKey = Level | `${Level}-apprenti` | `${Level}-expert`;
+export const boardKey = (level: Level, diff: CourseDiff): BoardKey => (diff === 'standard' ? level : `${level}-${diff}`);
+
 /** Secondes que met l'étiquette à tomber si l'élève ne valide pas : un peu moins à chaque calcul. */
-export function travelTime(level: Level, n: number): number {
+export function travelTime(level: Level, n: number, diff: CourseDiff = 'standard'): number {
   const floor = level === 'cm1' ? 6.5 : 5.5;
-  return Math.max(floor, 10 - 0.08 * n);
+  return Math.max(floor, 10 - 0.08 * n) * COURSE_TUNING[diff].time;
 }
 
 export const LEVELS: Array<{ id: Level; label: string; hint: string }> = [

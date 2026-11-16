@@ -192,3 +192,11 @@ Une vraie application des **magasins** (App Store, Google Play) est possible plu
 ## Mise à jour « suppression de compte »
 
 Supabase → **SQL Editor** → **New query** → collez le contenu de `serveur/mise-a-jour-compte.sql` → **Run**. À faire une seule fois ; aucune donnée existante n'est modifiée.
+
+## Mise à jour « séances de classe et équilibrage »
+
+Supabase → **SQL Editor** → **New query** → collez le contenu de `serveur/mise-a-jour-seances.sql` → **Run**. À faire une seule fois, **avant** d'utiliser les séances ; aucune donnée existante n'est modifiée. Tant qu'elle n'est pas appliquée, l'onglet « Séances » affiche une erreur et les parties libres ne sont plus enregistrées (la fonction d'envoi change) : appliquez-la en même temps que la mise en ligne.
+
+### Statistiques d'équilibrage
+
+`serveur/stats-equilibrage.sql` contient trois requêtes de lecture (taux de réussite par jeu / niveau / difficulté, réussite page par page, précision de Frappe !). Lancez-les dans le SQL Editor et transmettez les résultats : ils ne contiennent aucune donnée personnelle. Objectif : environ 95 % de réussite en Apprenti, 85 % en Standard, 65 % en Expert.

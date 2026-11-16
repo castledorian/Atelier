@@ -1,4 +1,5 @@
-import type { Level } from './questions';
+import { isCourseDiff } from './questions';
+import type { BoardKey, CourseDiff, Level } from './questions';
 
 /** Tableau des meilleurs scores de « Course à l'encre », gardé sur cet appareil (un classement par niveau). */
 
@@ -14,14 +15,15 @@ const KEY = 'atelier.course.scores.v1';
 const LEVEL_KEY = 'atelier.course.level.v1';
 export const MAX_COURSE_SCORES = 10;
 
-type Store = Record<Level, CourseScore[]>;
+const KEYS: BoardKey[] = ['cm1', 'cm1-apprenti', 'cm1-expert', 'cm2', 'cm2-apprenti', 'cm2-expert'];
+type Store = Record<BoardKey, CourseScore[]>;
 
 function read(): Store {
-  const empty: Store = { cm1: [], cm2: [] };
+  const empty = Object.fromEntries(KEYS.map((k) => [k, [] as CourseScore[]])) as Store;
   try {
     const v = JSON.parse(localStorage.getItem(KEY) ?? 'null');
     if (!v || typeof v !== 'object') return empty;
-    for (const l of ['cm1', 'cm2'] as const) {
+    for (const l of KEYS) {
       empty[l] = Array.isArray(v[l])
         ? v[l].filter((s: CourseScore) => s && typeof s.id === 'string' && typeof s.score === 'number' && typeof s.name === 'string')
         : [];
@@ -40,10 +42,10 @@ function write(s: Store) {
   }
 }
 
-export const loadCourseScores = (level: Level): CourseScore[] => read()[level];
+export const loadCourseScores = (level: BoardKey): CourseScore[] => read()[level];
 
 /** Ajoute une partie ; renvoie le tableau à jour et le rang obtenu (1 = record), ou -1 si elle n'entre pas dans le top 10. */
-export function addCourseScore(level: Level, entry: CourseScore): { scores: CourseScore[]; rank: number } {
+export function addCourseScore(level: BoardKey, entry: CourseScore): { scores: CourseScore[]; rank: number } {
   const all = read();
   const list = [...all[level], entry].sort((a, b) => b.score - a.score || a.date - b.date).slice(0, MAX_COURSE_SCORES);
   all[level] = list;
@@ -51,14 +53,14 @@ export function addCourseScore(level: Level, entry: CourseScore): { scores: Cour
   return { scores: list, rank: list.findIndex((s) => s.id === entry.id) + 1 || -1 };
 }
 
-export function renameCourseScore(level: Level, id: string, name: string): CourseScore[] {
+export function renameCourseScore(level: BoardKey, id: string, name: string): CourseScore[] {
   const all = read();
   all[level] = all[level].map((s) => (s.id === id ? { ...s, name } : s));
   write(all);
   return all[level];
 }
 
-export function clearCourseScores(level: Level): CourseScore[] {
+export function clearCourseScores(level: BoardKey): CourseScore[] {
   const all = read();
   all[level] = [];
   write(all);
@@ -76,6 +78,25 @@ export function loadCourseLevel(): Level {
 export function saveCourseLevel(l: Level) {
   try {
     localStorage.setItem(LEVEL_KEY, l);
+  } catch {
+    /* ignoré */
+  }
+}
+
+const DIFF_KEY = 'atelier.course.diff.v1';
+
+export function loadCourseDiff(): CourseDiff {
+  try {
+    const v = localStorage.getItem(DIFF_KEY);
+    return isCourseDiff(v) ? v : 'standard';
+  } catch {
+    return 'standard';
+  }
+}
+
+export function saveCourseDiff(d: CourseDiff) {
+  try {
+    localStorage.setItem(DIFF_KEY, d);
   } catch {
     /* ignoré */
   }

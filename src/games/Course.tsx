@@ -2,26 +2,30 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { BackButton, useFitRows } from '../components/BackButton';
 import { Check } from '../components/Screens';
+import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
 import { Sfx } from '../game/audio';
 import { CourseGame } from '../game/course/engine';
 import type { CourseResult } from '../game/course/engine';
-import { LEVELS, PAGES, fmtNum } from '../game/course/questions';
-import type { Level, Missed } from '../game/course/questions';
+import { COURSE_DIFFS, LEVELS, PAGES, boardKey, fmtNum } from '../game/course/questions';
+import type { BoardKey, CourseDiff, Level, Missed } from '../game/course/questions';
 import {
   addCourseScore,
   clearCourseScores,
+  loadCourseDiff,
   loadCourseLevel,
   loadCourseScores,
+  saveCourseDiff,
   saveCourseLevel,
 } from '../game/course/scores';
 import type { CourseScore } from '../game/course/scores';
 import { newRunId } from '../game/history';
+import { parseMath } from '../game/sessionConfig';
 import { loadSettings, saveSettings } from '../game/storage';
 import type { Settings, TextSize } from '../game/storage';
 import { explain } from '../server/api';
 import { enqueue, flush } from '../server/outbox';
 import { fetchBoard, sendRun } from '../server/student';
-import type { BoardRow, RunPayload, Scope, StudentAccount } from '../server/types';
+import type { BoardRow, RunPayload, Scope, SessionInfo, StudentAccount } from '../server/types';
 
 /**
  * « Course à l'encre » — jeu de calcul mental (CM1 / CM2) : trois lignes de cahier, des étiquettes-réponses,
@@ -41,6 +45,10 @@ interface Props {
   account: StudentAccount | null;
   onHome: () => void;
   onSessionLost: () => void;
+  /** séance de classe à jouer (essais limités) */
+  session?: SessionInfo | null;
+  /** retour à la liste des séances */
+  onSessions?: () => void;
 }
 
 interface Run {
@@ -50,22 +58,27 @@ interface Run {
   record: boolean;
 }
 
-export default function Course({ account, onHome, onSessionLost }: Props) {
+export default function Course({ account, onHome, onSessionLost, session, onSessions }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<CourseGame | null>(null);
   const [sfx] = useState(() => new Sfx());
   const [phase, setPhase] = useState<Phase>('menu');
   const [view, setView] = useState<MenuView>('main');
   const [settings, setSettings] = useState<Settings>(loadSettings);
-  const [level, setLevel] = useState<Level>(loadCourseLevel);
+  const [level, setLevel] = useState<Level>(() => (session ? parseMath(session.config).level : loadCourseLevel()));
+  const [diff, setDiff] = useState<CourseDiff>(() => (session ? parseMath(session.config).diff : loadCourseDiff()));
+  const ses = useSessionRun(account, session);
+  const sesRef = useRef(ses);
+  sesRef.current = ses;
   const [run, setRun] = useState<Run | null>(null);
   const [cloud, setCloud] = useState<Cloud>('off');
   const lost = useRef(false);
   const accountRef = useRef(account);
   accountRef.current = account;
-  const live = useRef({ phase, level, settings, overAt: 0, drill: false, recId: '' });
+  const live = useRef({ phase, level, diff, settings, overAt: 0, drill: false, recId: '' });
   live.current.phase = phase;
   live.current.level = level;
+  live.current.diff = diff;
   live.current.settings = settings;
 
   // ───────────── Fin de partie ─────────────
@@ -80,7 +93,7 @@ export default function Course({ account, onHome, onSessionLost }: Props) {
     const payload: RunPayload = {
       clientId: id,
       game: 'math',
-      mode: result.level,
+      mode: boardKey(result.level, result.diff),
       kind: result.drill ? 'drill' : 'game',
       score: result.score,
       wave: result.bestStreak,
@@ -93,10 +106,35 @@ export default function Course({ account, onHome, onSessionLost }: Props) {
     let rank = -1;
     let record = false;
     if (!result.drill && result.score > 0) {
-      const before = loadCourseScores(result.level);
+      const before = loadCourseScores(boardKey(result.level, result.diff));
       record = before.length === 0 ? result.score > 0 : result.score > before[0].score;
-      const res = addCourseScore(result.level, { id, name, score: result.score, streak: result.bestStreak, date: Date.now() });
+      const res = addCourseScore(boardKey(result.level, result.diff), { id, name, score: result.score, streak: result.bestStreak, date: Date.now() });
       rank = res.rank;
+    }
+    if (sesRef.current.sess) {
+      // séance de classe : l'essai compte pour l'évaluation, il ne va ni dans les scores de l'appareil ni dans les classements libres
+      sesRef.current.submit(payload, () => {
+        lost.current = true;
+      });
+      live.current.drill = false;
+      live.current.overAt = performance.now();
+      setRun({ result, rank: -1, id, record: false });
+      setPhase('over');
+      return;
+    }
+    if (!result.drill && total > 0) {
+      payload.balance = {
+        game: 'math',
+        level: result.level,
+        difficulty: result.diff,
+        version: 1,
+        outcome: result.won ? 'finished' : 'lost',
+        score: result.score,
+        duration: payload.duration,
+        rounds_ok: result.correct,
+        rounds_err: result.wrong,
+        pages: result.pages,
+      };
     }
     if (acct && result.correct > 0) {
       setCloud('sending');
@@ -153,13 +191,18 @@ export default function Course({ account, onHome, onSessionLost }: Props) {
 
   const begin = useCallback(
     (lv: Level, drill?: Missed[]) => {
+      const s = sesRef.current;
+      if (s.sess && (s.left <= 0 || !s.sess.active)) return; // essais épuisés ou séance fermée
       sfx.unlock();
       (document.activeElement as HTMLElement | null)?.blur?.();
-      saveCourseLevel(lv);
+      if (!s.sess) {
+        saveCourseLevel(lv);
+        saveCourseDiff(live.current.diff);
+      }
       setLevel(lv);
       live.current.level = lv;
       live.current.drill = !!drill;
-      gameRef.current?.start(lv, { drill });
+      gameRef.current?.start(lv, { drill, diff: live.current.diff });
       setRun(null);
       setPhase('play');
     },
@@ -334,12 +377,17 @@ export default function Course({ account, onHome, onSessionLost }: Props) {
           </button>
         </div>
 
-        {phase === 'menu' && (
+        {phase === 'menu' && ses.sess && (
+          <SessionIntro session={ses.sess} left={ses.left} onStart={() => begin(level)} onBack={() => (onSessions ?? onHome)()} />
+        )}
+        {phase === 'menu' && !ses.sess && (
           <MenuScreen
             view={view}
             setView={setView}
             level={level}
             setLevel={setLevel}
+            diff={diff}
+            setDiff={setDiff}
             settings={settings}
             account={account}
             onChange={change}
@@ -376,7 +424,22 @@ export default function Course({ account, onHome, onSessionLost }: Props) {
             </section>
           </div>
         )}
-        {phase === 'over' && run && (
+        {phase === 'over' && run && ses.sess && (
+          <SessionOver
+            session={ses.sess}
+            state={ses.state}
+            score={run.result.score}
+            left={ses.left}
+            details={
+              <p className="mt-1 text-[15px]">
+                Justes : <strong>{run.result.correct}</strong> · Fautes : <strong>{run.result.wrong}</strong> · Page {run.result.page}/{PAGES}
+              </p>
+            }
+            onRetry={() => begin(run.result.level)}
+            onBack={() => (onSessions ?? onHome)()}
+          />
+        )}
+        {phase === 'over' && run && !ses.sess && (
           <OverScreen
             run={run}
             account={account}
@@ -425,6 +488,8 @@ interface MenuProps {
   setView: (v: MenuView) => void;
   level: Level;
   setLevel: (l: Level) => void;
+  diff: CourseDiff;
+  setDiff: (d: CourseDiff) => void;
   settings: Settings;
   account: StudentAccount | null;
   onChange: (p: Partial<Settings>) => void;
@@ -432,12 +497,12 @@ interface MenuProps {
   onHome: () => void;
 }
 
-function MenuScreen({ view, setView, level, setLevel, settings, account, onChange, onStart, onHome }: MenuProps) {
-  const [scores, setScores] = useState<CourseScore[]>(() => loadCourseScores(level));
+function MenuScreen({ view, setView, level, setLevel, diff, setDiff, settings, account, onChange, onStart, onHome }: MenuProps) {
+  const [scores, setScores] = useState<CourseScore[]>(() => loadCourseScores(boardKey(level, diff)));
   const [sLevel, setSLevel] = useState<Level>(level);
   useEffect(() => {
-    setScores(loadCourseScores(sLevel));
-  }, [sLevel, view]);
+    setScores(loadCourseScores(boardKey(sLevel, diff)));
+  }, [sLevel, diff, view]);
 
   if (view !== 'main') {
     const titles = { howto: 'Comment jouer', scores: 'Scores', settings: 'Réglages' } as const;
@@ -473,14 +538,21 @@ function MenuScreen({ view, setView, level, setLevel, settings, account, onChang
               </button>
             ))}
           </div>
+          <div className="seg mb-2" role="tablist" aria-label="Difficulté">
+            {COURSE_DIFFS.map((d) => (
+              <button key={d.id} type="button" role="tab" aria-selected={diff === d.id} className="seg-b" onClick={() => setDiff(d.id)}>
+                {d.label}
+              </button>
+            ))}
+          </div>
           <LocalTable scores={scores} limit={6} />
-          {account && <Board account={account} level={sLevel} refreshKey="menu" />}
+          {account && <Board account={account} level={boardKey(sLevel, diff)} refreshKey="menu" />}
           {scores.length > 0 && (
             <button
               type="button"
               className="btn btn-ghost mt-3"
               onClick={() => {
-                if (window.confirm('Effacer les scores de cet appareil pour ce niveau ?')) setScores(clearCourseScores(sLevel));
+                if (window.confirm('Effacer les scores de cet appareil pour ce niveau ?')) setScores(clearCourseScores(boardKey(sLevel, diff)));
               }}
             >
               Effacer les scores
@@ -580,10 +652,19 @@ function MenuScreen({ view, setView, level, setLevel, settings, account, onChang
               />
             </div>
           )}
+          <h2 className="subhead mt-[var(--sp)]">Choisis ta difficulté</h2>
+          <div className="seg mt-1" role="radiogroup" aria-label="Difficulté">
+            {COURSE_DIFFS.map((d) => (
+              <button key={d.id} type="button" role="radio" aria-checked={diff === d.id} className="seg-b" onClick={() => setDiff(d.id)}>
+                {d.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-[14px] leading-snug text-ink/75">{COURSE_DIFFS.find((d) => d.id === diff)?.hint}</p>
           <h2 className="subhead mt-[var(--sp)]">Choisis ton niveau pour jouer</h2>
           <div className="games games-levels" data-n="2">
             {LEVELS.map((l) => {
-              const best = loadCourseScores(l.id)[0]?.score;
+              const best = loadCourseScores(boardKey(l.id, diff))[0]?.score;
               return (
                 <button
                   key={l.id}
@@ -642,7 +723,7 @@ function LocalTable({ scores, limit, highlightId }: { scores: CourseScore[]; lim
   );
 }
 
-function Board({ account, level, refreshKey }: { account: StudentAccount; level: Level; refreshKey: string }) {
+function Board({ account, level, refreshKey }: { account: StudentAccount; level: BoardKey; refreshKey: string }) {
   const [scope, setScope] = useState<Scope>('class');
   const [rows, setRows] = useState<BoardRow[] | null>(null);
   const [err, setErr] = useState('');
@@ -729,7 +810,7 @@ function OverScreen({ run, account, cloud, onRestart, onDrill, onMenu, onHome }:
     const t = window.setTimeout(() => setArmed(true), 550);
     return () => window.clearTimeout(t);
   }, []);
-  const scores = loadCourseScores(r.level);
+  const scores = loadCourseScores(boardKey(r.level, r.diff));
   const total = r.correct + r.wrong;
   const title = r.drill ? 'Bravo, bien travaillé !' : r.won ? 'Cahier terminé !' : run.record ? 'Nouveau record !' : 'Rattrapé par l’encre';
   const showMissed = r.missed.slice(0, 4);
@@ -739,7 +820,9 @@ function OverScreen({ run, account, cloud, onRestart, onDrill, onMenu, onHome }:
       <section className="card card-game card-cover w-full max-w-[600px]" role="dialog" aria-modal="true" aria-labelledby="over-title">
         <div className="card-top">
           <BackButton onClick={onHome} />
-          <span className="subhead">{levelLabel(r.level)}</span>
+          <span className="subhead">
+            {levelLabel(r.level)} · {COURSE_DIFFS.find((d) => d.id === r.diff)?.label}
+          </span>
         </div>
         <h2 id="over-title" className="title-sm">
           {title}
@@ -796,7 +879,7 @@ function OverScreen({ run, account, cloud, onRestart, onDrill, onMenu, onHome }:
         ) : (
           <div className="mt-2">
             <LocalTable scores={scores} limit={rows} highlightId={run.id} />
-            {account && <Board account={account} level={r.level} refreshKey={cloud} />}
+            {account && <Board account={account} level={boardKey(r.level, r.diff)} refreshKey={cloud} />}
           </div>
         )}
 

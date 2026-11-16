@@ -36,6 +36,8 @@ export interface MemoryResult {
   maxSpan: number;
   /** page de départ (0 = début du cahier) */
   startPage: number;
+  /** par page : manches jouées (a) et ratées (e) — sert à régler la difficulté */
+  pages: Array<{ a: number; e: number }>;
   /** secondes réellement jouées */
   time: number;
   won: boolean;
@@ -175,6 +177,8 @@ export class MemoryGame {
   private maxSpan = 0;
   private pageLost = 0;
   private startPage = 0;
+  private pageA: number[] = [0, 0, 0, 0, 0, 0];
+  private pageE: number[] = [0, 0, 0, 0, 0, 0];
   private record = 0; // meilleure suite déjà réussie sur cet appareil (La Suite)
   private recordShown = false;
   private nearMiss = false;
@@ -396,6 +400,8 @@ export class MemoryGame {
     this.best = 0;
     this.correct = 0;
     this.wrong = 0;
+    this.pageA = [0, 0, 0, 0, 0, 0];
+    this.pageE = [0, 0, 0, 0, 0, 0];
     this.maxSpan = 0;
     this.pageLost = 0;
     this.seq = [];
@@ -556,6 +562,7 @@ export class MemoryGame {
   private roundOk() {
     const span = spanOf(this.mode, this.n);
     this.correct++;
+    this.pageA[stageOf(this.mode, this.n)]++;
     this.streak++;
     this.best = Math.max(this.best, this.streak);
     this.maxSpan = Math.max(this.maxSpan, span);
@@ -599,6 +606,8 @@ export class MemoryGame {
 
   private bad(i: number) {
     this.wrong++;
+    this.pageA[stageOf(this.mode, this.n)]++;
+    this.pageE[stageOf(this.mode, this.n)]++;
     this.streak = 0;
     this.pageLost++;
     this.lives--;
@@ -967,6 +976,7 @@ export class MemoryGame {
           page: this.won ? PAGES : stageOf(this.mode, this.n) + 1,
           lives: Math.max(0, this.lives),
           startPage: this.startPage,
+          pages: this.pageA.map((a, i) => ({ a, e: this.pageE[i] })),
         });
       }
     }

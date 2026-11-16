@@ -31,6 +31,43 @@ export interface RunPayload {
   correct: number;
   duration: number;
   playedMs: number;
+  /** partie jouée dans une séance de classe (essais limités) */
+  sessionId?: string;
+  /** résumé anonyme pour régler la difficulté (jamais lié à l'élève) */
+  balance?: Record<string, unknown>;
+}
+
+/** Séance de classe vue par l'élève. */
+export interface SessionInfo {
+  id: string;
+  title: string;
+  game: GameId;
+  config: Record<string, unknown>;
+  max_attempts: number;
+  attempts_used: number;
+  best_score: number | null;
+  active: boolean;
+}
+
+/** Séance de classe vue par l'enseignant. */
+export interface ClassSession {
+  id: string;
+  title: string;
+  game: GameId;
+  config: Record<string, unknown>;
+  max_attempts: number;
+  active: boolean;
+  created: number;
+  done: number;
+  total: number;
+}
+
+export interface SessionResultRow {
+  id: string;
+  name: string;
+  attempts: number;
+  best_score: number | null;
+  runs: Array<{ score: number; wave: number; wpm: number; acc: number; duration: number; at: number }>;
 }
 
 export interface ServerRun {

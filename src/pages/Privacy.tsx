@@ -76,9 +76,19 @@ export default function Privacy({ onBack }: { onBack: () => void }) {
           <li>Un code d’accès de 8 caractères, créé au hasard, qui sert de « clé » de connexion.</li>
           <li>Les résultats de chaque partie&nbsp;: jeu, mode, score, niveau atteint, vitesse et précision de frappe, durée, date.</li>
           <li>
+            Pour les séances de classe (un jeu réglé par l’enseignant)&nbsp;: le nombre d’essais utilisés et le résultat de chaque essai. Seul le meilleur score compte pour l’évaluation&nbsp;;
+            l’enseignant voit tous les essais.
+          </li>
+          <li>
             Un jeton de connexion, gardé sur l’appareil. Sur le serveur, seule son empreinte est conservée (le jeton lui-même n’y est jamais lu) et il expire au bout de 60 jours.
           </li>
         </ul>
+        <h3 className="font-bold">Statistiques anonymes pour régler la difficulté</h3>
+        <p>
+          À la fin d’une partie libre d’un élève connecté, un résumé est enregistré à part&nbsp;: jeu, niveau, difficulté, score, nombre de réussites et d’erreurs par page, durée. Il ne
+          contient <strong>aucun identifiant</strong> (ni élève, ni classe, ni école) et ne permet pas de retrouver la personne. Il sert uniquement à rendre les jeux plus justes pour
+          tous. Les parties de séance et les réglages personnalisés n’y figurent pas.
+        </p>
         <h3 className="font-bold">Enseignant</h3>
         <ul className={ul}>
           <li>L’adresse e-mail et le mot de passe du compte (le mot de passe est protégé par le service d’identification et n’est lisible par personne).</li>

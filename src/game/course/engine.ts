@@ -1,6 +1,6 @@
 import type { Sfx } from '../audio';
-import { PAGES, PAGE_TITLES, PER_PAGE, TOTAL, fmtNum, fromMissed, makeChoices, makeQuestion, stageOf, travelTime } from './questions';
-import type { Level, Missed, Question } from './questions';
+import { COURSE_TUNING, PAGES, PAGE_TITLES, PER_PAGE, TOTAL, fmtNum, fromMissed, makeChoices, makeQuestion, stageOf, travelTime } from './questions';
+import type { CourseDiff, Level, Missed, Question } from './questions';
 
 /**
  * Moteur de « Course à l'encre » (canvas 2D).
@@ -11,6 +11,9 @@ import type { Level, Missed, Question } from './questions';
 
 export interface CourseResult {
   level: Level;
+  diff: CourseDiff;
+  /** par page : calculs posés (a) et erreurs (e) — sert à régler la difficulté */
+  pages: Array<{ a: number; e: number }>;
   score: number;
   correct: number;
   wrong: number;
@@ -111,6 +114,8 @@ function rr(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: num
 }
 
 export interface StartOptions {
+  /** difficulté (Standard par défaut) */
+  diff?: CourseDiff;
   /** entraînement ciblé : on repose ces calculs */
   drill?: Missed[];
 }
@@ -154,6 +159,9 @@ export class CourseGame {
   private mode: 'demo' | 'play' = 'demo';
   private paused = false;
   private level: Level = 'cm1';
+  private diff: CourseDiff = 'standard';
+  private pageA: number[] = [0, 0, 0, 0, 0, 0];
+  private pageE: number[] = [0, 0, 0, 0, 0, 0];
   private drillQueue: Question[] | null = null;
   private drillTotal = 0;
 
@@ -227,6 +235,7 @@ export class CourseGame {
 
   start(level: Level, opts: StartOptions = {}) {
     this.level = level;
+    this.diff = opts.diff ?? 'standard';
     this.mode = 'play';
     this.reset();
     if (opts.drill && opts.drill.length) {
@@ -246,6 +255,7 @@ export class CourseGame {
   startDemo() {
     this.mode = 'demo';
     this.level = 'cm1';
+    this.diff = 'standard';
     this.reset();
     this.flood = 0.7;
     this.inkShown = 0.7;
@@ -332,6 +342,8 @@ export class CourseGame {
     this.correct = 0;
     this.wrong = 0;
     this.asked = 0;
+    this.pageA = [0, 0, 0, 0, 0, 0];
+    this.pageE = [0, 0, 0, 0, 0, 0];
     this.shield = false;
     this.gate = null;
     this.spawnIn = 0.9;
@@ -505,7 +517,7 @@ export class CourseGame {
     }
     this.t += dt;
     this.flow(dt);
-    if (this.drillQueue === null) this.flood -= (0.004 + 0.001 * stageOf(this.asked)) * dt;
+    if (this.drillQueue === null) this.flood -= (0.004 + 0.001 * stageOf(this.asked)) * COURSE_TUNING[this.diff].drain * dt;
     if (this.flood <= 0 && !this.over) this.swallow();
   }
 
@@ -550,7 +562,7 @@ export class CourseGame {
     this.recent.push(q.text);
     if (this.recent.length > 4) this.recent.shift();
     const { choices, correct } = makeChoices(q);
-    const T = this.mode === 'demo' ? 5 : this.drillQueue ? 11 : travelTime(this.level, this.asked);
+    const T = this.mode === 'demo' ? 5 : this.drillQueue ? 11 : travelTime(this.level, this.asked, this.diff);
     const y = this.topY + this.gh / 2;
     this.gate = { q, choices, correct, y, speed: (this.resolveY - y) / T, t0: this.t, T, state: 0, picked: -1, age: 0, retry, bonus: 0 };
     this.demoWait = rand(1.4, 2.6);
@@ -599,6 +611,7 @@ export class CourseGame {
     const x = this.colX(g.picked);
     const y = this.penY - 24 * this.u;
     if (!demo) this.asked++;
+    if (!demo && !this.drillQueue) this.pageA[Math.min(PAGES - 1, stageOf(this.asked - 1))]++;
     if (ok) {
       if (demo) {
         this.burst(x, y, 8, 2, 120);
@@ -611,7 +624,7 @@ export class CourseGame {
       const prevMult = Math.min(5, 1 + Math.floor((this.streak - 1) / 3));
       const pts = 10 * mult + g.bonus;
       this.score += pts;
-      this.flood = Math.min(1, this.flood + 0.08 + (this.streak >= 3 ? 0.03 : 0));
+      this.flood = Math.min(1, this.flood + COURSE_TUNING[this.diff].heal + (this.streak >= 3 ? 0.03 : 0));
       this.burst(x, y, 20, 2, 280);
       this.burst(x, y, 9, 4, 220);
       const ty = this.resolveY - this.gh * 0.75;
@@ -642,6 +655,7 @@ export class CourseGame {
       }
       this.wrong++;
       this.pageWrong++;
+      if (!this.drillQueue) this.pageE[Math.min(PAGES - 1, stageOf(this.asked - 1))]++;
       const m = this.missed.get(g.q.text);
       if (m) m.count++;
       else this.missed.set(g.q.text, { text: g.q.text, answer: g.q.answer, near: g.q.near, count: 1 });
@@ -656,7 +670,7 @@ export class CourseGame {
         this.shake = Math.max(this.shake, 6);
       } else {
         this.streak = 0;
-        this.flood -= 0.28;
+        this.flood -= COURSE_TUNING[this.diff].wrong;
         this.shake = Math.max(this.shake, 12);
         this.hitStop = 0.09;
         this.flash = 1;
@@ -691,6 +705,8 @@ export class CourseGame {
   private result(cleared: boolean): CourseResult {
     return {
       level: this.level,
+      diff: this.diff,
+      pages: this.pageA.map((a, i) => ({ a, e: this.pageE[i] })),
       score: this.score,
       correct: this.correct,
       wrong: this.wrong,

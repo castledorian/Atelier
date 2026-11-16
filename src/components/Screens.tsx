@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { weakLetters } from '../game/analysis';
-import { ALPHABET, DIFFICULTIES, DIFFICULTIES_ORDER } from '../game/difficulty';
+import { DIFFICULTIES, DIFFICULTIES_ORDER } from '../game/difficulty';
 import type { Content, CustomConfig, Difficulty, Penalty } from '../game/difficulty';
 import type { RunStats } from '../game/engine';
-import { LAYOUTS, fingerLabel } from '../game/layouts';
+import { fingerLabel } from '../game/layouts';
 import { scoresFor } from '../game/storage';
 import type { Layout, ScoreEntry, Settings, TextSize } from '../game/storage';
-import { countWords } from '../game/words';
 import type { StudentAccount } from '../server/types';
 import { BackButton, useFitRows } from './BackButton';
 import { ScoresPanel } from './Extras';
@@ -135,15 +134,6 @@ function Seg<T extends string | number>({
 export function CustomPanel({ settings, onChange }: { settings: Settings; onChange: (patch: Partial<Settings>) => void }) {
   const c = settings.custom;
   const set = (patch: Partial<CustomConfig>) => onChange({ custom: { ...c, ...patch } });
-  const allowed = c.letters.toUpperCase();
-  const words = countWords(allowed, Math.min(3, c.maxLen), c.maxLen);
-  const [top, mid, bot] = LAYOUTS[settings.layout];
-  const toggle = (ch: string) => {
-    const on = c.letters.includes(ch);
-    if (on && c.letters.length === 1) return; // au moins une lettre
-    set({ letters: on ? c.letters.replace(ch, '') : [...c.letters, ch].sort().join('') });
-  };
-  const preset = (letters: string) => set({ letters });
   return (
     <div className="cfg mt-3" role="group" aria-label="Réglages de la séance">
 
@@ -184,41 +174,6 @@ export function CustomPanel({ settings, onChange }: { settings: Settings; onChan
           </div>
         </div>
       )}
-
-      <div className="cfg-row cfg-col">
-        <span className="cfg-label" id="cfg-letters">
-          Lettres autorisées
-        </span>
-        <div className="flex flex-wrap gap-2" role="group" aria-labelledby="cfg-letters">
-          <button type="button" className="chip" onClick={() => preset(mid)}>
-            Rangée du milieu
-          </button>
-          <button type="button" className="chip" onClick={() => preset(mid + top)}>
-            Milieu + haut
-          </button>
-          <button type="button" className="chip" onClick={() => preset(ALPHABET)}>
-            Toutes
-          </button>
-        </div>
-        <div className="cfg-keys" aria-label="Choisir les lettres">
-          {[top, mid, bot].map((row) => (
-            <div key={row} className="cfg-keyrow">
-              {[...row].map((ch) => (
-                <button key={ch} type="button" role="switch" aria-checked={c.letters.includes(ch)} className="cfg-key" onClick={() => toggle(ch)}>
-                  {ch.toUpperCase()}
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
-        {c.content !== 'letters' && c.letters.length < ALPHABET.length && (
-          <p className="text-[13px] leading-snug text-ink/70">
-            {words >= 8
-              ? `${words} mots du dictionnaire utilisent ces lettres.`
-              : `Seulement ${words} mot${words > 1 ? 's' : ''} avec ces lettres : le jeu proposera aussi de courtes suites de lettres.`}
-          </p>
-        )}
-      </div>
 
       <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1">
         <Check on={c.autoTarget} onClick={() => set({ autoTarget: !c.autoTarget })}>
