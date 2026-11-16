@@ -436,7 +436,7 @@ create table if not exists public.class_sessions (
   class_id      uuid not null references public.classes(id) on delete cascade,
   school_id     uuid not null references public.schools(id) on delete cascade,
   title         text not null check (char_length(title) between 1 and 60),
-  game          text not null check (game in ('typing', 'math', 'memory')),
+  game          text not null check (game in ('typing', 'math', 'memory', 'spelling')),
   config        jsonb not null default '{}'::jsonb check (jsonb_typeof(config) = 'object' and octet_length(config::text) < 2000),
   max_attempts  integer not null default 2 check (max_attempts between 1 and 3),
   active        boolean not null default true,
@@ -451,7 +451,7 @@ create index if not exists runs_session_idx on public.runs (session_id, student_
 create table if not exists public.balance_runs (
   id           bigint generated always as identity primary key,
   played_at    timestamptz not null default now(),
-  game         text not null check (game in ('typing', 'math', 'memory')),
+  game         text not null check (game in ('typing', 'math', 'memory', 'spelling')),
   level        text check (level is null or level in ('cm1', 'cm2')),
   difficulty   text not null check (difficulty ~ '^[a-z0-9_-]{1,20}$'),   -- apprenti / standard / expert, ou le mode (suite / cases)
   custom       boolean not null default false,                            -- réglages personnalisés ou séance : exclus des moyennes
@@ -628,7 +628,7 @@ begin
   select * into v_c from public.classes where id = p_class;
   if not found then raise exception 'forbidden' using errcode = '42501'; end if;
   perform private.assert_member(v_c.school_id);
-  if char_length(v_t) not between 1 and 60 or p_game not in ('typing', 'math', 'memory')
+  if char_length(v_t) not between 1 and 60 or p_game not in ('typing', 'math', 'memory', 'spelling')
      or p_max not between 1 and 3 or p_config is null or jsonb_typeof(p_config) <> 'object' then
     raise exception 'invalid_name' using errcode = '22023';
   end if;

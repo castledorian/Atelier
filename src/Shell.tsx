@@ -4,6 +4,7 @@ import BreakNotice from './components/BreakNotice';
 import { useInstall } from './install';
 import Course from './games/Course';
 import Memory from './games/Memory';
+import Spelling from './games/Spelling';
 import Dashboard from './pages/Dashboard';
 import Bestiary from './pages/Bestiary';
 import Home from './pages/Home';
@@ -16,7 +17,7 @@ import { loadTeacher, saveTeacher, signOut, takeAuthHash } from './server/teache
 import type { TeacherSession } from './server/teacher';
 import type { SessionInfo, StudentAccount } from './server/types';
 
-type View = 'home' | 'login' | 'dashboard' | 'privacy' | 'sessions' | 'bestiary' | 'typing' | 'math' | 'memory';
+type View = 'home' | 'login' | 'dashboard' | 'privacy' | 'sessions' | 'bestiary' | 'typing' | 'math' | 'memory' | 'spelling';
 
 // Lien reçu par email (confirmation d'inscription / mot de passe oublié) : lu une seule fois, au chargement de la page.
 const ARRIVAL = serverEnabled() ? takeAuthHash() : null;
@@ -130,7 +131,7 @@ export default function Shell() {
     );
   }
 
-  if (view === 'typing' || view === 'math' || view === 'memory') {
+  if (view === 'typing' || view === 'math' || view === 'memory' || view === 'spelling') {
     const props = { key: active?.id ?? 'free', account: student, onHome: home, onSessionLost: sessionLost, session: active, onSessions: toSessions };
     const { key, ...rest } = props;
     return (
@@ -138,6 +139,7 @@ export default function Shell() {
         {view === 'typing' && <App key={key} {...rest} install={install} />}
         {view === 'math' && <Course key={key} {...rest} />}
         {view === 'memory' && <Memory key={key} {...rest} />}
+        {view === 'spelling' && <Spelling key={key} {...rest} />}
         {active === null && <BreakNotice key={view} />}
       </>
     );

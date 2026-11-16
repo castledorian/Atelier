@@ -10,7 +10,7 @@ import type { Mode } from './memory/rounds';
  * pour qu'un réglage inconnu ou abîmé retombe toujours sur une partie normale.
  */
 
-export type GameKind = 'typing' | 'math' | 'memory';
+export type GameKind = 'typing' | 'math' | 'memory' | 'spelling';
 
 export interface TypingCfg {
   diff: Difficulty;
@@ -39,13 +39,16 @@ export function parseMath(v: unknown): MathCfg {
   return { level: o.level === 'cm2' ? 'cm2' : 'cm1', diff: isCourseDiff(o.diff) ? o.diff : 'standard' };
 }
 
+/** Chasse aux fautes : mêmes réglages que Course à l'encre (niveau et difficulté). */
+export const parseSpelling = (v: unknown): MathCfg => parseMath(v);
+
 export function parseMemory(v: unknown): MemoryCfg {
   const o = obj(v);
   const n = typeof o.startPage === 'number' && Number.isFinite(o.startPage) ? Math.floor(o.startPage) : 0;
   return { mode: o.mode === 'cases' ? 'cases' : 'suite', startPage: Math.max(0, Math.min(PAGES - 1, n)) };
 }
 
-export const GAME_NAMES: Record<GameKind, string> = { typing: 'Frappe !', math: 'Course à l’encre', memory: 'Mémoire d’encre' };
+export const GAME_NAMES: Record<GameKind, string> = { typing: 'Frappe !', math: 'Course à l’encre', memory: 'Mémoire d’encre', spelling: 'Chasse aux fautes' };
 
 const DIFF_LABEL: Record<Difficulty, string> = { apprenti: 'Apprenti', standard: 'Standard', expert: 'Expert', perso: 'Personnalisé' };
 
@@ -58,7 +61,7 @@ export function describeConfig(game: GameKind, config: unknown): string[] {
     const content = k.content === 'letters' ? 'lettres seules' : k.content === 'words' ? 'mots' : 'mots et lettres';
     return [`Vitesse ${k.speed} %`, `${k.lives} vie${k.lives > 1 ? 's' : ''}`, content, ...(k.content !== 'letters' ? [`mots jusqu’à ${k.maxLen} lettres`] : [])];
   }
-  if (game === 'math') {
+  if (game === 'math' || game === 'spelling') {
     const c = parseMath(config);
     return [LEVELS.find((l) => l.id === c.level)?.label ?? c.level, COURSE_DIFFS.find((d) => d.id === c.diff)?.label ?? c.diff];
   }

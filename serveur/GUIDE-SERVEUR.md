@@ -209,3 +209,9 @@ Supabase → **SQL Editor** → **New query** → collez le contenu de `serveur/
 - l'**objectif collectif** : sur « Mes séances », les élèves voient combien de parties la classe a jouées cette semaine, sans aucun nom ni classement individuel.
 
 Tant qu'elle n'est pas appliquée, le site continue de fonctionner : la case n'apparaît pas et l'objectif collectif reste caché.
+
+## Mise à jour « Chasse aux fautes » (4ᵉ jeu, orthographe)
+
+Supabase → **SQL Editor** → **New query** → collez le contenu de `serveur/mise-a-jour-orthographe.sql` → **Run**. À faire une seule fois ; aucune donnée n'est modifiée. Elle autorise « Chasse aux fautes » dans les **séances de classe**.
+
+Sans elle, le jeu fonctionne en jeu libre (scores et classement de classe compris) ; seule la création d'une séance « Chasse aux fautes » est refusée. Les fautes rangées par créature (le bestiaire) restent sur l'appareil de l'élève : le serveur ne les reçoit jamais.

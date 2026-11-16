@@ -17,7 +17,7 @@ import type { ClassRow, ClassSession, SessionResultRow } from '../server/types';
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 type Act = <R>(f: () => Promise<R>) => Promise<R | undefined>;
 
-const GAMES: GameKind[] = ['typing', 'math', 'memory'];
+const GAMES: GameKind[] = ['typing', 'math', 'spelling', 'memory'];
 const TYPING_DIFFS: Array<[Difficulty, string]> = [
   ['apprenti', 'Apprenti'],
   ['standard', 'Standard'],
@@ -73,7 +73,7 @@ function draftOf(s: ClassSession): Draft {
 
 function configOf(d: Draft): Record<string, unknown> {
   if (d.game === 'typing') return d.typingDiff === 'perso' ? { diff: 'perso', custom: d.custom } : { diff: d.typingDiff };
-  if (d.game === 'math') return { level: d.level, diff: d.courseDiff };
+  if (d.game === 'math' || d.game === 'spelling') return { level: d.level, diff: d.courseDiff };
   return { mode: d.mode, startPage: d.startPage };
 }
 
@@ -235,6 +235,13 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
                 <Seg label="Niveau" value={draft.level} options={LEVELS.map((l) => [l.id, l.label] as [Level, string])} onChange={(level) => set({ level })} />
                 <Seg label="Difficulté" value={draft.courseDiff} options={COURSE_DIFFS.map((d) => [d.id, d.label] as [CourseDiff, string])} onChange={(courseDiff) => set({ courseDiff })} />
                 <p className="text-[14px] leading-snug text-ink/70">Les calculs suivent le programme du niveau ; la difficulté règle le temps et l’indulgence.</p>
+              </>
+            )}
+            {draft.game === 'spelling' && (
+              <>
+                <Seg label="Niveau" value={draft.level} options={LEVELS.map((l) => [l.id, l.label] as [Level, string])} onChange={(level) => set({ level })} />
+                <Seg label="Difficulté" value={draft.courseDiff} options={COURSE_DIFFS.map((d) => [d.id, d.label] as [CourseDiff, string])} onChange={(courseDiff) => set({ courseDiff })} />
+                <p className="text-[14px] leading-snug text-ink/70">Dix phrases par essai. La difficulté règle le nombre de propositions et la présence de l’indice.</p>
               </>
             )}
             {draft.game === 'memory' && (

@@ -1,4 +1,4 @@
-export type GameId = 'typing' | 'math' | 'memory';
+export type GameId = 'typing' | 'math' | 'memory' | 'spelling';
 
 export interface StudentAccount {
   token: string;

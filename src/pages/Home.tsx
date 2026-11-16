@@ -11,7 +11,7 @@ import type { TeacherSession } from '../server/teacher';
 interface HomeProps {
   student: StudentAccount | null;
   teacher: TeacherSession | null;
-  onPlay: (game: 'typing' | 'math' | 'memory') => void;
+  onPlay: (game: 'typing' | 'math' | 'memory' | 'spelling') => void;
   onSessions: () => void;
   onLogin: (tab: 'student' | 'teacher') => void;
   onDashboard: () => void;
@@ -123,6 +123,12 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
           )}
           <span className="gcard-go">Jouer →</span>
         </button>
+        <button type="button" className="gcard" onClick={() => onPlay('spelling')}>
+          <span className="gcard-tag">Orthographe</span>
+          <span className="gcard-name">Chasse aux fautes</span>
+          <span className="gcard-text">Une faute s’est glissée dans la phrase : trouve-la, puis corrige-la.</span>
+          <span className="gcard-go">Jouer →</span>
+        </button>
         <button type="button" className="gcard" onClick={() => onPlay('memory')}>
           <span className="gcard-tag">Mémoire</span>
           <span className="gcard-name">Mémoire d’encre</span>
@@ -138,7 +144,7 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
         <div className="gcard gcard-soon" aria-label="Autres jeux à venir">
           <span className="gcard-tag">Bientôt</span>
           <span className="gcard-name">Autres jeux</span>
-          <span className="gcard-text">Orthographe, conjugaison, géométrie… d’autres jeux arrivent.</span>
+          <span className="gcard-text">Conjugaison, géométrie… d’autres jeux arrivent.</span>
         </div>
       </div>
 

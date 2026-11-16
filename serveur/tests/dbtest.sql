@@ -238,6 +238,17 @@ update public.classes set hide_board = true where id = (select v::uuid from ctx 
 select pg_temp.as_admin();
 select pg_temp.eq('un autre enseignant ne peut pas masquer', (select hide_board from public.classes where id = (select v::uuid from ctx where k='classA')), false);
 
+-- ═══ 4e jeu : orthographe (séance + partie libre) ═══
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+insert into ctx select 'sessSp', public.save_class_session((select v::uuid from ctx where k='classA'), null, 'Orthographe', 'spelling', '{"level":"cm1","diff":"standard"}', 1, true)::text;
+select pg_temp.eq('séance d''orthographe créée', (select count(*) from jsonb_array_elements(public.list_class_sessions((select v::uuid from ctx where k='classA'))) e where e->>'game'='spelling'), 1::bigint);
+select pg_temp.as_anon();
+select pg_temp.eq('essai d''orthographe en séance', public.submit_session_run((select v from ctx where k='tok_lea'), (select v::uuid from ctx where k='sessSp'), 'ortho000001', 135, 6, 0, 90, 9, 240)->>'attempts_used', '1');
+select pg_temp.eq('partie libre d''orthographe', public.submit_run((select v from ctx where k='tok_lea'), 'ortho000002', 'spelling', 'cm1', 'game', 120, 4, 0, 80, 8, 200)->>'ok', 'true');
+select pg_temp.eq('classement orthographe', jsonb_array_length(public.class_leaderboard((select v from ctx where k='tok_lea'), 'spelling', 'cm1')->'rows'), 1);
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select public.delete_class_session((select v::uuid from ctx where k='sessSp'));
+
 -- suppression d'une séance : ses essais disparaissent avec elle
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 select public.delete_class_session((select v::uuid from ctx where k='sess'));
