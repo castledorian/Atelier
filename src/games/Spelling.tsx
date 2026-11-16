@@ -16,7 +16,7 @@ import { newRunId } from '../game/history';
 import { parseSpelling } from '../game/sessionConfig';
 import { loadSettings, saveSettings } from '../game/storage';
 import type { Settings } from '../game/storage';
-import { BOON_AFTER, HINT, HP, RETRY_MAX, REVIVE_HP, ROUNDS, choicesFor, duelItems, isFault, isPerfect, nextItem, offerBoons, pickFeedback, pickRetry, pointsFor, roleOf, shuffle } from '../game/spelling/engine';
+import { BOON_AFTER, BOSS_PHASES, HINT, HP, RETRY_MAX, REVIVE_HP, ROUNDS, choicesFor, duelItems, isFault, isPerfect, isTypedRight, nextItem, offerBoons, pickFeedback, pickRetry, pointsFor, roleOf, shuffle } from '../game/spelling/engine';
 import type { Boon, Item, RoundOutcome } from '../game/spelling/engine';
 import { addSpellingScore, loadSpellingPrefs, loadSpellingScores, saveSpellingPrefs } from '../game/spelling/scores';
 import { enqueue, flush } from '../server/outbox';
@@ -68,6 +68,14 @@ interface GameState {
   maxHp: number;
   shield: number;
   loupe: number;
+  /** Gommes restantes (elles effacent une mauvaise proposition) */
+  gomme: number;
+  /** Apprenti : la première erreur sur un mot juste ne coûte rien */
+  freeTap: boolean;
+  /** premier combat jamais joué : une flèche montre le mot à toucher */
+  tuto: boolean;
+  /** dessins d'ennemis vaincus pendant cette partie */
+  beaten: Map<number, number>;
   /** dessin de chaque ennemi, dans l'ordre */
   order: number[];
 }
@@ -84,6 +92,8 @@ interface Round {
   msg: string;
   revealed: boolean;
   gained: number;
+  /** dont bonus de série */
+  bonus: number;
   badTaps: number[];
   hits: number;
   loupeOn: boolean;
@@ -111,6 +121,9 @@ interface Over {
   defeated: number;
   hpLeft: number;
   maxHp: number;
+  /** collection d'ennemis de cet appareil (après cette partie) et ceux découverts aujourd'hui */
+  bestiary?: Record<string, number>;
+  fresh?: number[];
 }
 
 const SEEN_KEY = 'atelier.spelling.seen.v1';
@@ -149,6 +162,36 @@ const saveRetry = (before: string[], used: ReadonlySet<string>, missed: readonly
   } catch {
     /* ignoré */
   }
+};
+const TUTO_KEY = 'atelier.spelling.tuto.v1';
+const tutoSeen = (): boolean => {
+  try {
+    const seen = localStorage.getItem(TUTO_KEY) === '1';
+    localStorage.setItem(TUTO_KEY, '1');
+    return seen;
+  } catch {
+    return true;
+  }
+};
+const BESTIARY_KEY = 'atelier.spelling.bestiaire.v1';
+/** Ennemis déjà vaincus sur cet appareil : numéro de dessin → nombre de victoires. */
+const loadBestiary = (): Record<string, number> => {
+  try {
+    const v = JSON.parse(localStorage.getItem(BESTIARY_KEY) ?? '{}');
+    return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+  } catch {
+    return {};
+  }
+};
+const saveBestiary = (kinds: ReadonlyMap<number, number>): Record<string, number> => {
+  const b = loadBestiary();
+  kinds.forEach((n, k) => (b[String(k)] = (b[String(k)] ?? 0) + n));
+  try {
+    localStorage.setItem(BESTIARY_KEY, JSON.stringify(b));
+  } catch {
+    /* ignoré */
+  }
+  return b;
 };
 const RULE_SHORT: Record<string, string> = { doublon: 'Le Doublon', jumeaux: 'Les Jumeaux', accordeur: 'L’Accordeur' };
 
@@ -236,6 +279,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
       msg: '',
       revealed: false,
       gained: 0,
+      bonus: 0,
       badTaps: [],
       hits: 0,
       loupeOn,
@@ -312,8 +356,11 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
     }
     const missedIds = new Set(s.missed.map((m) => m.id));
     rememberSeen([...s.used].filter((id) => !missedIds.has(id)));
+    const known = loadBestiary();
+    const bestiary = s.duel ? known : saveBestiary(s.beaten);
+    const fresh = [...s.beaten.keys()].filter((k) => !(String(k) in known));
     if (!s.duel && !sesRef.current.sess) saveRetry(s.retry, s.used, s.missed);
-    setOver({ score: s.score, okRounds: s.okRounds, total, bestStreak: s.best, rank, record, level: s.level, diff: s.diff, missed: s.missed, dead, defeated: dead ? s.asked : total, hpLeft: s.hp, maxHp: s.maxHp, ...encre });
+    setOver({ score: s.score, okRounds: s.okRounds, total, bestStreak: s.best, rank, record, level: s.level, diff: s.diff, missed: s.missed, dead, defeated: dead ? s.asked : total, hpLeft: s.hp, maxHp: s.maxHp, bestiary, fresh, ...encre });
     sfx.play(dead ? 'over' : 'clear');
     setPhase('over');
   }, [account, sfx]);
@@ -346,6 +393,10 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
         maxHp: duel ? 0 : HP[diff],
         shield: 0,
         loupe: 0,
+        gomme: 0,
+        freeTap: !duel && diff === 'apprenti',
+        tuto: !duel && !tutoSeen(),
+        beaten: new Map(),
         order: shuffle([...Array(ENEMY_KINDS).keys()]),
       };
       sfx.unlock();
@@ -392,12 +443,20 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
     return { ...nr, step: 'done', lost: true, revealed: true, gained: 0, msg: '' };
   };
 
+  const s0 = () => g.current as GameState;
   const tapWord = (i: number) => {
     const r = rr.current;
     if (!r || r.step !== 'tap' || r.badTaps.includes(i)) return;
     if (i === r.item.before.length) {
       sfx.play('hit');
       upd({ ...r, step: 'fix', msg: '', tipShown: HINT[diff] === 'free' || r.loupeOn });
+      return;
+    }
+    if (s0().freeTap) {
+      // Apprenti : la première hésitation est offerte
+      s0().freeTap = false;
+      sfx.play('ding');
+      upd({ ...r, tapFirst: false, badTaps: [...r.badTaps, i], msg: 'Pas de souci : 1re erreur gratuite !' });
       return;
     }
     upd(hurt({ ...r, tapFirst: false, badTaps: [...r.badTaps, i] }, 'Ce mot est bien écrit !'));
@@ -407,6 +466,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
     const s = g.current as GameState;
     const out: RoundOutcome = { tapFirst: r.tapFirst, fixTries: tries, hint: r.hintUsed };
     const gained = pointsFor(out, s.streak);
+    const bonus = isPerfect(out) ? 2 * Math.min(5, s.streak + 1) : 0;
     s.score += gained;
     s.streak = isPerfect(out) ? s.streak + 1 : 0;
     s.best = Math.max(s.best, s.streak);
@@ -422,13 +482,18 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
       s.hp++;
       sfx.play('ding');
     }
-    return { ...r, step: 'done', gained, revealed: tries === 3, msg: '', healed };
+    if (tries < 3 && !s.duel) {
+      const k = kindFor(roleOf(r.item, s.asked >= ROUNDS - BOSS_PHASES), s.order[s.asked % ENEMY_KINDS]);
+      s.beaten.set(k, (s.beaten.get(k) ?? 0) + 1);
+    }
+    return { ...r, step: 'done', gained, bonus, revealed: tries === 3, msg: '', healed };
   };
 
   const pick = (choice: string) => {
     const r = rr.current;
     if (!r || r.step !== 'fix') return;
-    if (choice === r.item.right) {
+    const good = diff === 'expert' ? isTypedRight(r.item, choice) : choice === r.item.right;
+    if (good) {
       upd(settle({ ...r, tries: r.tries + 1 }, r.tries + 1));
       return;
     }
@@ -439,12 +504,25 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
     else upd(nr);
   };
 
+  /** La Gomme efface une mauvaise proposition. */
+  const useGomme = () => {
+    const s = g.current;
+    const r = rr.current;
+    if (!s || !r || r.step !== 'fix' || s.gomme <= 0) return;
+    const gone = r.choices.find((c) => c !== r.item.right && !r.wrongPicks.includes(c));
+    if (!gone || r.choices.length - r.wrongPicks.length <= 2) return;
+    s.gomme--;
+    sfx.play('ding');
+    upd({ ...r, choices: r.choices.filter((c) => c !== gone), tipShown: r.tipShown });
+  };
+
   const takeBoon = (b: Boon) => {
     const s = g.current;
     if (!s) return;
     if (b.id === 'vie') s.hp = Math.min(s.maxHp, s.hp + 2);
     if (b.id === 'bouclier') s.shield++;
     if (b.id === 'loupe') s.loupe += 3;
+    if (b.id === 'gomme') s.gomme += 3;
     sfx.play('ding');
     openRound();
   };
@@ -460,7 +538,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
     const total = s.duel ? s.duel.items.length : ROUNDS;
     if (s.asked >= total) finish(false);
     else if (!s.duel && BOON_AFTER.includes(s.asked)) {
-      setBoon(offerBoons());
+      setBoon(offerBoons(Math.random, g.current?.diff ?? 'standard'));
       sfx.play('mult');
     } else openRound();
   };
@@ -555,6 +633,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
           onImpact={(big) => sfx.play(big ? 'bigkill' : 'kill')}
           onDash={() => sfx.play('sweep')}
           onTip={() => upd({ ...round, tipShown: true, hintUsed: true })}
+          onGomme={useGomme}
           nextRef={nextRef}
           fixRef={fixRef}
         />
@@ -584,9 +663,9 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
 }
 
 const HINT_TEXT: Record<CourseDiff, string> = {
-  apprenti: '6 vies. Deux propositions seulement, et l’astuce s’affiche toute seule.',
-  standard: '5 vies. Trois propositions. Un indice est possible, mais il rapporte moins de points.',
-  expert: '4 vies. Jusqu’à quatre propositions, sans indice : il faut connaître la règle.',
+  apprenti: '7 vies. Deux propositions seulement, l’astuce s’affiche toute seule, et ta première hésitation est gratuite.',
+  standard: '6 vies. Trois propositions. Un indice est possible, mais il rapporte moins de points.',
+  expert: '5 vies. Pas de propositions : tu écris toi-même la bonne orthographe, sans indice.',
 };
 
 interface PlayProps {
@@ -606,15 +685,17 @@ interface PlayProps {
   onImpact: (boss: boolean) => void;
   onDash: () => void;
   onTip: () => void;
+  onGomme: () => void;
   nextRef: React.RefObject<HTMLButtonElement | null>;
   fixRef: React.RefObject<HTMLButtonElement | null>;
 }
 
 /** L'écran de combat : toi (la plume et tes vies) en haut, l'ennemi d'encre et sa phrase au milieu, les réponses dessous. */
-function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPick, onBoon, onNext, onBack, onImpact, onDash, onTip, nextRef, fixRef }: PlayProps) {
+function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPick, onBoon, onNext, onBack, onImpact, onDash, onTip, onGomme, nextRef, fixRef }: PlayProps) {
   const duel = !!s.duel;
   const total = duel ? (s.duel as { items: Item[] }).items.length : ROUNDS;
-  const boss = !duel && s.asked === ROUNDS - 1;
+  const boss = !duel && s.asked >= ROUNDS - BOSS_PHASES;
+  const phase = s.asked - (ROUNDS - BOSS_PHASES) + 1;
   const role = roleOf(round.item, boss);
   const kind = kindFor(role, s.order[s.asked % ENEMY_KINDS]);
   const pick = (list: string[]) => list[s.order[s.asked % ENEMY_KINDS] % list.length];
@@ -687,7 +768,12 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
               {s.retry.includes(round.item.id) ? ' · à revoir' : ''}
             </span>
           )}
-          {!duel && <span className="num">{fmt(counter.score)} pts</span>}
+          {!duel && (
+            <span className="num">
+              {s.streak >= 2 && <small className="sp-streak">Série ×{s.streak} · </small>}
+              {fmt(counter.score)} pts
+            </span>
+          )}
         </div>
       </div>
       <div className="sp-bar" aria-hidden="true">
@@ -724,6 +810,7 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
               <div className="sp-pen" ref={penRef}>
                 <div className="plate plate-me">
                   <span className="plate-name">Toi</span>
+                  <span className="plate-role">{s.maxHp > 0 ? `${s.hp} vie${s.hp > 1 ? 's' : ''}` : 'Ta plume'}</span>
                 </div>
                 <div key={`${round.item.id}-${round.hits}-${strike}`} className={`pen-wrap${round.hits > 0 && !done ? ' pen-hurt' : ''}${strike ? ' pen-dash' : ''}${round.lost ? ' pen-down' : ''}${round.step === 'fix' ? ' pen-ready' : ''}`}>
                   {strike && <span className="pen-trail" aria-hidden="true" />}
@@ -735,7 +822,7 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
                 <div className={`plate plate-${role}`} key={`pl-${round.item.id}`}>
                   <span className="plate-name">{name}</span>
                   <span className="plate-role">
-                    {ROLE_LABEL[role]}
+                    {boss ? `Boss · phase ${phase}/${BOSS_PHASES}` : ROLE_LABEL[role]}
                     <span className="menace" aria-hidden="true">
                       {[0, 1, 2, 3].map((k) => (
                         <i key={k} className={k < MENACE[role] ? 'on' : ''} />
@@ -753,11 +840,19 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
                 </div>
               </div>
             </div>
-            <div className={`sp-bubble${shake}`} ref={bubbleRef}>
+            <div className={`sp-bubble${shake}${s.tuto && s.asked === 0 ? ' sp-bubble-tuto' : ''}`} ref={bubbleRef}>
+              {canSpeak && (
+                <button type="button" className="sp-speak" aria-label="Lire la phrase à voix haute" title="Lire la phrase" onClick={() => speak(done ? round.item.fixed : [...round.item.before, round.item.wrong + round.item.suffix, ...round.item.after].join(' '))}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor" />
+                    <path d="M15 8.5a5 5 0 0 1 0 7M17.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
+              )}
               <p className={`sp-ask${round.msg && !done ? ' sp-ask-bad' : ''}`} aria-live="polite">
                 {round.msg && !done && round.msg}
                 {!round.msg && round.step === 'tap' && 'Touche le mot qui n’est pas bien écrit.'}
-                {!round.msg && round.step === 'fix' && 'Choisis la bonne écriture.'}
+                {!round.msg && round.step === 'fix' && (diff === 'expert' ? 'Écris la bonne orthographe du mot.' : 'Choisis la bonne écriture.')}
                 {done && (round.lost ? 'L’encre t’a submergé… Voici la bonne phrase.' : round.revealed ? 'Il s’enfuit… mais tu as perdu des vies. Voici la bonne écriture.' : 'Ennemi vaincu !')}
               </p>
               <div className="sp-sentence" role="group" aria-label="Phrase">
@@ -766,10 +861,17 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
                 ))}
                 <span className={`sp-target sp-${round.step}`}>
                   {round.step === 'tap' ? (
-                    <button type="button" className="sp-word" onClick={() => onTap(round.item.before.length)}>
-                      {round.item.wrong}
-                      {round.item.suffix}
-                    </button>
+                    <span className="sp-tw">
+                      <button type="button" className="sp-word" onClick={() => onTap(round.item.before.length)}>
+                        {round.item.wrong}
+                        {round.item.suffix}
+                      </button>
+                      {s.tuto && s.asked === 0 && round.badTaps.length === 0 && (
+                        <span className="sp-arrow" aria-hidden="true">
+                          ▲ Touche ce mot !
+                        </span>
+                      )}
+                    </span>
                   ) : round.step === 'fix' ? (
                     <span className="sp-mark">
                       {round.item.wrong}
@@ -792,29 +894,38 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
 
           <div className="sp-zone">
             <div className={`sp-layer${round.step === 'fix' ? '' : ' off'}`}>
-              <div className="sp-choices" role="group" aria-label="Propositions">
-                {round.choices.map((c, i) => {
-                  const tried = round.wrongPicks.includes(c);
-                  return (
-                    <button
-                      key={c}
-                      ref={i === 0 ? fixRef : undefined}
-                      type="button"
-                      className="btn btn-ghost sp-choice"
-                      disabled={tried}
-                      aria-label={tried ? `${c} : ce n’est pas la bonne écriture` : c}
-                      onClick={() => onPick(c)}
-                    >
-                      {c}
+              {diff === 'expert' ? (
+                <TypeBox key={round.item.id + round.tries} word={round.item.wrong} active={round.step === 'fix'} onSend={onPick} />
+              ) : (
+                <div className="sp-choices" role="group" aria-label="Propositions">
+                  {round.choices.map((c, i) => {
+                    const tried = round.wrongPicks.includes(c);
+                    return (
+                      <button
+                        key={c}
+                        ref={i === 0 ? fixRef : undefined}
+                        type="button"
+                        className="btn btn-ghost sp-choice"
+                        disabled={tried}
+                        aria-label={tried ? `${c} : ce n’est pas la bonne écriture` : c}
+                        onClick={() => onPick(c)}
+                      >
+                        {c}
+                      </button>
+                    );
+                  })}
+                  {HINT[diff] === 'cost' && (
+                    <button type="button" className={`btn btn-ghost sp-hint${round.tipShown ? ' ghost' : ''}`} onClick={onTip}>
+                      Un indice
                     </button>
-                  );
-                })}
-                {HINT[diff] === 'cost' && (
-                  <button type="button" className={`btn btn-ghost sp-hint${round.tipShown ? ' ghost' : ''}`} onClick={onTip}>
-                    Un indice
-                  </button>
-                )}
-              </div>
+                  )}
+                  {s.gomme > 0 && round.choices.length - round.wrongPicks.length > 2 && (
+                    <button type="button" className="btn btn-ghost sp-hint" onClick={onGomme}>
+                      Gomme ×{s.gomme}
+                    </button>
+                  )}
+                </div>
+              )}
               <p className={`sp-tip${round.tipShown ? '' : ' ghost'}`}>
                 <strong>Astuce :</strong> {round.item.tip}
               </p>
@@ -824,10 +935,10 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
                 <strong>Astuce :</strong> {round.item.tip}
               </p>
               <p className={`sp-pop sp-gain${closing && !duel && (round.gained > 0 || round.healed) ? '' : ' ghost'}`}>
-                + {round.gained} points{round.healed ? <strong className="sp-heal"> · +1 vie (pâté sans erreur !)</strong> : ''}
+                + {round.gained} points{round.bonus > 0 ? <span className="sp-streak"> (dont série +{round.bonus})</span> : ''}{round.healed ? <strong className="sp-heal"> · +1 vie (pâté sans erreur !)</strong> : ''}
               </p>
               <button ref={nextRef} type="button" className="btn btn-primary mt-3" onClick={onNext}>
-                {round.lost ? 'Voir mon bilan' : s.asked + 1 >= total ? 'Terminer' : boss ? 'Terminer' : 'Ennemi suivant'}
+                {round.lost ? 'Voir mon bilan' : s.asked + 1 >= total ? 'Terminer' : 'Ennemi suivant'}
               </button>
             </div>
           </div>
@@ -874,6 +985,49 @@ function PenFx({ word }: { word: string }) {
   );
 }
 
+/** Expert : on corrige le mot en l'écrivant (le mot faux est déjà dans la case). */
+function TypeBox({ word, active, onSend }: { word: string; active: boolean; onSend: (t: string) => void }) {
+  const [text, setText] = useState(word);
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (active) {
+      ref.current?.focus({ preventScroll: true });
+      ref.current?.select();
+    }
+  }, [active]);
+  return (
+    <form
+      className="sp-type"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (text.trim()) onSend(text);
+      }}
+    >
+      <label className="sr-only" htmlFor="sp-type-in">
+        Écris la bonne orthographe du mot
+      </label>
+      <input id="sp-type-in" ref={ref} value={text} onChange={(e) => setText(e.target.value)} lang="fr" autoCapitalize="off" autoComplete="off" autoCorrect="off" spellCheck={false} disabled={!active} />
+      <button type="submit" className="btn btn-primary" disabled={!active || !text.trim()}>
+        Valider
+      </button>
+    </form>
+  );
+}
+
+/** Synthèse vocale du navigateur : tout reste sur l'appareil, rien n'est envoyé. */
+const canSpeak = typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+function speak(text: string) {
+  try {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'fr-FR';
+    u.rate = 0.9;
+    window.speechSynthesis.speak(u);
+  } catch {
+    /* pas de voix disponible */
+  }
+}
+
 function Word({ text, onTap, disabled, bad }: { text: string; onTap: () => void; disabled: boolean; bad?: boolean }) {
   if (!isWord(text)) return <span className="sp-plain">{text}</span>;
   return (
@@ -898,6 +1052,36 @@ function BestScores({ level, diff }: { level: Level; diff: CourseDiff }) {
           </li>
         ))}
       </ol>
+    </section>
+  );
+}
+
+const SLOT_NAMES = (k: number) => (k === 6 ? BOSS_NAME : k === 7 ? PATE_NAMES[0] : ENEMY_NAMES[k % ENEMY_NAMES.length]);
+
+/** La collection d'ennemis vaincus, gardée sur l'appareil (jamais envoyée) : elle donne envie de tous les rencontrer. */
+function Collection({ bestiary, fresh }: { bestiary: Record<string, number>; fresh: number[] }) {
+  const slots = [0, 1, 2, 3, 4, 5, 7, 6];
+  const found = slots.filter((k) => (bestiary[String(k)] ?? 0) > 0).length;
+  return (
+    <section className="mt-3" aria-labelledby="sp-coll">
+      <h2 id="sp-coll" className="subhead">
+        Ta collection d’encre : {found}/{slots.length}
+      </h2>
+      <ul className="sp-coll">
+        {slots.map((k) => {
+          const n = bestiary[String(k)] ?? 0;
+          return (
+            <li key={k} className={`${n > 0 ? 'got' : 'nope'}${fresh.includes(k) ? ' new' : ''}`}>
+              <div className="sp-coll-fig">
+                <InkEnemy kind={k} mood="idle" name={SLOT_NAMES(k)} />
+              </div>
+              <span>{n > 0 ? SLOT_NAMES(k) : '?'}</span>
+              {n > 0 && <small>×{n}</small>}
+              {fresh.includes(k) && <b>Nouveau !</b>}
+            </li>
+          );
+        })}
+      </ul>
     </section>
   );
 }
@@ -940,6 +1124,7 @@ function OverPanel({ over, cloud, account, onRestart, onDuel, onMenu }: { over: 
           </ul>
         </section>
       )}
+      {!duel && over.bestiary && <Collection bestiary={over.bestiary} fresh={over.fresh ?? []} />}
       {account && !duel && (
         <p className="mt-2 text-[14px] text-ink/75" aria-live="polite">
           {cloud === 'sending' && 'Envoi du score à la classe…'}

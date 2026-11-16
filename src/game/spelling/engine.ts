@@ -14,16 +14,18 @@ export const CHOICES: Record<CourseDiff, number> = { apprenti: 2, standard: 3, e
 export const HINT: Record<CourseDiff, 'free' | 'cost' | 'none'> = { apprenti: 'free', standard: 'cost', expert: 'none' };
 
 /** Vies du joueur au début d'une partie, selon la difficulté : chaque erreur en coûte une. */
-export const HP: Record<CourseDiff, number> = { apprenti: 7, standard: 6, expert: 4 };
+export const HP: Record<CourseDiff, number> = { apprenti: 7, standard: 6, expert: 5 };
 /** Seconde chance : à zéro vie, l'élève revient une seule fois par partie avec ce nombre de vies. */
 export const REVIVE_HP = 2;
 /** Répétition espacée : jusqu'à RETRY_MAX phrases ratées reviennent dans la partie suivante, aux manches RETRY_SLOTS. */
 export const RETRY_MAX = 6;
 export const RETRY_SLOTS: readonly number[] = [2, 5, 7];
 /** Après combien d'ennemis vaincus on choisit un bonus (le dernier ennemi, le 10e, est le boss). */
-export const BOON_AFTER: readonly number[] = [3, 6];
+export const BOON_AFTER: readonly number[] = [2, 4, 6];
+/** Les derniers ennemis forment le boss : trois phrases à enchaîner (le total reste de 10 phrases). */
+export const BOSS_PHASES = 3;
 
-export type BoonId = 'vie' | 'bouclier' | 'loupe';
+export type BoonId = 'vie' | 'bouclier' | 'loupe' | 'gomme';
 export interface Boon {
   id: BoonId;
   name: string;
@@ -32,6 +34,7 @@ export interface Boon {
 export const BOONS: readonly Boon[] = [
   { id: 'vie', name: 'Goutte de vie', text: 'Tu récupères 2 vies.' },
   { id: 'bouclier', name: 'Bouclier de buvard', text: 'Il absorbe ta prochaine erreur.' },
+  { id: 'gomme', name: 'Gomme', text: 'Efface une mauvaise proposition, 3 fois.' },
   { id: 'loupe', name: 'Loupe', text: 'L’astuce s’affiche toute seule pendant 3 ennemis, sans retirer de points.' },
 ];
 
@@ -187,9 +190,15 @@ export function nextItem(
   const seen = (rule: RuleId) => [...used].filter((id) => id.startsWith(rule + '-')).length;
   const rules = [...new Set(pool.map((i) => i.rule))];
   const lowest = Math.min(...rules.map(seen));
-  const cands = pool.filter((i) => seen(i.rule) === lowest);
-  return { item: cands[Math.floor(r() * cands.length)], summoned: null };
+  const cands = pool.filter((i) => seen(i.rule) === lowest).sort((a, b) => difficultyOf(a) - difficultyOf(b));
+  // courbe de difficulté : les phrases faciles d'abord, les plus longues et les plus fines à la fin
+  const t = Math.min(1, asked / (ROUNDS - 1));
+  const at = Math.round(t * (cands.length - 1) + (r() - 0.5) * 0.35 * cands.length);
+  return { item: cands[Math.max(0, Math.min(cands.length - 1, at))], summoned: null };
 }
+
+/** Difficulté d'une phrase : le niveau compte plus que la longueur. */
+export const difficultyOf = (i: Item) => i.level * 12 + wordCount(i);
 
 /** Phrases d'un duel : trois phrases distinctes de la même règle. */
 export function duelItems(level: Level, rule: RuleId, count: number, r: Rng = Math.random): Item[] {
@@ -210,13 +219,17 @@ export function roleOf(item: Item, boss: boolean): EnemyRole {
   return n <= 5 ? 'splash' : 'tache';
 }
 
-/** Deux bonus différents à proposer. */
-export function offerBoons(r: Rng = Math.random): Boon[] {
-  const a = [...BOONS];
+/** Trois bonus différents à proposer (la Gomme n'a de sens qu'avec trois propositions : seulement en Standard). */
+export function offerBoons(r: Rng = Math.random, diff: CourseDiff = 'standard'): Boon[] {
+  const a = BOONS.filter((b) => b.id !== 'gomme' || diff === 'standard');
   const out: Boon[] = [];
-  while (out.length < 2) out.push(a.splice(Math.floor(r() * a.length), 1)[0]);
+  while (out.length < 3 && a.length) out.push(a.splice(Math.floor(r() * a.length), 1)[0]);
   return out;
 }
+
+/** Réponse tapée au clavier (Expert) : on ignore les majuscules, les espaces autour et le type d'apostrophe. */
+const norm = (t: string) => t.normalize('NFC').trim().replace(/\s+/g, ' ').replace(/'/g, '’').toLowerCase();
+export const isTypedRight = (item: Item, text: string) => norm(text) === norm(item.right);
 
 // ───────────── Points ─────────────
 

@@ -3401,3 +3401,168 @@ html[data-comfort='on'] .title-sm {
   flex: none;
   overflow: visible;
 }
+
+/* Expert : saisie de la correction */
+.sp-type {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.sp-type input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 20px;
+  padding: 8px 12px;
+  border: 3px solid var(--ink, #1d2a44);
+  border-radius: 10px;
+  background: #fff;
+}
+.sp-type .btn {
+  min-height: 44px;
+}
+
+/* Terrain de combat : page de cahier, marge rouge et ligne de sol ; les plaques sont alignées en haut */
+.sp-battle {
+  position: relative;
+  align-items: stretch;
+  padding-bottom: 8px;
+  border-bottom: 3px solid var(--color-ink);
+  border-radius: 6px 6px 0 0;
+  background: repeating-linear-gradient(to bottom, transparent 0 27px, rgba(60, 100, 180, 0.22) 27px 28px);
+}
+.sp-battle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: clamp(18px, 7%, 44px);
+  width: 2px;
+  background: rgba(200, 50, 50, 0.45);
+  pointer-events: none;
+}
+.sp-battle .sp-pen,
+.sp-battle .sp-foe {
+  justify-content: space-between;
+}
+.sp-battle .plate {
+  margin-top: 6px;
+  min-height: 2.5em;
+}
+.sp-battle .plate-me .plate-role {
+  display: block;
+  font-size: 13px;
+}
+
+/* Flèche de la première partie, série, lecture vocale, collection */
+.sp-target {
+  position: relative;
+}
+.sp-arrow {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 2px;
+  padding: 1px 8px;
+  border-radius: 8px;
+  background: #fff3a8;
+  border: 2px solid var(--color-ink);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  z-index: 3;
+  pointer-events: none;
+  animation: sp-arrow-bob 0.9s ease-in-out infinite;
+}
+@keyframes sp-arrow-bob {
+  50% {
+    transform: translateX(-50%) translateY(4px);
+  }
+}
+.sp-streak {
+  font-size: 13px;
+  font-weight: 700;
+  color: #b4451f;
+  font-family: var(--font-body, inherit);
+}
+.sp-speak {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--color-ink);
+  border-radius: 50%;
+  background: var(--color-paper-hi);
+  color: var(--color-ink);
+  cursor: pointer;
+  z-index: 2;
+}
+.sp-speak:hover,
+.sp-speak:focus-visible {
+  background: #fff3a8;
+}
+.sp-bubble:has(.sp-speak) .sp-ask {
+  padding-right: 42px;
+}
+@media (pointer: coarse) {
+  .sp-speak {
+    width: 44px;
+    height: 44px;
+  }
+  .sp-bubble:has(.sp-speak) .sp-ask {
+    padding-right: 50px;
+  }
+}
+.sp-coll {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.sp-coll li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: center;
+}
+.sp-coll-fig {
+  width: 64px;
+}
+.sp-coll .nope .sp-coll-fig {
+  filter: brightness(0);
+  opacity: 0.18;
+}
+.sp-coll .en {
+  animation: none !important;
+}
+.sp-coll .new b {
+  color: #b4451f;
+}
+@media (max-width: 420px) {
+  .sp-coll {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+  }
+  .sp-coll-fig {
+    width: 52px;
+  }
+}
+.sp-tw {
+  position: relative;
+  display: inline-block;
+}
+.sp-battle > .sp-pen,
+.sp-battle > .sp-foe {
+  align-self: stretch;
+}
+.sp-bubble-tuto {
+  padding-bottom: 36px;
+}

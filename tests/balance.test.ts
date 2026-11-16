@@ -177,3 +177,35 @@ test('Chasse aux fautes : le retour d\'erreur ne donne pas la réponse et reste 
     if (i.rule !== 'jumeaux') assert.ok(!m.toLowerCase().includes(i.right.toLowerCase()), m);
   }
 });
+
+import { BOSS_PHASES, difficultyOf, isTypedRight, nextItem } from '../src/game/spelling/engine';
+
+test('Chasse aux fautes : la difficulté monte au fil de la partie', () => {
+  let early = 0;
+  let late = 0;
+  for (let g = 0; g < 200; g++) {
+    const used = new Set<string>();
+    for (let a = 0; a < ROUNDS; a++) {
+      const { item } = nextItem('cm2', a, [], [], used);
+      used.add(item.id);
+      if (a < 3) early += difficultyOf(item);
+      if (a >= ROUNDS - 3) late += difficultyOf(item);
+    }
+  }
+  assert.ok(late > early * 1.3, `début ${early / 600} / fin ${late / 600}`);
+  assert.equal(BOSS_PHASES, 3);
+});
+
+test('Expert : réponse tapée, sans tenir compte des majuscules, espaces ni apostrophes', () => {
+  const i = ITEMS.find((x) => x.right === 'appelle')!;
+  assert.ok(isTypedRight(i, '  Appelle '));
+  assert.ok(!isTypedRight(i, 'apelle'));
+  assert.ok(isTypedRight(ITEMS.find((x) => x.right === 'à' || x.right === 'à')!, 'à'));
+});
+
+test('Chasse aux fautes : la Gomme n\'est proposée qu\'en Standard', () => {
+  for (let k = 0; k < 50; k++) {
+    for (const d of ['apprenti', 'expert'] as const) assert.ok(!offerBoons(Math.random, d).some((b) => b.id === 'gomme'));
+    assert.equal(new Set(offerBoons(Math.random, 'standard').map((b) => b.id)).size, 3);
+  }
+});
