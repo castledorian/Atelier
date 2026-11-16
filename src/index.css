@@ -3739,3 +3739,61 @@ html[data-comfort='on'] .title-sm {
     }
   }
 }
+
+/* ───────── Proportions du combat : une seule unité (--u) règle le canon, les ennemis et les plaques ─────────
+   canon ≈ 0,6 × une tache ; éclat < tache < pâté < boss ; les deux plaques ont exactement la même taille. */
+.sp-card .sp-battle {
+  --u: clamp(46px, min(14vw, 11vh), 72px);
+  --pw: clamp(120px, calc(var(--u) * 2.5), 156px);
+}
+.sp-card .sp-battle .pen-icon {
+  width: calc(var(--u) * 1.1);
+  height: calc(var(--u) * 1.1);
+}
+.sp-card .sp-battle .sp-foe .en-r-splash {
+  width: calc(var(--u) * 1.4);
+}
+.sp-card .sp-battle .sp-foe .en-r-tache {
+  width: calc(var(--u) * 1.9);
+}
+.sp-card .sp-battle .sp-foe .en-r-pate {
+  width: calc(var(--u) * 2.4);
+}
+.sp-card .sp-battle .sp-foe .en-r-boss {
+  width: calc(var(--u) * 2.7);
+}
+.sp-card .sp-battle .plate {
+  box-sizing: border-box;
+  width: var(--pw);
+  min-height: 2.75em;
+  margin: 0 0 6px;
+  padding: 2px 6px 3px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.sp-card .sp-battle .plate-name {
+  font-size: clamp(13px, calc(var(--u) * 0.27), 17px);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.sp-card .sp-battle .plate-role {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 1.3em;
+  font-size: clamp(10px, calc(var(--u) * 0.2), 12px);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+@media (max-height: 480px) {
+  .sp-card .sp-battle {
+    --u: 34px;
+    --pw: 104px;
+  }
+  .sp-card .sp-battle .plate-role {
+    display: flex;
+    font-size: 10px;
+  }
+}

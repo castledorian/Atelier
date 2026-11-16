@@ -836,7 +836,7 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
                 <div className={`plate plate-${role}`} key={`pl-${round.item.id}`}>
                   <span className="plate-name">{name}</span>
                   <span className="plate-role">
-                    {boss ? `Boss · phase ${phase}/${BOSS_PHASES}` : ROLE_LABEL[role]}
+                    {boss ? `Boss ${phase}/${BOSS_PHASES}` : ROLE_LABEL[role]}
                     <span className="menace" aria-hidden="true">
                       {[0, 1, 2, 3].map((k) => (
                         <i key={k} className={k < MENACE[role] ? 'on' : ''} />

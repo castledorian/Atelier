@@ -15,7 +15,7 @@ export const BOSS_NAME = 'Le Grand Pâté';
 export type EnemyMood = 'idle' | 'angry' | 'attack' | 'dead';
 
 export type Role = 'splash' | 'tache' | 'pate' | 'boss';
-export const ROLE_LABEL: Record<Role, string> = { splash: 'Éclaboussure', tache: 'Tache', pate: 'Pâté costaud', boss: 'Boss' };
+export const ROLE_LABEL: Record<Role, string> = { splash: 'Petit', tache: 'Moyen', pate: 'Costaud', boss: 'Boss' };
 const TACHE_KINDS = [0, 4, 5, 3, 1];
 /** Le dessin d'un ennemi selon son rôle : une silhouette par rôle, et plusieurs pour les taches. */
 export function kindFor(role: Role, n: number): number {
