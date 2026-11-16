@@ -366,6 +366,24 @@ export function makeQuestion(level: Level, n: number, r: Rng = Math.random, rece
   return out;
 }
 
+/**
+ * `count` calculs qui répondent à `match` (par exemple ceux d'une même règle), tirés dans toutes les pages du niveau.
+ * Sert au duel contre une créature et au retour d'une Rature en cours de partie.
+ */
+export function questionsMatching(level: Level, match: (text: string) => boolean, count: number, r: Rng = Math.random): Question[] {
+  const pool = GENS[level].flat();
+  const out: Question[] = [];
+  const seen = new Set<string>();
+  for (let tries = 0; out.length < count && tries < 600; tries++) {
+    const cand = pool[Math.floor(r() * pool.length)](r);
+    if (match(cand.text) && !seen.has(cand.text)) {
+      seen.add(cand.text);
+      out.push(cand);
+    }
+  }
+  return out;
+}
+
 /** Un calcul à retravailler (entraînement ciblé). */
 export const fromMissed = (m: Missed): Question => ({ text: m.text, answer: m.answer, near: m.near });
 

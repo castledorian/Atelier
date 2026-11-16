@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { BackButton, useFitRows } from '../components/BackButton';
+import { CreatureArt } from '../components/Creatures';
 import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
 import { Sfx } from '../game/audio';
 import { CourseGame } from '../game/course/engine';
 import type { CourseResult } from '../game/course/engine';
-import { COURSE_DIFFS, LEVELS, PAGES, boardKey, fmtNum } from '../game/course/questions';
+import { creatureOf, ruleOfCalc, rulesOf } from '../game/encre/bestiary';
+import type { RuleId } from '../game/encre/bestiary';
+import { DUEL_SIZE, activeRules, dayKey, loadStore, recordDuel, recordGame, saveStore, stateOf } from '../game/encre/tracker';
+import type { CreatureState } from '../game/encre/tracker';
+import { COURSE_DIFFS, LEVELS, PAGES, boardKey, fmtNum, questionsMatching } from '../game/course/questions';
 import type { BoardKey, CourseDiff, Level, Missed } from '../game/course/questions';
 import {
   addCourseScore,
@@ -57,6 +62,14 @@ interface Run {
   rank: number;
   id: string;
   record: boolean;
+  encre?: {
+    /** la Rature la plus présente dans cette partie */
+    top: RuleId | null;
+    /** Ratures apparues à la fin de cette partie */
+    promoted: RuleId[];
+    /** résultat du duel qui vient d'être joué */
+    duel?: { rule: RuleId; before: CreatureState; after: CreatureState; won: boolean };
+  };
 }
 
 export default function Course({ account, onHome, onSessionLost, session, onSessions }: Props) {
@@ -73,10 +86,12 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
   sesRef.current = ses;
   const [run, setRun] = useState<Run | null>(null);
   const [cloud, setCloud] = useState<Cloud>('off');
+  const [summon, setSummon] = useState<RuleId | null>(null);
+  const summonTimer = useRef(0);
   const lost = useRef(false);
   const accountRef = useRef(account);
   accountRef.current = account;
-  const live = useRef({ phase, level, diff, settings, overAt: 0, drill: false, recId: '' });
+  const live = useRef({ phase, level, diff, settings, overAt: 0, drill: false, recId: '', duelRule: null as RuleId | null });
   live.current.phase = phase;
   live.current.level = level;
   live.current.diff = diff;
@@ -112,6 +127,29 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
       const res = addCourseScore(boardKey(result.level, result.diff), { id, name, score: result.score, streak: result.bestStreak, date: Date.now() });
       rank = res.rank;
       recordCourseStamps(result.won ? PAGES : result.page - 1);
+    }
+    // L'Encre : les fautes de la partie sont rangées par règle, sur cet appareil seulement
+    let encre: Run['encre'];
+    const duelRule = live.current.duelRule;
+    live.current.duelRule = null;
+    if (result.drill) {
+      if (duelRule) {
+        const d = recordDuel(loadStore(), duelRule, result.cleared, dayKey());
+        saveStore(d.store);
+        encre = { top: null, promoted: [], duel: { rule: duelRule, before: d.before, after: d.after, won: result.cleared } };
+      }
+    } else if (total > 0) {
+      const faults: Partial<Record<RuleId, number>> = {};
+      for (const m of result.missed) {
+        const rule = ruleOfCalc(m.text);
+        if (rule) faults[rule] = (faults[rule] ?? 0) + m.count;
+      }
+      const g = recordGame(loadStore(), rulesOf('calcul'), faults);
+      saveStore(g.store);
+      const seen = (Object.keys(faults) as RuleId[])
+        .filter((id) => ['encree', 'palie'].includes(stateOf(g.store[id])))
+        .sort((a, b) => (faults[b] ?? 0) - (faults[a] ?? 0));
+      encre = { top: seen[0] ?? null, promoted: g.promoted };
     }
     if (sesRef.current.sess) {
       // séance de classe : l'essai compte pour l'évaluation, il ne va ni dans les scores de l'appareil ni dans les classements libres
@@ -155,7 +193,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
     } else setCloud('off');
     live.current.drill = result.drill;
     live.current.overAt = performance.now();
-    setRun({ result, rank, id, record });
+    setRun({ result, rank, id, record, encre });
     setPhase('over');
   };
 
@@ -163,7 +201,14 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const game = new CourseGame(canvas, sfx, { onOver: (r) => onOver.current(r) });
+    const game = new CourseGame(canvas, sfx, {
+      onOver: (r) => onOver.current(r),
+      onSummon: (rule) => {
+        setSummon(rule);
+        window.clearTimeout(summonTimer.current);
+        summonTimer.current = window.setTimeout(() => setSummon(null), 5000);
+      },
+    });
     gameRef.current = game;
     try {
       if (localStorage.getItem('atelier.debug')) (window as unknown as { __course?: CourseGame }).__course = game;
@@ -171,6 +216,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
       /* ignoré */
     }
     return () => {
+      window.clearTimeout(summonTimer.current);
       game.destroy();
       gameRef.current = null;
     };
@@ -182,6 +228,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
     gameRef.current?.setOptions({ shake: settings.shake });
     document.documentElement.dataset.text = settings.textSize;
     document.documentElement.dataset.comfort = settings.comfort ? 'on' : 'off';
+    document.documentElement.dataset.calm = settings.calm ? 'on' : 'off';
   }, [settings, sfx]);
 
   const change = useCallback(
@@ -193,7 +240,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
   );
 
   const begin = useCallback(
-    (lv: Level, drill?: Missed[]) => {
+    (lv: Level, drill?: Missed[], duel?: RuleId) => {
       const s = sesRef.current;
       if (s.sess && (s.left <= 0 || !s.sess.active)) return; // essais épuisés ou séance fermée
       sfx.unlock();
@@ -205,7 +252,10 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
       setLevel(lv);
       live.current.level = lv;
       live.current.drill = !!drill;
-      gameRef.current?.start(lv, { drill, diff: live.current.diff });
+      live.current.duelRule = duel ?? null;
+      setSummon(null);
+      // en séance de classe l'évaluation reste la même pour tous : l'Encre n'y revient pas
+      gameRef.current?.start(lv, { drill, diff: live.current.diff, focus: s.sess || drill ? undefined : activeRules(loadStore(), 'calcul') });
       setRun(null);
       setPhase('play');
     },
@@ -359,6 +409,14 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
             onPointerUp={onUp}
             onPointerCancel={onUp}
           />
+          {phase === 'play' && summon && (
+            <div className="summon" role="status">
+              <CreatureArt id={summon} state="encree" calm={settings.calm} size={44} />
+              <span>
+                <strong>{creatureOf(summon).name}</strong> passe par là. {creatureOf(summon).parade}
+              </span>
+            </div>
+          )}
           {phase === 'play' && (
             <button type="button" className="pause-btn" tabIndex={-1} aria-label="Pause" onClick={pause}>
               <span />
@@ -449,6 +507,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
             cloud={cloud}
             onRestart={() => begin(run.result.level)}
             onDrill={(m) => begin(run.result.level, m)}
+            onDuel={(rule) => begin(run.result.level, questionsMatching(run.result.level, (t) => ruleOfCalc(t) === rule, DUEL_SIZE).map((q) => ({ ...q, count: 1 })), rule)}
             onMenu={toMenu}
             onHome={onHome}
           />
@@ -474,6 +533,9 @@ function SettingsRow({ settings, onChange }: { settings: Settings; onChange: (p:
       </Check>
       <Check on={settings.comfort} onClick={() => onChange({ comfort: !settings.comfort })}>
         Lecture confortable
+      </Check>
+      <Check on={settings.calm} onClick={() => onChange({ calm: !settings.calm })}>
+        Version calme
       </Check>
       <button
         type="button"
@@ -803,11 +865,12 @@ interface OverProps {
   cloud: Cloud;
   onRestart: () => void;
   onDrill: (m: Missed[]) => void;
+  onDuel: (rule: RuleId) => void;
   onMenu: () => void;
   onHome: () => void;
 }
 
-function OverScreen({ run, account, cloud, onRestart, onDrill, onMenu, onHome }: OverProps) {
+function OverScreen({ run, account, cloud, onRestart, onDrill, onDuel, onMenu, onHome }: OverProps) {
   const r = run.result;
   const [tab, setTab] = useState<'bilan' | 'classement'>('bilan');
   const [armed, setArmed] = useState(false);
@@ -887,6 +950,8 @@ function OverScreen({ run, account, cloud, onRestart, onDrill, onMenu, onHome }:
             ) : (
               <p className="mt-2 text-[15px] text-ink/75">{r.wrong === 0 ? 'Aucune faute : parfait !' : ''}</p>
             )}
+            {run.encre?.duel && <DuelResult duel={run.encre.duel} />}
+            {run.encre?.top && !r.drill && <RatureNote rule={run.encre.top} fresh={run.encre.promoted.includes(run.encre.top)} onDuel={onDuel} />}
           </>
         ) : (
           <div className="mt-2">
@@ -917,6 +982,54 @@ function OverScreen({ run, account, cloud, onRestart, onDrill, onMenu, onHome }:
           </button>
         </div>
       </section>
+    </div>
+  );
+}
+
+const STATE_AFTER: Record<CreatureState, string> = {
+  inconnue: '',
+  silhouette: '',
+  encree: 'Elle est encore là : elle reviendra, tu la connais.',
+  palie: 'Elle a pâli : elle recule !',
+  crayon: 'Elle est dessinée au crayon : bien joué !',
+};
+
+/** Résultat d'un duel : un message d'encouragement, jamais un reproche. */
+function DuelResult({ duel }: { duel: NonNullable<NonNullable<Run['encre']>['duel']> }) {
+  const c = creatureOf(duel.rule);
+  const calm = loadSettings().calm;
+  return (
+    <div className="encre-note mt-2" role="status">
+      <CreatureArt id={duel.rule} state={duel.after} calm={calm} size={56} label={c.name} />
+      <p className="text-[15px] leading-snug">
+        <strong>{duel.won ? 'Duel réussi !' : 'Duel interrompu.'}</strong> {c.name}. {duel.won ? STATE_AFTER[duel.after] : 'Tu pourras recommencer quand tu veux.'}
+      </p>
+    </div>
+  );
+}
+
+/** Une Rature : la règle qui revient souvent, sa parade, et un duel de trois calculs. */
+function RatureNote({ rule, fresh, onDuel }: { rule: RuleId; fresh: boolean; onDuel: (r: RuleId) => void }) {
+  const c = creatureOf(rule);
+  const calm = loadSettings().calm;
+  return (
+    <div className="encre-note mt-2">
+      <CreatureArt id={rule} state="encree" calm={calm} size={56} label={c.name} />
+      <div className="text-[15px] leading-snug">
+        <p>
+          <strong>{fresh ? `${c.name} vient d’apparaître.` : `${c.name} est passée par là.`}</strong> {c.parade}
+        </p>
+        <details className="mt-1">
+          <summary className="cursor-pointer text-[14px] underline">Pourquoi cette créature ?</summary>
+          <p className="mt-1 text-[14px] text-ink/80">
+            Cette règle t’a surpris plusieurs fois ces dernières parties. Elle revient un peu plus souvent pour t’aider à la maîtriser, mais les calculs ne
+            deviennent pas plus durs.
+          </p>
+        </details>
+        <button type="button" className="btn btn-ghost mt-2" onClick={() => onDuel(rule)}>
+          Duel : {DUEL_SIZE} calculs
+        </button>
+      </div>
     </div>
   );
 }

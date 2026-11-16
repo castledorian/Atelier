@@ -1,5 +1,8 @@
 import type { Sfx } from '../audio';
-import { COURSE_TUNING, PAGES, PAGE_TITLES, PER_PAGE, TOTAL, fmtNum, fromMissed, makeChoices, makeQuestion, stageOf, travelTime } from './questions';
+import { ruleOfCalc } from '../encre/bestiary';
+import type { RuleId } from '../encre/bestiary';
+import { shouldSummon } from '../encre/tracker';
+import { COURSE_TUNING, PAGES, PAGE_TITLES, PER_PAGE, TOTAL, fmtNum, fromMissed, makeChoices, makeQuestion, questionsMatching, stageOf, travelTime } from './questions';
 import type { CourseDiff, Level, Missed, Question } from './questions';
 
 /**
@@ -32,6 +35,8 @@ export interface CourseResult {
 
 export interface CourseCallbacks {
   onOver: (r: CourseResult) => void;
+  /** une Rature revient : la règle qui la dissipe peut s'afficher */
+  onSummon?: (rule: RuleId) => void;
 }
 
 interface Gate {
@@ -118,6 +123,8 @@ export interface StartOptions {
   diff?: CourseDiff;
   /** entraînement ciblé : on repose ces calculs */
   drill?: Missed[];
+  /** Ratures en cours : leurs calculs reviennent de temps en temps (jamais plus fort, seulement plus présents) */
+  focus?: RuleId[];
 }
 
 export class CourseGame {
@@ -182,6 +189,8 @@ export class CourseGame {
   private gate: Gate | null = null;
   private spawnIn = 1;
   private recent: string[] = [];
+  private focus: RuleId[] = [];
+  private lastOk: boolean[] = [];
   private missed = new Map<string, Missed>();
   private hitStop = 0;
   private over = false;
@@ -238,6 +247,7 @@ export class CourseGame {
     this.diff = opts.diff ?? 'standard';
     this.mode = 'play';
     this.reset();
+    this.focus = opts.drill && opts.drill.length ? [] : (opts.focus ?? []);
     if (opts.drill && opts.drill.length) {
       const list = opts.drill.map(fromMissed);
       for (let i = list.length - 1; i > 0; i--) {
@@ -348,6 +358,7 @@ export class CourseGame {
     this.gate = null;
     this.spawnIn = 0.9;
     this.recent = [];
+    this.lastOk = [];
     this.missed = new Map();
     this.hitStop = 0;
     this.over = false;
@@ -558,6 +569,14 @@ export class CourseGame {
       retry = this.recent.includes('~' + q.text);
     } else {
       q = makeQuestion(this.level, this.asked, Math.random, this.recent);
+      if (this.mode === 'play' && shouldSummon(this.asked, this.lastOk, this.focus)) {
+        const rule = this.focus[Math.floor(Math.random() * this.focus.length)];
+        const found = questionsMatching(this.level, (t) => ruleOfCalc(t) === rule, 1)[0];
+        if (found && !this.recent.includes(found.text)) {
+          q = found;
+          this.cb.onSummon?.(rule);
+        }
+      }
     }
     this.recent.push(q.text);
     if (this.recent.length > 4) this.recent.shift();
@@ -612,6 +631,7 @@ export class CourseGame {
     const y = this.penY - 24 * this.u;
     if (!demo) this.asked++;
     if (!demo && !this.drillQueue) this.pageA[Math.min(PAGES - 1, stageOf(this.asked - 1))]++;
+    if (!demo && !this.drillQueue) this.lastOk.push(ok);
     if (ok) {
       if (demo) {
         this.burst(x, y, 8, 2, 120);
