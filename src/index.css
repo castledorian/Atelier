@@ -1707,3 +1707,16 @@ html[data-comfort='on'] .title-sm {
   box-shadow: 4px 4px 0 var(--color-ink);
   font-size: 16px;
 }
+
+/* Objectif collectif de la classe */
+.class-goal-bar {
+  height: 14px;
+  margin-top: 6px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+}
+.class-goal-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--color-ink);
+}

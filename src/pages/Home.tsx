@@ -5,6 +5,7 @@ import { serverEnabled } from '../server/api';
 import { fetchSessions } from '../server/student';
 import type { StudentAccount } from '../server/types';
 import { loadCourseStamps } from '../game/course/scores';
+import { loadTypingStamps } from '../game/storage';
 import type { TeacherSession } from '../server/teacher';
 
 interface HomeProps {
@@ -103,6 +104,11 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
           <span className="gcard-tag">Clavier</span>
           <span className="gcard-name">Frappe&nbsp;!</span>
           <span className="gcard-text">Défends la marge : tape les mots avant que les taches d’encre n’arrivent.</span>
+          {loadTypingStamps() > 0 && (
+            <span className="gcard-stamps" role="img" aria-label={`Tampons : ${loadTypingStamps()} sur 6`}>
+              {Array.from({ length: 6 }, (_, k) => (k < loadTypingStamps() ? '●' : '○')).join(' ')}
+            </span>
+          )}
           <span className="gcard-go">Jouer →</span>
         </button>
         <button type="button" className="gcard" onClick={() => onPlay('math')}>

@@ -220,6 +220,24 @@ select pg_temp.fails($$select count(*) from public.balance_runs$$, 'permission d
 select pg_temp.fails($$select count(*) from public.class_sessions$$, 'permission denied');
 select pg_temp.fails($$insert into public.balance_runs (game, difficulty, outcome, score) values ('math','standard','lost',1)$$, 'permission denied');
 
+-- classement masquable + objectif collectif
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+update public.classes set hide_board = true where id = (select v::uuid from ctx where k='classA');
+select pg_temp.as_anon();
+select pg_temp.eq('classement masqué : aucune ligne et drapeau hidden', (public.class_leaderboard((select v from ctx where k='tok_lea'),'math','standard')->>'hidden'), 'true');
+select pg_temp.eq('classement masqué : liste vide', jsonb_array_length(public.class_leaderboard((select v from ctx where k='tok_lea'),'math','standard')->'rows'), 0);
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+update public.classes set hide_board = false where id = (select v::uuid from ctx where k='classA');
+select pg_temp.as_anon();
+select pg_temp.eq('classement réaffiché', (public.class_leaderboard((select v from ctx where k='tok_lea'),'math','standard')->>'hidden') is null, true);
+select pg_temp.eq('objectif collectif : réponse ok', public.class_week((select v from ctx where k='tok_lea'))->>'ok', 'true');
+select pg_temp.eq('objectif collectif : compte des parties', (public.class_week((select v from ctx where k='tok_lea'))->>'games')::int > 0, true);
+select pg_temp.eq('objectif collectif : jeton invalide refusé', public.class_week('nimporte-quoi')->>'error', 'invalid_session');
+select pg_temp.as_user('bbbbbbbb-0000-0000-0000-000000000002');
+update public.classes set hide_board = true where id = (select v::uuid from ctx where k='classA');
+select pg_temp.as_admin();
+select pg_temp.eq('un autre enseignant ne peut pas masquer', (select hide_board from public.classes where id = (select v::uuid from ctx where k='classA')), false);
+
 -- suppression d'une séance : ses essais disparaissent avec elle
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 select public.delete_class_session((select v::uuid from ctx where k='sess'));

@@ -91,6 +91,7 @@ export function explain(e: unknown): string {
     invalid_name: 'Nom invalide (2 à 80 caractères pour une école, 1 à 24 pour un élève).',
     too_many_schools: 'Limite atteinte : 3 écoles par compte.',
     no_attempts_left: 'Tu as utilisé tous tes essais pour cette séance.',
+    board_hidden: 'Ton enseignant a masqué le classement de la classe.',
     session_closed: 'Cette séance est fermée.',
     unknown_session: 'Cette séance n’existe plus.',
     too_many_sessions: 'Limite atteinte : 30 séances par classe.',

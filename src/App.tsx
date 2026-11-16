@@ -13,6 +13,7 @@ import { parseTyping } from './game/sessionConfig';
 import type { RunRecord } from './game/history';
 import {
   addScore,
+  recordTypingStamps,
   clearScores,
   loadScores,
   loadSettings,
@@ -192,6 +193,7 @@ export default function App({ account, onHome, onSessionLost, install, session, 
     }
 
     const res = addScore({ diff, name, score: stats.score, wave: stats.wave, wpm: stats.wpm, acc });
+    recordTypingStamps(stats.wpm, acc);
     setScores(res.scores);
 
     if (!sendToServer()) setCloudStatus('off');

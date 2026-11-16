@@ -93,6 +93,12 @@ export interface ClassRow {
   school_id: string;
   name: string;
   session_config: Record<string, unknown> | null;
+  /** absent tant que la mise à jour SQL « classement » n'est pas faite */
+  hide_board?: boolean;
+}
+export interface ClassWeek {
+  games: number;
+  players: number;
 }
 export interface Overview {
   id: string;

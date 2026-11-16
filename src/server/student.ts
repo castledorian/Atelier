@@ -1,5 +1,5 @@
 import { ApiError, rpc } from './api';
-import type { BoardRow, GameId, RunPayload, Scope, ServerRun, SessionInfo, StudentAccount } from './types';
+import type { BoardRow, ClassWeek, GameId, RunPayload, Scope, ServerRun, SessionInfo, StudentAccount } from './types';
 
 const KEY = 'frappe.student.v1';
 
@@ -90,7 +90,7 @@ export async function fetchSessions(token: string): Promise<SessionInfo[]> {
 }
 
 export async function fetchBoard(token: string, game: GameId, mode: string, scope: Scope, limit = 10): Promise<BoardRow[]> {
-  const r = await rpc<{ ok?: boolean; rows?: BoardRow[]; error?: string }>('class_leaderboard', {
+  const r = await rpc<{ ok?: boolean; hidden?: boolean; rows?: BoardRow[]; error?: string }>('class_leaderboard', {
     p_token: token,
     p_game: game,
     p_mode: mode,
@@ -98,7 +98,21 @@ export async function fetchBoard(token: string, game: GameId, mode: string, scop
     p_limit: limit,
   });
   if (!r.ok || !Array.isArray(r.rows)) throw new ApiError(r.error ?? 'invalid_session');
+  if (r.hidden) throw new ApiError('board_hidden');
   return r.rows;
+}
+
+/** Objectif collectif : parties jouées par la classe depuis 7 jours (indisponible tant que la base n'est pas à jour). */
+export async function fetchClassWeek(token: string): Promise<ClassWeek | null> {
+  try {
+    const r = await rpc<{ ok?: boolean; games?: number; players?: number; error?: string }>('class_week', { p_token: token });
+    if (r.error === 'invalid_session') throw new ApiError('invalid_session');
+    if (!r.ok) return null;
+    return { games: Number(r.games) || 0, players: Number(r.players) || 0 };
+  } catch (e) {
+    if (e instanceof ApiError && e.code === 'invalid_session') throw e;
+    return null;
+  }
 }
 
 export async function fetchMyRuns(token: string, game: GameId | null): Promise<ServerRun[]> {

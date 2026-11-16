@@ -96,3 +96,11 @@ test('Réglages : « lecture confortable » est off par défaut et se conserve',
   S.saveSettings({ ...S.loadSettings(), comfort: true });
   assert.equal(S.loadSettings().comfort, true);
 });
+
+test('Frappe : un tampon par palier de vitesse, avec 90 % de précision minimum', () => {
+  assert.equal(S.loadTypingStamps(), 0);
+  assert.deepEqual(S.recordTypingStamps(22, 85), { before: 0, after: 0 });
+  assert.deepEqual(S.recordTypingStamps(22, 92), { before: 0, after: 3 });
+  assert.deepEqual(S.recordTypingStamps(12, 99), { before: 3, after: 3 });
+  assert.deepEqual(S.recordTypingStamps(80, 95), { before: 3, after: 6 });
+});

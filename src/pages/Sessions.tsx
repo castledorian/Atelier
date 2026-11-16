@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { BackButton } from '../components/BackButton';
 import { GAME_NAMES, describeConfig } from '../game/sessionConfig';
 import { ApiError, explain } from '../server/api';
-import { fetchSessions } from '../server/student';
-import type { SessionInfo, StudentAccount } from '../server/types';
+import { fetchClassWeek, fetchSessions } from '../server/student';
+import type { ClassWeek, SessionInfo, StudentAccount } from '../server/types';
 import { Frame, Notice } from './Frame';
 
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -12,8 +12,12 @@ const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g
 export default function Sessions({ account, onBack, onPlay, onSessionLost }: { account: StudentAccount; onBack: () => void; onPlay: (s: SessionInfo) => void; onSessionLost: () => void }) {
   const [list, setList] = useState<SessionInfo[] | null>(null);
   const [err, setErr] = useState('');
+  const [week, setWeek] = useState<ClassWeek | null>(null);
   useEffect(() => {
     let alive = true;
+    fetchClassWeek(account.token)
+      .then((w) => alive && setWeek(w))
+      .catch(() => undefined);
     fetchSessions(account.token)
       .then((r) => alive && setList(r))
       .catch((e) => {
@@ -73,6 +77,7 @@ export default function Sessions({ account, onBack, onPlay, onSessionLost }: { a
       <p className="mt-2 text-[15px] leading-snug">
         Ce sont les séances préparées par ton enseignant. Tu peux t’essayer plusieurs fois&nbsp;: seul ton <strong>meilleur score</strong> compte.
       </p>
+      {week && week.games > 0 && <ClassGoal week={week} />}
       {err && <Notice kind="error">{err}</Notice>}
       {list === null && !err && <p className="mt-3 text-[15px]">Chargement…</p>}
       {list !== null && list.length === 0 && <p className="mt-3 text-[15px]">Aucune séance pour l’instant. Tu peux jouer librement depuis l’accueil.</p>}
@@ -89,5 +94,20 @@ export default function Sessions({ account, onBack, onPlay, onSessionLost }: { a
         </>
       )}
     </Frame>
+  );
+}
+
+/** Objectif collectif : la classe progresse ensemble, sans nom ni classement. Le but suivant est le prochain multiple de 25. */
+function ClassGoal({ week }: { week: ClassWeek }) {
+  const goal = (Math.floor(week.games / 25) + 1) * 25;
+  return (
+    <div className="class-goal mt-3">
+      <p className="text-[15px]">
+        <strong>La classe a joué {week.games} partie{week.games > 1 ? 's' : ''}</strong> cette semaine. Prochain objectif&nbsp;: {goal}.
+      </p>
+      <div className="class-goal-bar" role="img" aria-label={`${week.games} parties sur ${goal}`}>
+        <span style={{ width: `${Math.round((week.games / goal) * 100)}%` }} />
+      </div>
+    </div>
   );
 }

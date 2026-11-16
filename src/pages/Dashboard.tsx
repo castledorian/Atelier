@@ -6,6 +6,7 @@ import { SessionsPanel } from './SessionsTeacher';
 import { downloadText, fmtDate, toCsv } from '../game/history';
 import { ApiError, explain } from '../server/api';
 import * as T from '../server/teacher';
+import { Check } from '../components/Screens';
 import type { ClassRow, NewStudent, Overview, School } from '../server/types';
 
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -384,6 +385,7 @@ function ClassPanel({
   const [confirm, setConfirm] = useState<string | null>(null);
   /** une seule partie de la classe à la fois : la page reste courte */
   const [part, setPart] = useState<'results' | 'add' | 'session' | 'danger'>('results');
+  const [boardHidden, setBoardHidden] = useState(cls.hide_board === true);
 
   const reload = useCallback(async () => {
     const r = await act(() => T.classOverview(cls.id));
@@ -478,6 +480,23 @@ function ClassPanel({
               </button>
             </div>
           </div>
+          {cls.hide_board !== undefined && (
+            <div className="mb-2">
+              <Check
+                on={boardHidden}
+                onClick={async () => {
+                  const next = !boardHidden;
+                  const ok = await act(async () => {
+                    await T.setBoardHidden(cls.id, next);
+                    return true;
+                  });
+                  if (ok) setBoardHidden(next);
+                }}
+              >
+                Masquer les classements aux élèves
+              </Check>
+            </div>
+          )}
           {rows === null ? (
             <p className="text-[15px]">Chargement…</p>
           ) : rows.length === 0 ? (

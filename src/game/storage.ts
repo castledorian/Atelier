@@ -152,3 +152,23 @@ export function loadSettings(): Settings {
 export function saveSettings(s: Settings) {
   write(SETTINGS_KEY, s);
 }
+
+// ───────────── Progression : tampons du cahier (un tampon par palier de vitesse atteint, 6 au maximum) ─────────────
+
+/** Mots par minute à atteindre, avec au moins 90 % de précision, pour gagner chaque tampon. */
+export const TYPING_STAMP_WPM = [10, 15, 20, 25, 30, 35] as const;
+const TYPING_STAMPS_KEY = 'atelier.typing.stamps.v1';
+
+export function loadTypingStamps(): number {
+  const n = Number(read<number>(TYPING_STAMPS_KEY));
+  return Number.isFinite(n) ? Math.max(0, Math.min(TYPING_STAMP_WPM.length, Math.floor(n))) : 0;
+}
+
+/** Tampons gagnés par une partie (vitesse et précision en %), sans jamais reculer. */
+export function recordTypingStamps(wpm: number, accPct: number): { before: number; after: number } {
+  const before = loadTypingStamps();
+  const earned = accPct >= 90 ? TYPING_STAMP_WPM.filter((t) => wpm >= t).length : 0;
+  const after = Math.max(before, earned);
+  if (after !== before) write(TYPING_STAMPS_KEY, after);
+  return { before, after };
+}

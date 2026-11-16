@@ -200,3 +200,12 @@ Supabase → **SQL Editor** → **New query** → collez le contenu de `serveur/
 ### Statistiques d'équilibrage
 
 `serveur/stats-equilibrage.sql` contient trois requêtes de lecture (taux de réussite par jeu / niveau / difficulté, réussite page par page, précision de Frappe !). Lancez-les dans le SQL Editor et transmettez les résultats : ils ne contiennent aucune donnée personnelle. Objectif : environ 95 % de réussite en Apprenti, 85 % en Standard, 65 % en Expert.
+
+## Mise à jour « classement masquable et objectif collectif »
+
+Supabase → **SQL Editor** → **New query** → collez le contenu de `serveur/mise-a-jour-classement.sql` → **Run**. À faire une seule fois ; aucune donnée n'est modifiée. Elle ajoute :
+
+- une case **« Masquer les classements aux élèves »** par classe (onglet Résultats de la classe) : les élèves voient alors « Ton enseignant a masqué le classement de la classe » ;
+- l'**objectif collectif** : sur « Mes séances », les élèves voient combien de parties la classe a jouées cette semaine, sans aucun nom ni classement individuel.
+
+Tant qu'elle n'est pas appliquée, le site continue de fonctionner : la case n'apparaît pas et l'objectif collectif reste caché.

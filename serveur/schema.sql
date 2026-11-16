@@ -40,6 +40,8 @@ create table public.classes (
   -- séance personnalisée de la classe (vitesse, lettres autorisées…), optionnelle
   session_config  jsonb check (session_config is null
                     or (jsonb_typeof(session_config) = 'object' and octet_length(session_config::text) < 2000)),
+  -- l'enseignant peut masquer les classements pour sa classe
+  hide_board      boolean not null default false,
   created_at      timestamptz not null default now()
 );
 create index on public.classes (school_id);
@@ -208,6 +210,10 @@ declare
 begin
   if v_sid is null then return jsonb_build_object('error', 'invalid_session'); end if;
   select * into v_s from public.students where id = v_sid;
+  -- l'enseignant peut masquer les classements de sa classe
+  if (select c.hide_board from public.classes c where c.id = v_s.class_id) then
+    return jsonb_build_object('ok', true, 'hidden', true, 'rows', '[]'::jsonb);
+  end if;
   return jsonb_build_object('ok', true, 'rows', coalesce((
     select jsonb_agg(to_jsonb(t) order by t.rank) from (
       select row_number() over (order by b.score desc, b.played_at asc) as rank,
@@ -224,6 +230,22 @@ begin
       order by 1
       limit greatest(1, least(coalesce(p_limit, 10), 50))
     ) t), '[]'::jsonb));
+end $$;
+
+-- Objectif collectif : parties jouées par la classe depuis 7 jours (aucun nom, aucun classement individuel).
+create or replace function public.class_week(p_token text) returns jsonb
+language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare
+  v_sid uuid := private.student_from_token(p_token);
+  v_c   uuid;
+begin
+  if v_sid is null then return jsonb_build_object('error', 'invalid_session'); end if;
+  select class_id into v_c from public.students where id = v_sid;
+  return jsonb_build_object('ok', true,
+    'games', (select count(*) from public.runs r
+              where r.class_id = v_c and r.kind = 'game' and r.played_at > now() - interval '7 days'),
+    'players', (select count(distinct r.student_id) from public.runs r
+                where r.class_id = v_c and r.kind = 'game' and r.played_at > now() - interval '7 days'));
 end $$;
 
 -- Historique de l'élève (courbe de progression, identique sur tous ses appareils)
@@ -704,6 +726,7 @@ grant execute on function public.submit_session_run(text, uuid, text, integer, i
 grant execute on function public.my_sessions(text) to anon, authenticated;
 grant execute on function public.class_leaderboard(text, text, text, text, integer)    to anon, authenticated;
 grant execute on function public.my_runs(text, text, integer)                          to anon, authenticated;
+grant execute on function public.class_week(text) to anon, authenticated;
 
 grant execute on function public.create_school(text)               to authenticated;
 grant execute on function public.create_class(uuid, text)          to authenticated;
@@ -720,7 +743,7 @@ grant execute on function public.delete_my_account(text)         to authenticate
 
 grant select on public.schools, public.school_members, public.classes, public.students, public.runs to authenticated;
 grant update (name) on public.schools to authenticated;
-grant update (name, session_config), delete on public.classes  to authenticated;
+grant update (name, session_config, hide_board), delete on public.classes  to authenticated;
 grant update (name), delete on public.students                 to authenticated;
 grant delete on public.runs                                    to authenticated;
 
