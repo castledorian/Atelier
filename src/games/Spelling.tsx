@@ -587,6 +587,7 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
   const battleRef = useRef<HTMLDivElement>(null);
   const penRef = useRef<HTMLDivElement>(null);
   const foeRef = useRef<HTMLDivElement>(null);
+  const bubbleRef = useRef<HTMLDivElement>(null);
   // distance plume → ennemi, mesurée pour que le coup de plume et la charge de l'ennemi s'arrêtent au contact
   useLayoutEffect(() => {
     const b = battleRef.current;
@@ -598,6 +599,8 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
     const gap = Math.max(0, fr.left + fr.width * 0.18 - pr.right);
     b.style.setProperty('--dx', `${Math.round(gap)}px`);
     b.style.setProperty('--ex', `${-Math.round(gap)}px`);
+    const bub = bubbleRef.current;
+    if (bub) bub.style.setProperty('--tail', `${Math.round(fr.left + fr.width / 2 - bub.getBoundingClientRect().left)}px`);
   }, [round.item.id, round.hits, done]);
   useEffect(() => {
     if (!strike) {
@@ -674,23 +677,16 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
           <div className="sp-arena">
             <div className={`sp-battle${impact ? ' sh-a' : shake}`} ref={battleRef}>
               <div className="sp-pen" ref={penRef}>
+                <div className="plate plate-me">
+                  <span className="plate-name">Toi</span>
+                </div>
                 <div key={`${round.item.id}-${round.hits}-${strike}`} className={`pen-wrap${round.hits > 0 && !done ? ' pen-hurt' : ''}${strike ? ' pen-dash' : ''}${round.lost ? ' pen-down' : ''}${round.step === 'fix' ? ' pen-ready' : ''}`}>
                   {strike && <span className="pen-trail" aria-hidden="true" />}
                   <PenIcon />
                 </div>
                 {penFx}
-                <div className="plate plate-me">
-                  <span className="plate-name">Toi</span>
-                </div>
               </div>
               <div className="sp-foe" ref={foeRef}>
-                <div key={round.item.id} className="foe-in">
-                  <div key={round.hits} className={round.hits > 0 && !done ? 'foe-lunge' : round.lost ? 'foe-lunge foe-final' : ''}>
-                    <InkEnemy kind={kind} mood={mood} name={name} />
-                  </div>
-                  {strike && <span className="sp-slash" aria-hidden="true" />}
-                  {impact && <FoeFx key={round.item.id} word={HIT_WORDS[hashOf(round.item.id) % HIT_WORDS.length]} />}
-                </div>
                 <div className={`plate plate-${role}`} key={`pl-${round.item.id}`}>
                   <span className="plate-name">{name}</span>
                   <span className="plate-role">
@@ -703,9 +699,16 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
                     <span className="sr-only">Menace : {MENACE[role]} sur 4</span>
                   </span>
                 </div>
+                <div key={round.item.id} className="foe-in">
+                  <div key={round.hits} className={round.hits > 0 && !done ? 'foe-lunge' : round.lost ? 'foe-lunge foe-final' : ''}>
+                    <InkEnemy kind={kind} mood={mood} name={name} />
+                  </div>
+                  {strike && <span className="sp-slash" aria-hidden="true" />}
+                  {impact && <FoeFx key={round.item.id} word={HIT_WORDS[hashOf(round.item.id) % HIT_WORDS.length]} />}
+                </div>
               </div>
             </div>
-            <div className={`sp-bubble${shake}`}>
+            <div className={`sp-bubble${shake}`} ref={bubbleRef}>
               <p className={`sp-ask${round.msg && !done ? ' sp-ask-bad' : ''}`} aria-live="polite">
                 {round.msg && !done && round.msg}
                 {!round.msg && round.step === 'tap' && 'Touche le mot qui n’est pas bien écrit.'}

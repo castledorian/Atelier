@@ -3364,3 +3364,20 @@ html[data-comfort='on'] .title-sm {
     font-size: 14px;
   }
 }
+
+/* noms au-dessus des personnages ; la pointe de la bulle part sous le monstre */
+.plate {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+.sp-bubble::before {
+  left: var(--tail, 80%);
+  right: auto;
+  margin-left: -9px;
+}
+@media (max-height: 480px) {
+  .sp-bubble::before {
+    left: -11px;
+    margin-left: 0;
+  }
+}
