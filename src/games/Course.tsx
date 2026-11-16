@@ -242,7 +242,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
   );
 
   useEffect(() => {
-    if (startPreview) gameRef.current?.startDemo(level);
+    if (startPreview) gameRef.current?.startDemo(level, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

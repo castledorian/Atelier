@@ -146,6 +146,8 @@ export class CourseGame {
   private slowAvg = 16.7;
   private slowFrames = 0;
   private demoStill = false;
+  /** extrait ouvert depuis l'accueil : le calcul s'affiche en haut (derrière le menu, il reste caché) */
+  private demoQuestion = false;
   private dirty = true;
   private u = 1;
   private compact = false;
@@ -262,7 +264,8 @@ export class CourseGame {
     this.dirty = true;
   }
 
-  startDemo(level: Level = 'cm1') {
+  startDemo(level: Level = 'cm1', withQuestion = false) {
+    this.demoQuestion = withQuestion;
     this.mode = 'demo';
     this.level = level;
     this.diff = 'standard';
@@ -1206,7 +1209,7 @@ export class CourseGame {
   }
 
   private drawQuestion(c: CanvasRenderingContext2D) {
-    if (this.mode === 'demo') return;
+    if (this.mode === 'demo' && !this.demoQuestion) return;
     const g = this.gate;
     const { W, qH } = this;
     const y0 = this.hudH + 4;
