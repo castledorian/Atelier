@@ -160,20 +160,17 @@ function SpellingScene({ step }: { step: number }) {
   const fixed = step >= 3;
   return (
     <div className="sp-demo" aria-hidden="true">
-      <div className="sp-hud">
-        <div className="sp-me">
-          <PenIcon />
-          <div className="sp-hp">
-            {[0, 1, 2, 3, 4].map((k) => (
-              <span key={k} className={k < 4 ? 'on' : ''} />
-            ))}
-          </div>
-        </div>
-      </div>
       <div className="sp-arena">
-        <div className="sp-foe">
-          <div className="foe-in" key={fixed ? 'd' : 'a'}>
-            <InkEnemy kind={0} mood={fixed ? 'dead' : 'idle'} name="Pâté" />
+        <div className="sp-battle" style={{ ['--dx' as string]: '150px', ['--ex' as string]: '-150px' }}>
+          <div className="sp-pen">
+            <div key={fixed ? 'd' : 'a'} className={`pen-wrap${fixed ? ' pen-dash' : ''}`}>
+              <PenIcon />
+            </div>
+          </div>
+          <div className="sp-foe">
+            <div className="foe-in" key={fixed ? 'd' : 'a'}>
+              <InkEnemy kind={0} mood={fixed ? 'dead' : 'idle'} name="Pâté" />
+            </div>
           </div>
         </div>
         <div className="sp-bubble">

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BackButton } from '../components/BackButton';
 import { DuelResult, ReviewNote } from '../components/EncreNotes';
 import type { DuelInfo } from '../components/EncreNotes';
@@ -442,7 +442,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
   }, [round?.step, round?.item.id]);
 
   return (
-    <Frame wide>
+    <Frame wide fill>
       <div className="sp-card">
       {phase !== 'play' && (
         <div className="card-top">
@@ -513,6 +513,8 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
           onBoon={takeBoon}
           onNext={next}
           onBack={toMenu}
+          onImpact={(big) => sfx.play(big ? 'bigkill' : 'kill')}
+          onDash={() => sfx.play('sweep')}
           onTip={() => upd({ ...round, tipShown: true, hintUsed: true })}
           nextRef={nextRef}
           fixRef={fixRef}
@@ -561,13 +563,16 @@ interface PlayProps {
   onBoon: (b: Boon) => void;
   onNext: () => void;
   onBack: () => void;
+  /** le coup de plume touche l'ennemi (pour le son) */
+  onImpact: (boss: boolean) => void;
+  onDash: () => void;
   onTip: () => void;
   nextRef: React.RefObject<HTMLButtonElement | null>;
   fixRef: React.RefObject<HTMLButtonElement | null>;
 }
 
 /** L'écran de combat : toi (la plume et tes vies) en haut, l'ennemi d'encre et sa phrase au milieu, les réponses dessous. */
-function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPick, onBoon, onNext, onBack, onTip, nextRef, fixRef }: PlayProps) {
+function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPick, onBoon, onNext, onBack, onImpact, onDash, onTip, nextRef, fixRef }: PlayProps) {
   const duel = !!s.duel;
   const total = duel ? (s.duel as { items: Item[] }).items.length : ROUNDS;
   const boss = !duel && s.asked === ROUNDS - 1;
@@ -576,7 +581,38 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
   const pick = (list: string[]) => list[s.order[s.asked % ENEMY_KINDS] % list.length];
   const name = boss ? BOSS_NAME : role === 'pate' ? pick(PATE_NAMES) : role === 'splash' ? pick(SPLASH_NAMES) : pick(ENEMY_NAMES);
   const done = round.step === 'done';
-  const mood = done ? (round.lost ? 'attack' : 'dead') : round.hits > 0 ? 'angry' : 'idle';
+  /** bonne réponse : la plume fonce sur l'ennemi (sauf s'il a fallu lui donner la réponse) */
+  const strike = done && !round.lost && !round.revealed;
+  const [impact, setImpact] = useState(false);
+  const battleRef = useRef<HTMLDivElement>(null);
+  const penRef = useRef<HTMLDivElement>(null);
+  const foeRef = useRef<HTMLDivElement>(null);
+  // distance plume → ennemi, mesurée pour que le coup de plume et la charge de l'ennemi s'arrêtent au contact
+  useLayoutEffect(() => {
+    const b = battleRef.current;
+    const p = penRef.current;
+    const f = foeRef.current;
+    if (!b || !p || !f) return;
+    const pr = p.getBoundingClientRect();
+    const fr = f.getBoundingClientRect();
+    const gap = Math.max(0, fr.left + fr.width * 0.18 - pr.right);
+    b.style.setProperty('--dx', `${Math.round(gap)}px`);
+    b.style.setProperty('--ex', `${-Math.round(gap)}px`);
+  }, [round.item.id, round.hits, done]);
+  useEffect(() => {
+    if (!strike) {
+      setImpact(false);
+      return;
+    }
+    onDash();
+    const t = window.setTimeout(() => {
+      setImpact(true);
+      onImpact(boss);
+    }, 260);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [strike, round.item.id]);
+  const mood = done ? (round.lost ? 'attack' : round.revealed || impact ? 'dead' : 'angry') : round.hits > 0 ? 'angry' : 'idle';
   const shake = round.hits > 0 && !done ? (round.hits % 2 ? ' sh-a' : ' sh-b') : '';
   const closing = done;
   return (
@@ -585,7 +621,6 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
         <BackButton onClick={onBack} label="Menu" />
         {!duel && (
           <div className="sp-me">
-            <PenIcon />
             <div key={hurtKey} className={`sp-hp${hurtKey > 0 ? ' hit' : ''}`} role="img" aria-label={`Vie : ${s.hp} sur ${s.maxHp}`}>
               {Array.from({ length: s.maxHp }, (_, k) => (
                 <span key={k} className={`${k < s.hp ? 'on' : ''}${hurtKey > 0 && k === s.hp ? ' lost' : ''}`} />
@@ -636,16 +671,25 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
             </div>
           )}
           <div className="sp-arena">
-            <div className="sp-foe">
-              <div key={round.item.id} className="foe-in">
-                <div key={round.hits} className={round.hits > 0 && !done ? 'foe-lunge' : ''}>
-                  <InkEnemy kind={kind} mood={mood} name={name} />
+            <div className="sp-battle" ref={battleRef}>
+              <div className="sp-pen" ref={penRef}>
+                <div key={`${round.item.id}-${round.hits}-${strike}`} className={`pen-wrap${round.hits > 0 && !done ? ' pen-hurt' : ''}${strike ? ' pen-dash' : ''}${round.lost ? ' pen-down' : ''}`}>
+                  <PenIcon />
                 </div>
+                <p className="sp-foe-name">Toi</p>
               </div>
-              <p className="sp-foe-name">
-                {name}
-                <span className="sp-role">{ROLE_LABEL[role]}</span>
-              </p>
+              <div className="sp-foe" ref={foeRef}>
+                <div key={round.item.id} className="foe-in">
+                  <div key={round.hits} className={round.hits > 0 && !done ? 'foe-lunge' : round.lost ? 'foe-lunge foe-final' : ''}>
+                    <InkEnemy kind={kind} mood={mood} name={name} />
+                  </div>
+                  {strike && <span className="sp-slash" aria-hidden="true" />}
+                </div>
+                <p className="sp-foe-name">
+                  {name}
+                  <span className="sp-role">{ROLE_LABEL[role]}</span>
+                </p>
+              </div>
             </div>
             <div className={`sp-bubble${shake}`}>
               <p className="sp-ask" aria-live="polite">

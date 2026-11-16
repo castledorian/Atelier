@@ -118,10 +118,12 @@ function Eye({ x, y, r, dead }: EyeSpec & { dead: boolean }) {
     );
   }
   return (
-    <g>
+    <g className="en-eye">
       <circle cx={x} cy={y} r={r} fill={PAPER} />
-      <circle cx={x - r * 0.28} cy={y + r * 0.18} r={r * 0.5} fill={INK} />
-      <circle cx={x - r * 0.4} cy={y + r * 0.02} r={r * 0.14} fill={PAPER} />
+      <g className="en-look">
+        <circle cx={x - r * 0.28} cy={y + r * 0.18} r={r * 0.5} fill={INK} />
+        <circle cx={x - r * 0.4} cy={y + r * 0.02} r={r * 0.14} fill={PAPER} />
+      </g>
     </g>
   );
 }
@@ -132,9 +134,12 @@ export function InkEnemy({ kind, mood, name }: { kind: number; mood: EnemyMood; 
   const boss = kind === BOSS_KIND;
   const k = Math.max(0, Math.min(7, kind));
   return (
-    <svg className={`en en-${mood}${boss ? ' en-boss' : ''} en-r-${k === 2 ? 'splash' : k === 7 ? 'pate' : boss ? 'boss' : 'tache'}`} viewBox="0 0 200 200" aria-hidden="true" focusable="false" data-name={name}>
+    <svg className={`en en-${mood}${boss ? ' en-boss' : ''} en-r-${k === 2 ? 'splash' : k === 7 ? 'pate' : boss ? 'boss' : 'tache'}`} viewBox="0 0 200 200" aria-hidden="true" focusable="false" data-name={name} style={{ ['--d' as string]: `${-((kind * 0.83) % 3).toFixed(2)}s` }}>
       {/* la flaque, qui reste quand l'ennemi est vaincu */}
       <ellipse className="en-puddle" cx="100" cy="186" rx={dead ? 78 : 60} ry={dead ? 9 : 6} fill={INK} />
+      {!dead && k !== 2 && (
+        <circle className="en-drip" cx={k === 7 ? 60 : 78} cy={k === 7 ? 178 : 172} r="4.5" fill={INK} />
+      )}
       <g className="en-body">
         {k === 1 && <polygon points={SPIKY_POINTS} fill={INK} />}
         {k === BOSS_KIND && <polygon points={BOSS_POINTS} fill={INK} />}

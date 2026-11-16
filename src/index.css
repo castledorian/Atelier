@@ -2670,3 +2670,327 @@ html[data-comfort='on'] .title-sm {
     display: none;
   }
 }
+
+/* ───────── Chasse aux fautes : la plume contre l'ennemi, ennemis vivants, plein écran sur mobile ───────── */
+.sp-arena {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+  margin-top: 8px;
+}
+.sp-battle {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 clamp(8px, 5%, 48px);
+  min-height: 120px;
+}
+.sp-pen,
+.sp-foe {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+.sp-pen .pen-icon {
+  width: 56px;
+  height: 56px;
+}
+.sp-battle .sp-foe .en-r-splash {
+  width: 110px;
+}
+.sp-battle .sp-foe .en-r-tache {
+  width: 150px;
+}
+.sp-battle .sp-foe .en-r-pate {
+  width: 190px;
+}
+.sp-battle .sp-foe .en-r-boss {
+  width: 210px;
+}
+.foe-in {
+  position: relative;
+}
+/* la bulle montre l'ennemi du doigt, par-dessous */
+.sp-bubble::before {
+  left: auto;
+  right: 18%;
+  bottom: auto;
+  top: -11px;
+  margin: 0;
+  transform: rotate(135deg);
+}
+.pen-wrap {
+  transform-origin: 50% 100%;
+}
+.pen-dash {
+  animation: pen-dash 0.62s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.pen-hurt {
+  animation: pen-hurt 0.45s ease-out;
+}
+.pen-down {
+  transform: rotate(-65deg) translateY(10px);
+  opacity: 0.55;
+  transition: transform 0.3s, opacity 0.3s;
+}
+.foe-lunge {
+  animation: en-charge 0.5s cubic-bezier(0.5, 0, 0.3, 1);
+}
+.foe-final {
+  animation: en-charge 0.6s cubic-bezier(0.5, 0, 0.3, 1) both;
+}
+.sp-slash {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 38%;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--color-ribbon);
+  transform-origin: left center;
+  transform: rotate(-24deg) scaleX(0);
+  opacity: 0;
+  animation: sp-slash 0.36s 0.24s ease-out both;
+  pointer-events: none;
+}
+@keyframes pen-dash {
+  0% {
+    transform: translateX(0) rotate(0);
+  }
+  42% {
+    transform: translateX(var(--dx, 120px)) rotate(18deg) scale(1.15);
+  }
+  60% {
+    transform: translateX(calc(var(--dx, 120px) - 14px)) rotate(8deg);
+  }
+  100% {
+    transform: translateX(0) rotate(0);
+  }
+}
+@keyframes pen-hurt {
+  15% {
+    transform: translateX(-12px) rotate(-14deg);
+    filter: drop-shadow(0 0 0 var(--color-ribbon));
+  }
+  45% {
+    transform: translateX(6px) rotate(6deg);
+  }
+}
+@keyframes en-charge {
+  0% {
+    transform: translateX(0) scale(1);
+  }
+  38% {
+    transform: translateX(var(--ex, -120px)) scale(1.14);
+  }
+  100% {
+    transform: translateX(0) scale(1);
+  }
+}
+@keyframes sp-slash {
+  0% {
+    opacity: 1;
+    transform: rotate(-24deg) scaleX(0);
+  }
+  50% {
+    opacity: 1;
+    transform: rotate(-24deg) scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(-24deg) scaleX(1);
+  }
+}
+.foe-final {
+  animation-fill-mode: both;
+}
+
+/* ennemis vivants : ils flottent, clignent, regardent autour d'eux et dégoulinent */
+.en-idle,
+.en-angry {
+  animation: en-float 3.1s ease-in-out infinite;
+  animation-delay: var(--d, 0s);
+}
+.en-angry {
+  animation-duration: 1.6s;
+}
+.en-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: en-blink 4.4s infinite;
+  animation-delay: var(--d, 0s);
+}
+.en-look {
+  animation: en-look 5.5s ease-in-out infinite;
+  animation-delay: var(--d, 0s);
+}
+.en-drip {
+  opacity: 0;
+  animation: en-drip 3.6s ease-in infinite;
+  animation-delay: var(--d, 0s);
+}
+@keyframes en-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1.2deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(1.2deg);
+  }
+}
+@keyframes en-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.08);
+  }
+}
+@keyframes en-look {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  30% {
+    transform: translate(-3px, 1px);
+  }
+  60% {
+    transform: translate(3px, -2px);
+  }
+  80% {
+    transform: translate(0, 2px);
+  }
+}
+@keyframes en-drip {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(30px) scale(0.8);
+  }
+}
+.en-dead .en-eye,
+.en-dead .en-look {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .en-idle,
+  .en-angry,
+  .en-eye,
+  .en-look,
+  .en-drip,
+  .pen-dash,
+  .pen-hurt,
+  .foe-lunge,
+  .sp-slash {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 640px), (max-height: 700px) {
+  .sp-battle {
+    min-height: 96px;
+  }
+  .sp-pen .pen-icon {
+    width: 44px;
+    height: 44px;
+  }
+  .sp-battle .sp-foe .en-r-splash {
+    width: 70px;
+  }
+  .sp-battle .sp-foe .en-r-tache {
+    width: 96px;
+  }
+  .sp-battle .sp-foe .en-r-pate {
+    width: 120px;
+  }
+  .sp-battle .sp-foe .en-r-boss {
+    width: 132px;
+  }
+}
+@media (max-height: 480px) {
+  .sp-arena {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+  .sp-battle {
+    flex: 0 0 44%;
+    min-height: 0;
+    padding: 0;
+  }
+  .sp-bubble::before {
+    left: -11px;
+    right: auto;
+    top: auto;
+    bottom: 38px;
+    transform: rotate(45deg);
+  }
+  .sp-battle .sp-foe .en-r-splash,
+  .sp-battle .sp-foe .en-r-tache,
+  .sp-battle .sp-foe .en-r-pate,
+  .sp-battle .sp-foe .en-r-boss {
+    width: 70px;
+  }
+}
+
+/* Téléphone : la feuille occupe tout l'écran, le combat s'étire pour remplir la hauteur */
+@media (max-width: 640px) {
+  .page-in.page-fill > .sp-card {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    box-shadow: none;
+  }
+  .sp-card .sp-play {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .sp-card .sp-arena {
+    flex: 1 1 auto;
+    justify-content: space-evenly;
+  }
+  .sp-card .sp-battle {
+    flex: 1 1 auto;
+    align-items: center;
+  }
+  .page:has(.sp-card) {
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+}
+@media (max-width: 640px) and (min-height: 720px) {
+  .sp-pen .pen-icon {
+    width: 60px;
+    height: 60px;
+  }
+  .sp-battle .sp-foe .en-r-splash {
+    width: 104px;
+  }
+  .sp-battle .sp-foe .en-r-tache {
+    width: 140px;
+  }
+  .sp-battle .sp-foe .en-r-pate {
+    width: 170px;
+  }
+  .sp-battle .sp-foe .en-r-boss {
+    width: 190px;
+  }
+}
+@media (min-width: 641px) {
+  .sp-battle {
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+  }
+}
