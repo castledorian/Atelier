@@ -41,7 +41,7 @@ export default function Login({ initialTab, recovery, onStudent, onTeacher, onBa
       )}
 
       {tab === 'student' ? <StudentForm onDone={onStudent} /> : <TeacherForm recovery={recovery} onDone={onTeacher} />}
-      <p className="mt-4 text-[13px] text-ink/75">
+      <p className="mt-4 text-[14px] text-ink/75">
         {tab === 'student' ? 'Ton enseignant voit ton prénom et tes résultats. ' : ''}
         <button type="button" className="link" onClick={onPrivacy}>
           Confidentialité

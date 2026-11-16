@@ -25,6 +25,8 @@ export interface Settings {
   difficulty: Difficulty;
   /** taille du texte */
   textSize: TextSize;
+  /** lecture confortable : lettres plus espacées, interligne large */
+  comfort: boolean;
   /** réglages de la séance « Perso » */
   custom: CustomConfig;
 }
@@ -129,6 +131,7 @@ export function loadSettings(): Settings {
     name: '',
     difficulty: 'standard',
     textSize: 'normal',
+    comfort: false,
     custom: DEFAULT_CUSTOM,
   };
   const saved = read<Partial<Settings>>(SETTINGS_KEY);
@@ -141,6 +144,7 @@ export function loadSettings(): Settings {
     name: typeof saved.name === 'string' ? saved.name.slice(0, 12) : '',
     difficulty: isDifficulty(saved.difficulty) ? saved.difficulty : 'standard',
     textSize: saved.textSize === 'large' || saved.textSize === 'xlarge' ? saved.textSize : 'normal',
+    comfort: saved.comfort === true,
     custom: sanitizeCustom(saved.custom),
   };
 }

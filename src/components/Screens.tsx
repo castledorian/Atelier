@@ -53,6 +53,9 @@ export function Options({ settings, kbOn, onChange }: OptionsProps) {
           Touches&nbsp;: <strong className="text-ribbon">{settings.layout.toUpperCase()}</strong>
         </button>
       )}
+      <Check on={settings.comfort} onClick={() => onChange({ comfort: !settings.comfort })}>
+        Lecture confortable
+      </Check>
       <button
         type="button"
         className="opt"
@@ -713,13 +716,13 @@ export function GameOver({
             <div className="score-big" aria-label={`Score : ${stats.score}`}>
               <CountUp value={stats.score} />
             </div>
-            <div className="pb-2 text-[13px] uppercase tracking-[0.12em] text-ink/65">points</div>
+            <div className="pb-2 text-[14px] uppercase tracking-[0.12em] text-ink/65">points</div>
           </div>
 
           <dl className="stats-row mt-2 grid grid-cols-4 border-2 border-ink">
             {cells.map(([k, v], i) => (
               <div key={k} className={`px-1 py-1.5 text-center ${i > 0 ? 'border-l-2 border-ink' : ''}`}>
-                <dt className="text-[10px] uppercase tracking-[0.06em] text-ink/65 sm:text-[11px]">{k}</dt>
+                <dt className="text-[14px] uppercase tracking-[0.06em] text-ink/65 sm:text-[14px]">{k}</dt>
                 <dd className="font-display text-[20px] leading-tight sm:text-[22px]">{v}</dd>
               </div>
             ))}

@@ -91,7 +91,7 @@ export default function Dashboard({ email, onHome, onSignOut, onAccountDeleted }
           <h1 className="title-sm">{school ? school.name : 'Mon école'}</h1>
         </div>
         <div className="dash-who">
-          <span className="text-[13px] text-ink/70">{email}</span>
+          <span className="text-[14px] text-ink/70">{email}</span>
           <div className="who-actions">
             <button type="button" className="link" onClick={onSignOut}>
               Se déconnecter
@@ -292,7 +292,7 @@ function SchoolBar({
           </form>
         )}
         <div className="danger">
-          <p className="text-[13px] leading-snug">
+          <p className="text-[14px] leading-snug">
             <strong>Supprimer l’école</strong> efface définitivement ses classes, ses élèves et tous leurs scores. Pour confirmer, recopie
             son nom&nbsp;: <em>{schoolName}</em>
           </p>
@@ -580,7 +580,7 @@ function ClassPanel({
               </table>
             </div>
           )}
-          <p className="mt-2 text-[13px] leading-snug text-ink/75">
+          <p className="mt-2 text-[14px] leading-snug text-ink/75">
             Les parties « Perso » et les entraînements ne comptent pas dans les records. Toutes les colonnes sont dans l’export CSV.
           </p>
         </section>
@@ -621,7 +621,7 @@ function ClassPanel({
                   </li>
                 ))}
               </ul>
-              <p className="mt-1 text-[13px] text-ink/75">
+              <p className="mt-1 text-[14px] text-ink/75">
                 Retrouve-les à tout moment dans l’onglet « Résultats ». « Imprimer les codes » sort une fiche à découper.
               </p>
             </div>
@@ -693,7 +693,7 @@ function AccountPanel({ email, act, onDeleted }: { email: string; act: <R>(f: ()
       <div className="mt-2 flex flex-col gap-3">
         {preview === null ? (
           <div className="danger">
-            <p className="text-[13px] leading-snug">
+            <p className="text-[14px] leading-snug">
               Tu peux supprimer ton compte enseignant. Rien n’est supprimé avant les étapes de confirmation qui suivent.
             </p>
             <div className="mt-2">
@@ -730,7 +730,7 @@ function AccountPanel({ email, act, onDeleted }: { email: string; act: <R>(f: ()
                 ),
               )}
             </ul>
-            <p className="mt-2 text-[13px] leading-snug">
+            <p className="mt-2 text-[14px] leading-snug">
               Pour garder une trace, exporte d’abord les résultats de tes classes (bouton « Exporter » de chaque classe).
             </p>
             <label className="mt-2 flex flex-col gap-1 text-[14px]">

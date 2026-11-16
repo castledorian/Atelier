@@ -32,7 +32,7 @@ export default function Privacy({ onBack }: { onBack: () => void }) {
       <p className="eyebrow">Données personnelles</p>
       <h1 className="title-sm">Confidentialité</h1>
       <div className="rule" aria-hidden="true" />
-      <p className="text-[13px] text-ink/70">Mise à jour le {LEGAL.updated}</p>
+      <p className="text-[14px] text-ink/70">Mise à jour le {LEGAL.updated}</p>
 
       <Section id="p-bref" title="En bref">
         <ul className={ul}>

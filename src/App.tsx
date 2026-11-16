@@ -228,6 +228,7 @@ export default function App({ account, onHome, onSessionLost, install, session, 
       wordScale: TEXT_SCALE[settings.textSize],
     });
     document.documentElement.dataset.text = settings.textSize;
+    document.documentElement.dataset.comfort = settings.comfort ? 'on' : 'off';
   }, [settings, kbOn, sfx]);
 
   const changeSettings = useCallback(

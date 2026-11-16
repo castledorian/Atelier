@@ -101,3 +101,31 @@ export function saveCourseDiff(d: CourseDiff) {
     /* ignoré */
   }
 }
+
+// ───────────── Progression : tampons du cahier (une page terminée = un tampon, 6 au maximum) ─────────────
+
+const STAMPS_KEY = 'atelier.course.stamps.v1';
+
+/** Plus grand nombre de pages terminées, tous niveaux confondus, sur cet appareil. */
+export function loadCourseStamps(): number {
+  try {
+    const n = Number(localStorage.getItem(STAMPS_KEY));
+    return Number.isFinite(n) ? Math.max(0, Math.min(6, Math.floor(n))) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Enregistre une partie ; renvoie le nombre de tampons d'avant et d'après. */
+export function recordCourseStamps(pagesCleared: number): { before: number; after: number } {
+  const before = loadCourseStamps();
+  const after = Math.max(before, Math.max(0, Math.min(6, Math.floor(pagesCleared))));
+  if (after !== before) {
+    try {
+      localStorage.setItem(STAMPS_KEY, String(after));
+    } catch {
+      /* stockage refusé : le tampon est un bonus */
+    }
+  }
+  return { before, after };
+}

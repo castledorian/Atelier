@@ -26,7 +26,7 @@
   --color-ink: #1b1915;
   --color-paper: #efe6d2;
   --color-paper-hi: #faf5e8;
-  --color-ribbon: #c9341f;
+  --color-ribbon: #b02a18;
   --font-display: "Special Elite", "Courier New", monospace;
   --font-body: "Courier Prime", "Courier New", monospace;
 }
@@ -123,7 +123,7 @@ body {
 @container (max-height: 359px) {
   .pause-btn {
     top: 2px;
-    height: 34px;
+    height: 44px;
     box-shadow: 0 2px 0 var(--color-ink);
   }
   .pause-btn span {
@@ -159,7 +159,7 @@ body {
 }
 
 .eyebrow {
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--color-ribbon);
@@ -286,7 +286,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 8px;
   font-size: 15px;
   cursor: pointer;
@@ -309,9 +309,9 @@ body {
 }
 
 .link {
-  min-height: 32px;
+  min-height: 44px;
   padding: 0 4px;
-  font-size: 13px;
+  font-size: 14px;
   color: rgba(27, 25, 21, 0.7);
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -329,7 +329,7 @@ body {
 .scores th {
   padding: 4px 5px;
   border-bottom: 2px solid var(--color-ink);
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 400;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -636,7 +636,7 @@ html[data-text='xlarge'] .card .title-sm {
   gap: 8px;
   padding: 4px 0;
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: 14px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   cursor: pointer;
@@ -679,7 +679,7 @@ html[data-text='xlarge'] .card .title-sm {
   left: 0;
   right: 0;
   text-align: center;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1;
   letter-spacing: 1px;
   opacity: 0.75;
@@ -730,7 +730,7 @@ html[data-text='xlarge'] .card .title-sm {
   display: inline-flex;
 }
 .seg-b {
-  min-width: 34px;
+  min-width: 44px;
   padding: 4px 9px;
   border: 2px solid var(--color-ink);
   margin-left: -2px;
@@ -747,7 +747,7 @@ html[data-text='xlarge'] .card .title-sm {
 .chip {
   padding: 3px 9px;
   border: 2px solid var(--color-ink);
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 .chip:hover {
@@ -770,7 +770,7 @@ html[data-text='xlarge'] .card .title-sm {
 .cfg-key {
   width: 100%;
   min-width: 0;
-  height: 30px;
+  height: 44px;
   border: 2px solid var(--color-ink);
   font-size: 14px;
   cursor: pointer;
@@ -789,7 +789,7 @@ html[data-text='xlarge'] .card .title-sm {
   padding: 4px 8px;
   border: 2px solid var(--color-ink);
   background: var(--color-paper);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 /* Champs, onglets, graphiques */
@@ -835,7 +835,7 @@ html[data-text='xlarge'] .card .title-sm {
 }
 @media (max-width: 360px) {
   .diff-grid[data-n='3'] .diff {
-    font-size: 13px;
+    font-size: 14px;
   }
 }
 
@@ -913,7 +913,7 @@ button.gcard:active {
   border-style: dashed;
 }
 .gcard-tag {
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-ribbon);
@@ -942,7 +942,7 @@ button.gcard:active {
   margin-top: var(--sp);
 }
 .seg-big .seg-b {
-  min-height: 42px;
+  min-height: 44px;
   padding: 4px 16px;
   font-size: 16px;
 }
@@ -1009,7 +1009,7 @@ button.gcard:active {
   margin-top: 14px;
 }
 .class-tab {
-  min-height: 40px;
+  min-height: 44px;
   padding: 6px 14px;
   border: 2px solid var(--color-ink);
   background: var(--color-paper-hi);
@@ -1062,7 +1062,7 @@ button.gcard:active {
     display: none;
   }
   .tbl {
-    font-size: 13px;
+    font-size: 14px;
   }
 }
 .part-bar {
@@ -1072,7 +1072,7 @@ button.gcard:active {
   margin-top: 10px;
 }
 .part-tab {
-  min-height: 38px;
+  min-height: 44px;
   padding: 4px 12px;
   border: 2px solid var(--color-ink);
   border-bottom-width: 4px;
@@ -1179,7 +1179,7 @@ button.gcard:active {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 42px;
+  min-height: 44px;
   padding: 2px 14px 0 10px;
   border: 2px solid var(--color-ink);
   background: var(--color-paper-hi);
@@ -1225,7 +1225,7 @@ button.gcard:active {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 42px;
+  min-height: 44px;
   padding: 4px 6px;
   border: 2px solid var(--color-ink);
   background: transparent;
@@ -1284,7 +1284,7 @@ button.gcard:active {
 }
 .seg-wide .seg-b {
   flex: 1;
-  min-height: 40px;
+  min-height: 44px;
   font-size: 15px;
 }
 
@@ -1314,7 +1314,7 @@ button.gcard:active {
 .card-over .stamp {
   top: 2px;
   right: 0;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 /* Progrès : deux graphiques côte à côte quand il y a la place */
@@ -1419,7 +1419,7 @@ button.gcard:active {
     font-size: 22px;
   }
   .gcard-text {
-    font-size: 13px;
+    font-size: 14px;
   }
   .who {
     margin-top: 10px;
@@ -1447,7 +1447,7 @@ button.gcard:active {
 
 /* Espace enseignant : boutons d'action plus compacts, actions des lignes empilées sur téléphone */
 .sec-head .btn {
-  min-height: 38px;
+  min-height: 44px;
   padding: 2px 10px 0;
   font-size: 14px;
 }
@@ -1458,7 +1458,7 @@ button.gcard:active {
   .tbl .row-actions .link {
     display: block;
     margin: 0;
-    min-height: 26px;
+    min-height: 32px;
     text-align: left;
   }
 }
@@ -1514,7 +1514,7 @@ html[data-text='xlarge'] .card .title {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .tools[data-n='3'] .tool {
-    font-size: 13px;
+    font-size: 14px;
     flex-direction: column;
     gap: 2px;
   }
@@ -1538,7 +1538,7 @@ html[data-text='xlarge'] .card .title {
     display: none;
   }
   .card-cover .btn {
-    min-height: 40px;
+    min-height: 44px;
     padding-top: 6px;
     padding-bottom: 6px;
   }
@@ -1596,11 +1596,11 @@ html[data-text='xlarge'] .card .title {
   color: var(--color-ink);
   font-size: 24px;
   letter-spacing: 0.04em;
-  box-shadow: 0 3px 0 #c9341f;
+  box-shadow: 0 3px 0 #b02a18;
 }
 .vb-main small {
   margin-left: 10px;
-  font-size: 12px;
+  font-size: 14px;
   opacity: 0.7;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1677,3 +1677,33 @@ html[data-text='xlarge'] .card .title {
 .sess-title { font-size: 18px; line-height: 1.2; }
 .sess-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 8px 0; border-top: 1px dashed rgba(27, 25, 21, 0.35); }
 .sess-runs { margin: 0; padding-left: 18px; font-size: 14px; }
+
+/* Lecture confortable : lettres plus espacées, interligne large, titres sans texture */
+html[data-comfort='on'] body {
+  letter-spacing: 0.08em;
+  word-spacing: 0.12em;
+  line-height: 1.6;
+}
+html[data-comfort='on'] .title,
+html[data-comfort='on'] .title-sm {
+  font-family: var(--font-body);
+  font-weight: 700;
+}
+
+/* Message de pause : discret, en bas de l'écran, jamais bloquant */
+.break-notice {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--color-paper-hi);
+  color: var(--color-ink);
+  border: 2px solid var(--color-ink);
+  box-shadow: 4px 4px 0 var(--color-ink);
+  font-size: 16px;
+}

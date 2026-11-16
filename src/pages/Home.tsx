@@ -4,6 +4,7 @@ import type { InstallInfo } from '../components/Screens';
 import { serverEnabled } from '../server/api';
 import { fetchSessions } from '../server/student';
 import type { StudentAccount } from '../server/types';
+import { loadCourseStamps } from '../game/course/scores';
 import type { TeacherSession } from '../server/teacher';
 
 interface HomeProps {
@@ -108,6 +109,11 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
           <span className="gcard-tag">Maths</span>
           <span className="gcard-name">Course à l’encre</span>
           <span className="gcard-text">Place la plume sur la bonne réponse et fuis la tache d’encre !</span>
+          {loadCourseStamps() > 0 && (
+            <span className="gcard-stamps" role="img" aria-label={`Tampons : ${loadCourseStamps()} sur 6`}>
+              {Array.from({ length: 6 }, (_, k) => (k < loadCourseStamps() ? '●' : '○')).join(' ')}
+            </span>
+          )}
           <span className="gcard-go">Jouer →</span>
         </button>
         <button type="button" className="gcard" onClick={() => onPlay('memory')}>
@@ -134,10 +140,10 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
               Pour installer sur iPhone / iPad&nbsp;: touche <strong>Partager</strong> puis <strong>Sur l’écran d’accueil</strong>.
             </p>
           )}
-          <p className="mt-2 text-[13px] leading-snug text-ink/75">Les jeux s’ouvrent ensuite comme une application, même sans connexion internet.</p>
+          <p className="mt-2 text-[14px] leading-snug text-ink/75">Les jeux s’ouvrent ensuite comme une application, même sans connexion internet.</p>
         </section>
       )}
-      <p className="mt-4 text-[13px] text-ink/75">
+      <p className="mt-4 text-[14px] text-ink/75">
         Pas de pub, pas de cookie.{' '}
         <button type="button" className="link" onClick={onPrivacy}>
           Confidentialité et données

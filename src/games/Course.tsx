@@ -10,6 +10,7 @@ import { COURSE_DIFFS, LEVELS, PAGES, boardKey, fmtNum } from '../game/course/qu
 import type { BoardKey, CourseDiff, Level, Missed } from '../game/course/questions';
 import {
   addCourseScore,
+  recordCourseStamps,
   clearCourseScores,
   loadCourseDiff,
   loadCourseLevel,
@@ -110,6 +111,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
       record = before.length === 0 ? result.score > 0 : result.score > before[0].score;
       const res = addCourseScore(boardKey(result.level, result.diff), { id, name, score: result.score, streak: result.bestStreak, date: Date.now() });
       rank = res.rank;
+      recordCourseStamps(result.won ? PAGES : result.page - 1);
     }
     if (sesRef.current.sess) {
       // séance de classe : l'essai compte pour l'évaluation, il ne va ni dans les scores de l'appareil ni dans les classements libres
@@ -179,6 +181,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
     sfx.enabled = settings.sound;
     gameRef.current?.setOptions({ shake: settings.shake });
     document.documentElement.dataset.text = settings.textSize;
+    document.documentElement.dataset.comfort = settings.comfort ? 'on' : 'off';
   }, [settings, sfx]);
 
   const change = useCallback(
@@ -468,6 +471,9 @@ function SettingsRow({ settings, onChange }: { settings: Settings; onChange: (p:
       </Check>
       <Check on={settings.shake} onClick={() => onChange({ shake: !settings.shake })}>
         Secousses
+      </Check>
+      <Check on={settings.comfort} onClick={() => onChange({ comfort: !settings.comfort })}>
+        Lecture confortable
       </Check>
       <button
         type="button"
@@ -844,7 +850,7 @@ function OverScreen({ run, account, cloud, onRestart, onDrill, onMenu, onHome }:
                 <div className="score-big" aria-label={`Score : ${r.score}`}>
                   {fmt(r.score)}
                 </div>
-                <div className="pb-2 text-[13px] uppercase tracking-[0.12em] text-ink/65">
+                <div className="pb-2 text-[14px] uppercase tracking-[0.12em] text-ink/65">
                   points{run.rank > 0 ? ` · n° ${run.rank}` : ''} · page {r.page}/{PAGES}
                 </div>
               </div>
@@ -856,14 +862,20 @@ function OverScreen({ run, account, cloud, onRestart, onDrill, onMenu, onHome }:
                 ['Meilleure série', String(r.bestStreak)],
               ].map(([k, v], i) => (
                 <div key={k} className={`px-2 py-2 text-center ${i > 0 ? 'border-l-2 border-ink' : ''}`}>
-                  <dt className="text-[11px] uppercase tracking-[0.08em] text-ink/65">{k}</dt>
+                  <dt className="text-[14px] uppercase tracking-[0.08em] text-ink/65">{k}</dt>
                   <dd className="font-display text-[20px] leading-tight">{v}</dd>
                 </div>
               ))}
             </dl>
+            {!r.drill && r.correct > 0 && (
+              <p className="mt-2 text-[15px] font-bold">
+                {r.correct === 1 ? '1 calcul juste' : `${r.correct} calculs justes`}
+                {r.bestStreak >= 3 ? `, dont ${r.bestStreak} d’affilée` : ''}. Bien joué&nbsp;!
+              </p>
+            )}
             {showMissed.length > 0 ? (
               <div className="cover-missed mt-2">
-                <h3 className="subhead">À retravailler</h3>
+                <h3 className="subhead">Pour t’entraîner</h3>
                 <ul className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-[15px]">
                   {showMissed.map((m) => (
                     <li key={m.text} className="num">
@@ -884,7 +896,7 @@ function OverScreen({ run, account, cloud, onRestart, onDrill, onMenu, onHome }:
         )}
 
         {account && (
-          <p className="mt-2 text-[13px] text-ink/75" aria-live="polite">
+          <p className="mt-2 text-[14px] text-ink/75" aria-live="polite">
             {cloud === 'sending' && 'Envoi du score à la classe…'}
             {cloud === 'sent' && 'Score envoyé à la classe ✓'}
             {cloud === 'queued' && 'Pas de réseau : ton score est gardé et sera envoyé plus tard.'}

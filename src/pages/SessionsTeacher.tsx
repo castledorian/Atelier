@@ -183,7 +183,7 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
                     {r.attempts}/{session.max_attempts}
                   </td>
                   <td className="num font-bold">{r.best_score === null ? '—' : fmt(r.best_score)}</td>
-                  <td className="text-[13px]">{r.runs.length ? r.runs.map((x) => fmt(x.score)).join(' · ') : 'pas encore joué'}</td>
+                  <td className="text-[14px]">{r.runs.length ? r.runs.map((x) => fmt(x.score)).join(' · ') : 'pas encore joué'}</td>
                 </tr>
               ))}
             </tbody>
@@ -222,7 +222,7 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
           />
           <div className="cfg mt-2">
             <Seg label="Jeu" value={draft.game} options={GAMES.map((g) => [g, GAME_NAMES[g]] as [GameKind, string])} onChange={(game) => !locked && set({ game })} />
-            {locked && <p className="text-[13px] text-ink/70">Des élèves ont déjà joué : le jeu ne peut plus changer (les résultats resteraient incomparables).</p>}
+            {locked && <p className="text-[14px] text-ink/70">Des élèves ont déjà joué : le jeu ne peut plus changer (les résultats resteraient incomparables).</p>}
 
             {draft.game === 'typing' && (
               <>
@@ -234,7 +234,7 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
               <>
                 <Seg label="Niveau" value={draft.level} options={LEVELS.map((l) => [l.id, l.label] as [Level, string])} onChange={(level) => set({ level })} />
                 <Seg label="Difficulté" value={draft.courseDiff} options={COURSE_DIFFS.map((d) => [d.id, d.label] as [CourseDiff, string])} onChange={(courseDiff) => set({ courseDiff })} />
-                <p className="text-[13px] leading-snug text-ink/70">Les calculs suivent le programme du niveau ; la difficulté règle le temps et l’indulgence.</p>
+                <p className="text-[14px] leading-snug text-ink/70">Les calculs suivent le programme du niveau ; la difficulté règle le temps et l’indulgence.</p>
               </>
             )}
             {draft.game === 'memory' && (
@@ -263,7 +263,7 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
               </label>
             )}
           </div>
-          <p className="text-[13px] leading-snug text-ink/75">
+          <p className="text-[14px] leading-snug text-ink/75">
             Seul le <strong>meilleur score</strong> de chaque élève compte pour l’évaluation ; tu vois tous ses essais. Un essai est compté quand la partie est terminée.
           </p>
           <div className="flex flex-wrap gap-3">
@@ -303,7 +303,7 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
               <div className="sess-main">
                 <strong className="sess-title">
                   {s.title}
-                  {!s.active && <span className="text-[13px] font-normal"> (fermée)</span>}
+                  {!s.active && <span className="text-[14px] font-normal"> (fermée)</span>}
                 </strong>
                 <span className="text-[14px] text-ink/80">
                   {GAME_NAMES[s.game]} · {describeConfig(s.game, s.config).join(' · ')} · {s.max_attempts} essai{s.max_attempts > 1 ? 's' : ''}

@@ -139,7 +139,7 @@ export function SessionOver({
         <div className="rule" aria-hidden="true" />
         <div className="mt-2 flex items-end gap-3">
           <div className="font-display text-[44px] leading-none">{fmt(score)}</div>
-          <div className="pb-2 text-[13px] uppercase tracking-[0.12em] text-ink/65">points</div>
+          <div className="pb-2 text-[14px] uppercase tracking-[0.12em] text-ink/65">points</div>
         </div>
         <p className="mt-2 text-[16px] leading-snug">
           Ton meilleur score&nbsp;: <strong>{fmt(best)}</strong>

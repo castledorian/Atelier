@@ -82,3 +82,17 @@ test('Frappe : lettres à retravailler', () => {
   assert.deepEqual(w, ['f', 'b', 'e']);
   assert.deepEqual(weakLetters({ x: { ok: 50, err: 1 } }), []);
 });
+
+test('Course : les tampons ne reculent jamais et plafonnent à 6', () => {
+  assert.equal(C.loadCourseStamps(), 0);
+  assert.deepEqual(C.recordCourseStamps(2), { before: 0, after: 2 });
+  assert.deepEqual(C.recordCourseStamps(1), { before: 2, after: 2 });
+  assert.deepEqual(C.recordCourseStamps(99), { before: 2, after: 6 });
+  assert.equal(C.loadCourseStamps(), 6);
+});
+
+test('Réglages : « lecture confortable » est off par défaut et se conserve', () => {
+  assert.equal(S.loadSettings().comfort, false);
+  S.saveSettings({ ...S.loadSettings(), comfort: true });
+  assert.equal(S.loadSettings().comfort, true);
+});

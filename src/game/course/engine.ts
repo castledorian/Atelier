@@ -77,7 +77,7 @@ const INK = '#1b1915';
 const INK_HI = '#2d2a24';
 const PAPER = '#efe6d2';
 const PAPER_HI = '#faf5e8';
-const RED = '#c9341f';
+const RED = '#b02a18';
 const GREEN = '#1f6b3f';
 const GOLD = '#d49a1a';
 /** doré foncé pour le texte : lisible sur le papier (contraste ≥ 4,5:1) */

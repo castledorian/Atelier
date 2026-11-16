@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import App from './App';
+import BreakNotice from './components/BreakNotice';
 import { useInstall } from './install';
 import Course from './games/Course';
 import Memory from './games/Memory';
@@ -127,11 +128,18 @@ export default function Shell() {
     );
   }
 
-  if (view === 'typing') {
-    return <App key={active?.id ?? 'free'} account={student} onHome={home} onSessionLost={sessionLost} install={install} session={active} onSessions={toSessions} />;
+  if (view === 'typing' || view === 'math' || view === 'memory') {
+    const props = { key: active?.id ?? 'free', account: student, onHome: home, onSessionLost: sessionLost, session: active, onSessions: toSessions };
+    const { key, ...rest } = props;
+    return (
+      <>
+        {view === 'typing' && <App key={key} {...rest} install={install} />}
+        {view === 'math' && <Course key={key} {...rest} />}
+        {view === 'memory' && <Memory key={key} {...rest} />}
+        {active === null && <BreakNotice key={view} />}
+      </>
+    );
   }
-  if (view === 'math') return <Course key={active?.id ?? 'free'} account={student} onHome={home} onSessionLost={sessionLost} session={active} onSessions={toSessions} />;
-  if (view === 'memory') return <Memory key={active?.id ?? 'free'} account={student} onHome={home} onSessionLost={sessionLost} session={active} onSessions={toSessions} />;
 
   return (
     <Home

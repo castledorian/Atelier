@@ -178,6 +178,7 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
     sfx.enabled = settings.sound;
     gameRef.current?.setOptions({ shake: settings.shake });
     document.documentElement.dataset.text = settings.textSize;
+    document.documentElement.dataset.comfort = settings.comfort ? 'on' : 'off';
   }, [settings, sfx]);
 
   const change = useCallback(
@@ -426,6 +427,9 @@ function SettingsRow({ settings, onChange }: { settings: Settings; onChange: (p:
       </Check>
       <Check on={settings.shake} onClick={() => onChange({ shake: !settings.shake })}>
         Secousses
+      </Check>
+      <Check on={settings.comfort} onClick={() => onChange({ comfort: !settings.comfort })}>
+        Lecture confortable
       </Check>
       <button
         type="button"
@@ -823,7 +827,7 @@ function OverScreen({ run, account, cloud, onRestart, onMenu, onHome }: OverProp
               <div className="score-big" aria-label={`Score : ${r.score}`}>
                 {fmt(r.score)}
               </div>
-              <div className="pb-2 text-[13px] uppercase tracking-[0.12em] text-ink/65">
+              <div className="pb-2 text-[14px] uppercase tracking-[0.12em] text-ink/65">
                 points{run.rank > 0 ? ` · n° ${run.rank}` : ''} · {r.mode === 'suite' ? 'palier' : 'page'} {r.page}/{PAGES}
               </div>
             </div>
@@ -834,7 +838,7 @@ function OverScreen({ run, account, cloud, onRestart, onMenu, onHome }: OverProp
                 ['Meilleure série', String(r.bestStreak)],
               ].map(([k, v], i) => (
                 <div key={k} className={`px-2 py-2 text-center ${i > 0 ? 'border-l-2 border-ink' : ''}`}>
-                  <dt className="text-[11px] uppercase tracking-[0.08em] text-ink/65">{k}</dt>
+                  <dt className="text-[14px] uppercase tracking-[0.08em] text-ink/65">{k}</dt>
                   <dd className="font-display text-[20px] leading-tight">{v}</dd>
                 </div>
               ))}
@@ -870,7 +874,7 @@ function OverScreen({ run, account, cloud, onRestart, onMenu, onHome }: OverProp
         )}
 
         {account && (
-          <p className="mt-2 text-[13px] text-ink/75" aria-live="polite">
+          <p className="mt-2 text-[14px] text-ink/75" aria-live="polite">
             {cloud === 'sending' && 'Envoi du score à la classe…'}
             {cloud === 'sent' && 'Score envoyé à la classe ✓'}
             {cloud === 'queued' && 'Pas de réseau : ton score est gardé et sera envoyé plus tard.'}
