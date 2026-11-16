@@ -2,7 +2,7 @@ import type { Sfx } from '../audio';
 import { ruleOfCalc } from '../encre/rules';
 import type { RuleId } from '../encre/rules';
 import { shouldSummon } from '../encre/tracker';
-import { COURSE_TUNING, PAGES, PAGE_TITLES, PER_PAGE, TOTAL, fmtNum, fromMissed, makeChoices, makeQuestion, questionsMatching, stageOf, travelTime } from './questions';
+import { COURSE_TUNING, LEVEL_TUNING, PAGES, PAGE_TITLES, PER_PAGE, TOTAL, fmtNum, fromMissed, makeChoices, makeQuestion, questionsMatching, stageOf, travelTime } from './questions';
 import type { CourseDiff, Level, Missed, Question } from './questions';
 
 /**
@@ -262,9 +262,9 @@ export class CourseGame {
     this.dirty = true;
   }
 
-  startDemo() {
+  startDemo(level: Level = 'cm1') {
     this.mode = 'demo';
-    this.level = 'cm1';
+    this.level = level;
     this.diff = 'standard';
     this.reset();
     this.flood = 0.7;
@@ -528,7 +528,7 @@ export class CourseGame {
     }
     this.t += dt;
     this.flow(dt);
-    if (this.drillQueue === null) this.flood -= (0.004 + 0.001 * stageOf(this.asked)) * COURSE_TUNING[this.diff].drain * dt;
+    if (this.drillQueue === null) this.flood -= (0.004 + 0.001 * stageOf(this.asked)) * COURSE_TUNING[this.diff].drain * LEVEL_TUNING[this.level].drain * dt;
     if (this.flood <= 0 && !this.over) this.swallow();
   }
 
@@ -690,7 +690,7 @@ export class CourseGame {
         this.shake = Math.max(this.shake, 6);
       } else {
         this.streak = 0;
-        this.flood -= COURSE_TUNING[this.diff].wrong;
+        this.flood -= COURSE_TUNING[this.diff].wrong * LEVEL_TUNING[this.level].wrong;
         this.shake = Math.max(this.shake, 12);
         this.hitStop = 0.09;
         this.flash = 1;

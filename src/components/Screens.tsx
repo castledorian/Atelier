@@ -10,6 +10,7 @@ import type { Layout, ScoreEntry, Settings, TextSize } from '../game/storage';
 import type { StudentAccount } from '../server/types';
 import { BackButton, useFitRows } from './BackButton';
 import { ScoresPanel } from './Extras';
+import { InfoButton, PREVIEWS, PreviewBar } from './Preview';
 
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
 
@@ -293,12 +294,14 @@ interface MenuProps {
   onChange: (patch: Partial<Settings>) => void;
   onClear: () => void;
   onProgress: () => void;
+  /** relance la démonstration du jeu avant d'afficher l'extrait */
+  onPreview?: () => void;
   /** élève connecté (prénom imposé, classements Classe et École) */
   account: StudentAccount | null;
   onHome: () => void;
 }
 
-type MenuView = 'main' | 'howto' | 'scores' | 'settings';
+type MenuView = 'main' | 'howto' | 'scores' | 'settings' | 'preview';
 
 /** Règles du jeu, en phrases courtes. */
 function HowTo({ assist, kbOn }: { assist: boolean; kbOn: boolean }) {
@@ -334,7 +337,7 @@ function HowTo({ assist, kbOn }: { assist: boolean; kbOn: boolean }) {
   );
 }
 
-export function Menu({ scores, settings, kbOn, install, onStart, onChange, onClear, onProgress, account, onHome }: MenuProps) {
+export function Menu({ scores, settings, kbOn, install, onStart, onChange, onClear, onProgress, onPreview, account, onHome }: MenuProps) {
   const diff = settings.difficulty;
   const list = scoresFor(scores, diff);
   const assist = diff === 'perso' ? settings.custom.autoTarget : DIFFICULTIES[diff].autoTarget;
@@ -368,6 +371,9 @@ export function Menu({ scores, settings, kbOn, install, onStart, onChange, onCle
     </section>
   );
 
+  if (view === 'preview') {
+    return <PreviewBar title={PREVIEWS.typing.title} steps={[...PREVIEWS.typing.steps]} onClose={back} onPlay={onStart} />;
+  }
   if (view === 'howto') {
     return (
       <div className="overlay">
@@ -419,6 +425,12 @@ export function Menu({ scores, settings, kbOn, install, onStart, onChange, onCle
         <div className="menu-a">
           <div className="card-top">
             <BackButton onClick={onHome} />
+            <InfoButton
+              onClick={() => {
+                onPreview?.();
+                setView('preview');
+              }}
+            />
           </div>
           <p className="eyebrow">Défense dactylographique</p>
           <h1 id="game-title" className="title" aria-label="Frappe !">

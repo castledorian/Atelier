@@ -1,4 +1,5 @@
 import type { Sfx, SfxName } from '../audio';
+import type { Grade } from '../grade';
 import {
   MAX_LIVES,
   PAGES,
@@ -148,6 +149,7 @@ export class MemoryGame {
   private slowAvg = 16.7;
   private slowFrames = 0;
   private demoStill = false;
+  private grade: Grade = 'cm1';
   private dirty = true;
   private u = 1;
   private compact = false;
@@ -291,6 +293,11 @@ export class MemoryGame {
     this.sfx.play('start');
     this.pageBanner();
     this.dirty = true;
+  }
+
+  /** classe de l'élève : règle la cadence et la taille des grilles */
+  setGrade(g: Grade) {
+    this.grade = g;
   }
 
   startDemo() {
@@ -492,11 +499,11 @@ export class MemoryGame {
       this.targets = [];
       this.rankOf = [];
     } else {
-      const r = makeCases(this.n, Math.random);
+      const r = makeCases(this.n, Math.random, this.grade);
       this.setGrid(r.size);
       this.targets = r.cells;
       this.seq = [];
-      this.showT = casesShow(this.n);
+      this.showT = casesShow(this.n, this.grade);
       this.rankOf = new Array(r.size * r.size).fill(-1);
       r.cells.forEach((c, i) => (this.rankOf[c] = i));
     }
@@ -560,7 +567,7 @@ export class MemoryGame {
   }
 
   private roundOk() {
-    const span = spanOf(this.mode, this.n);
+    const span = spanOf(this.mode, this.n, this.grade);
     this.correct++;
     this.pageA[stageOf(this.mode, this.n)]++;
     this.streak++;
@@ -1029,7 +1036,7 @@ export class MemoryGame {
   /** Pièce allumée dans la suite à cet instant (−1 si aucune). */
   private litNow(): number {
     if (this.st !== 'show' || this.mode !== 'suite') return -1;
-    const step = suiteStep(this.n);
+    const step = suiteStep(this.n, this.grade);
     const rel = this.tt - LEAD;
     if (rel < 0) return -1;
     const idx = Math.floor(rel / step);
@@ -1067,7 +1074,7 @@ export class MemoryGame {
       if (this.tt >= this.bannerDur) this.beginRound();
     } else if (this.st === 'show') {
       if (this.mode === 'suite') {
-        const step = suiteStep(this.n);
+        const step = suiteStep(this.n, this.grade);
         const idx = Math.floor((this.tt - LEAD) / step);
         if (idx !== this.lastLit && idx >= 0 && idx < this.seq.length) {
           this.lastLit = idx;
@@ -1594,7 +1601,7 @@ export class MemoryGame {
         filled = total;
         col = GREEN;
       } else if (this.mode === 'suite') {
-        filled = clamp(Math.floor((this.tt - LEAD) / suiteStep(this.n)) + 1, 0, total);
+        filled = clamp(Math.floor((this.tt - LEAD) / suiteStep(this.n, this.grade)) + 1, 0, total);
         col = GOLD_D;
       }
       const sp = Math.min(clamp(qH * 0.075, 3.5, 6) * 3.3, (W - 48) / total);

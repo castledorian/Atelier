@@ -1,3 +1,5 @@
+import type { Grade } from './grade';
+
 export type Difficulty = 'apprenti' | 'standard' | 'expert' | 'perso';
 export type Penalty = 'none' | 'tier' | 'reset';
 
@@ -281,6 +283,43 @@ export function buildCustomConfig(input: CustomConfig): DiffConfig {
     letterWaves: only ? 999 : 0,
     allowed: c.letters.length < ALPHABET.length ? c.letters.toUpperCase() : undefined,
     wordMax: c.maxLen,
+  };
+}
+
+/**
+ * Réglage par classe, appliqué en plus de la difficulté choisie : plus de temps, des mots plus courts
+ * et une vie de plus pour les plus jeunes. Le CM1 est le rythme de référence.
+ * Valeurs de départ à ajuster d'après les parties réelles.
+ */
+export interface GradeTune {
+  /** multiplie le temps de chute (plus grand = plus lent) */
+  cross: number;
+  /** multiplie l'écart entre deux apparitions */
+  gap: number;
+  /** longueur maximale des mots */
+  wordMax: number;
+  /** vies en plus au départ (jamais plus que le plafond) */
+  lives: number;
+}
+
+export const GRADE_TUNE: Record<Grade, GradeTune> = {
+  cp: { cross: 1.7, gap: 1.5, wordMax: 3, lives: 2 },
+  ce1: { cross: 1.5, gap: 1.35, wordMax: 5, lives: 1 },
+  ce2: { cross: 1.25, gap: 1.15, wordMax: 7, lives: 0 },
+  cm1: { cross: 1, gap: 1, wordMax: 10, lives: 0 },
+  cm2: { cross: 0.92, gap: 0.92, wordMax: 12, lives: 0 },
+};
+
+/** Configuration d'une difficulté adaptée à la classe de l'élève. */
+export function forGrade(cfg: DiffConfig, grade: Grade | null): DiffConfig {
+  if (!grade) return cfg;
+  const t = GRADE_TUNE[grade];
+  return {
+    ...cfg,
+    lives: Math.min(MAX_LIVES, cfg.lives + t.lives),
+    cross: { ...cfg.cross, base: cfg.cross.base * t.cross, min: cfg.cross.min * t.cross },
+    gap: { ...cfg.gap, start: cfg.gap.start * t.gap, min: cfg.gap.min * t.gap },
+    wordMax: Math.min(cfg.wordMax, t.wordMax),
   };
 }
 

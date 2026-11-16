@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackButton } from '../components/BackButton';
+import { InfoButton, PREVIEWS, PreviewBar, SpellingDemo } from '../components/Preview';
 import { DuelResult, ReviewNote } from '../components/EncreNotes';
 import type { DuelInfo } from '../components/EncreNotes';
 import { Check } from '../components/Screens';
@@ -110,6 +111,7 @@ const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g
 
 export default function Spelling({ account, onHome, onSessionLost, session, onSessions }: Props) {
   const [phase, setPhase] = useState<Phase>('menu');
+  const [preview, setPreview] = useState(false);
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const prefs = useRef(loadSpellingPrefs());
   const [level] = useState<Level>(() => (session ? parseSpelling(session.config).level : levelOf(effectiveGrade(account?.student.id ?? null))));
@@ -333,13 +335,23 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
   }, [round?.step, round?.item.id]);
 
   return (
-    <Frame>
-      <BackButton onClick={phase === 'menu' ? (onSessions ?? onHome) : toMenu} label={phase === 'menu' ? (inSession ? 'Mes séances' : 'Accueil') : 'Menu'} />
+    <Frame wide>
+      <div className="sp-card">
+      <div className="card-top">
+        <BackButton onClick={phase === 'menu' ? (onSessions ?? onHome) : toMenu} label={phase === 'menu' ? (inSession ? 'Mes séances' : 'Accueil') : 'Menu'} />
+        {phase === 'menu' && !inSession && !preview && <InfoButton onClick={() => setPreview(true)} />}
+      </div>
 
-      {phase === 'menu' && !inSession && (
+      {phase === 'menu' && !inSession && preview && (
+        <PreviewBar inline title={PREVIEWS.spelling.title} steps={[...PREVIEWS.spelling.steps]} onClose={() => setPreview(false)} onPlay={() => begin()}>
+          <SpellingDemo />
+        </PreviewBar>
+      )}
+
+      {phase === 'menu' && !inSession && !preview && (
         <section aria-labelledby="sp-title">
           <p className="eyebrow">Orthographe · {gradeLabel(level)}</p>
-          <h1 id="sp-title" className="title">
+          <h1 id="sp-title" className="title title-wrap">
             Chasse aux fautes
           </h1>
           <div className="rule" aria-hidden="true" />
@@ -383,6 +395,11 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
               {g.current.duel ? ` · ${counter.n} sur ${g.current.duel.items.length}` : ''}
             </span>
             {!g.current.duel && <span className="num">Score : {fmt(counter.score)}</span>}
+          </div>
+          <div className="sp-bar" aria-hidden="true">
+            {Array.from({ length: g.current.duel ? g.current.duel.items.length : ROUNDS }, (_, k) => (
+              <span key={k} className={k < counter.n ? 'on' : ''} />
+            ))}
           </div>
           {summon && (
             <div className="summon-inline" role="status">
@@ -499,6 +516,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
           onBack={() => (onSessions ?? onHome)()}
         />
       )}
+      </div>
     </Frame>
   );
 }

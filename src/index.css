@@ -1840,3 +1840,210 @@ html[data-comfort='on'] .title-sm {
   display: block;
   color: rgba(27, 25, 21, 0.8);
 }
+
+/* ───────── Bouton « i » et extraits animés ───────── */
+
+.info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+  border: 2px solid var(--color-ink);
+  border-radius: 50%;
+  background: var(--color-paper-hi);
+  box-shadow: 0 3px 0 var(--color-ink);
+  color: var(--color-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 24px;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.info-btn:hover {
+  background: #fff;
+}
+.info-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 var(--color-ink);
+}
+
+.preview-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 10px 10px max(14px, env(safe-area-inset-bottom));
+  pointer-events: none;
+  animation: fade-in 0.16s ease-out both;
+}
+.preview-layer.inline {
+  position: static;
+  display: block;
+  padding: 0;
+  pointer-events: auto;
+}
+.preview-bar {
+  width: 100%;
+  max-width: 640px;
+  padding: 12px 16px 14px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+  box-shadow: 5px 5px 0 var(--color-ink);
+  pointer-events: auto;
+}
+.preview-layer.inline .preview-bar {
+  max-width: none;
+  margin-top: 14px;
+  box-shadow: none;
+}
+.preview-text {
+  min-height: 2.8em;
+  margin-top: 4px;
+  font-size: clamp(17px, 2.2vw, 24px);
+  font-weight: 700;
+  line-height: 1.35;
+}
+.preview-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+.preview-dots {
+  display: inline-flex;
+  gap: 6px;
+  margin-right: auto;
+}
+.preview-dots span {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--color-ink);
+  border-radius: 50%;
+}
+.preview-dots span.on {
+  background: var(--color-ink);
+}
+
+/* Extrait de Chasse aux fautes */
+.sp-demo .sp-sentence {
+  margin-top: 0;
+}
+.sp-demo-word {
+  padding: 2px 8px;
+  border: 2px solid transparent;
+}
+.sp-demo-point {
+  border-color: var(--color-ink);
+  border-radius: 6px;
+  animation: sp-demo-pulse 0.9s ease-in-out infinite;
+}
+.sp-demo-right {
+  background: var(--color-ink);
+  color: var(--color-paper-hi);
+}
+@keyframes sp-demo-pulse {
+  50% {
+    transform: scale(1.08);
+    background: rgba(27, 25, 21, 0.1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-demo-point {
+    animation: none;
+  }
+}
+
+/* Chasse aux fautes : même cadre « carte » que les autres jeux, texte lisible de loin */
+.sp-card {
+  --sp: clamp(8px, 2.2vh, 20px);
+  padding: clamp(14px, 3.6vw, 30px);
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+  box-shadow: 6px 6px 0 var(--color-ink);
+}
+.sp-card .sp-sentence {
+  padding: clamp(16px, 3vh, 30px) clamp(12px, 2.5vw, 28px);
+  font-size: clamp(22px, 3.4vw, 42px);
+  line-height: 1.45;
+}
+.sp-card .sp-word {
+  min-height: 52px;
+}
+.sp-card .sp-choice {
+  min-height: 60px;
+  min-width: 120px;
+  font-size: clamp(20px, 2.6vw, 30px);
+}
+.sp-card .sp-msg,
+.sp-card .sp-tip {
+  font-size: clamp(15px, 1.7vw, 20px);
+}
+.sp-bar {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+.sp-bar span {
+  flex: 1;
+  height: 8px;
+  border: 1.5px solid var(--color-ink);
+}
+.sp-bar span.on {
+  background: var(--color-ink);
+}
+.page .title.title-wrap {
+  font-size: clamp(34px, 9vw, 76px);
+  line-height: 0.95;
+  white-space: normal;
+}
+.card-menu .eyebrow + .title {
+  margin-top: 12px;
+}
+
+/* Extrait : bandeau compact (légende à gauche, boutons à droite) pour cacher le moins possible du jeu */
+.preview-bar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: 16px;
+  max-width: 760px;
+  padding: 10px 14px;
+}
+.preview-bar .eyebrow {
+  grid-column: 1 / -1;
+}
+.preview-text {
+  min-height: 2.7em;
+  font-size: clamp(16px, 2vw, 22px);
+}
+.preview-foot {
+  flex-wrap: nowrap;
+  margin-top: 0;
+}
+.preview-foot .btn {
+  min-width: 0;
+  padding-inline: 16px;
+}
+.preview-dots {
+  display: none;
+}
+.preview-layer.inline .preview-dots {
+  display: inline-flex;
+}
+@media (max-width: 560px) {
+  .preview-bar {
+    grid-template-columns: 1fr;
+    row-gap: 8px;
+  }
+  .preview-foot {
+    justify-content: flex-end;
+  }
+}

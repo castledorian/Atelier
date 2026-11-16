@@ -1,6 +1,7 @@
 import type { Sfx, SfxName } from './audio';
 import type { LetterStats } from './analysis';
-import { DEFAULT_CUSTOM, DIFFICULTIES, MAX_LIVES, buildCustomConfig, crossTime, gapBase } from './difficulty';
+import { DEFAULT_CUSTOM, DIFFICULTIES, MAX_LIVES, buildCustomConfig, crossTime, forGrade, gapBase } from './difficulty';
+import type { Grade } from './grade';
 import type { CustomConfig, DiffConfig, Difficulty, Penalty } from './difficulty';
 import { letterPool } from './layouts';
 import type { Layout } from './storage';
@@ -268,8 +269,9 @@ export class Game {
 
   // ───────────────────────── API publique ─────────────────────────
 
-  start(diff: Difficulty = 'standard', drill?: string, custom: CustomConfig = DEFAULT_CUSTOM) {
-    const base = diff === 'perso' ? buildCustomConfig(custom) : DIFFICULTIES[diff];
+  start(diff: Difficulty = 'standard', drill?: string, custom: CustomConfig = DEFAULT_CUSTOM, grade: Grade | null = null) {
+    // la séance de l'enseignant (perso) a ses propres réglages : la classe ne les modifie pas
+    const base = diff === 'perso' ? buildCustomConfig(custom) : forGrade(DIFFICULTIES[diff], grade);
     const letters = (drill ?? '').toUpperCase().replace(/[^A-Z]/g, '');
     this.drill = letters || null;
     this.cfg = this.drill ? { ...base, letterWaves: 999, goutteMul: Math.min(base.goutteMul, 1.2), bossLife: false } : base;

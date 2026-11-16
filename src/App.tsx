@@ -6,6 +6,7 @@ import { SessionIntro, SessionOver, useSessionRun } from './components/SessionPa
 import type { InstallInfo } from './components/Screens';
 import { Sfx } from './game/audio';
 import type { Difficulty } from './game/difficulty';
+import { effectiveGrade } from './game/grade';
 import { Game } from './game/engine';
 import type { RunStats } from './game/engine';
 import { addRun, loadHistory, newRunId, renameRun } from './game/history';
@@ -250,7 +251,7 @@ export default function App({ account, onHome, onSessionLost, install, session, 
       live.current.diff = live.current.settings.difficulty; // la difficulté est figée pendant la partie
       live.current.drill = letters;
       setDrill(letters);
-      gameRef.current?.start(live.current.diff, letters ?? undefined, live.current.settings.custom);
+      gameRef.current?.start(live.current.diff, letters ?? undefined, live.current.settings.custom, effectiveGrade(accountRef.current?.student.id ?? null));
       setRun(null);
       setScreen('play');
     },
@@ -484,6 +485,7 @@ export default function App({ account, onHome, onSessionLost, install, session, 
             onChange={changeSettings}
             onClear={() => setScores(clearScores(settings.difficulty))}
             onProgress={() => setScreen('progress')}
+            onPreview={() => gameRef.current?.startDemo()}
             account={account}
             onHome={onHome}
           />

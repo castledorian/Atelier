@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { BackButton, useFitRows } from '../components/BackButton';
+import { InfoButton, PREVIEWS, PreviewBar } from '../components/Preview';
 import { DuelResult, ReviewNote } from '../components/EncreNotes';
 import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
@@ -39,7 +40,7 @@ import type { BoardRow, RunPayload, Scope, SessionInfo, StudentAccount } from '.
  */
 
 type Phase = 'menu' | 'play' | 'pause' | 'over';
-type MenuView = 'main' | 'howto' | 'scores' | 'settings';
+type MenuView = 'main' | 'howto' | 'scores' | 'settings' | 'preview';
 type Cloud = 'off' | 'sending' | 'sent' | 'queued';
 
 const TEXT_LABEL: Record<TextSize, string> = { normal: 'normal', large: 'grand', xlarge: 'très grand' };
@@ -274,7 +275,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
   }, []);
 
   const toMenu = useCallback(() => {
-    gameRef.current?.startDemo();
+    gameRef.current?.startDemo(live.current.level);
     setView('main');
     setPhase('menu');
     if (lost.current) onSessionLost();
@@ -451,6 +452,10 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
             account={account}
             onChange={change}
             onStart={begin}
+            onPreview={() => {
+              gameRef.current?.startDemo(level);
+              setView('preview');
+            }}
             onHome={onHome}
           />
         )}
@@ -557,14 +562,19 @@ interface MenuProps {
   account: StudentAccount | null;
   onChange: (p: Partial<Settings>) => void;
   onStart: (l: Level) => void;
+  onPreview: () => void;
   onHome: () => void;
 }
 
-function MenuScreen({ view, setView, level, diff, setDiff, settings, account, onChange, onStart, onHome }: MenuProps) {
+function MenuScreen({ view, setView, level, diff, setDiff, settings, account, onChange, onStart, onPreview, onHome }: MenuProps) {
   const [scores, setScores] = useState<CourseScore[]>(() => loadCourseScores(boardKey(level, diff)));
   useEffect(() => {
     setScores(loadCourseScores(boardKey(level, diff)));
   }, [level, diff, view]);
+
+  if (view === 'preview') {
+    return <PreviewBar title={PREVIEWS.math.title} steps={[...PREVIEWS.math.steps]} onClose={() => setView('main')} onPlay={() => onStart(level)} />;
+  }
 
   if (view !== 'main') {
     const titles = { howto: 'Comment jouer', scores: 'Scores', settings: 'Réglages' } as const;
@@ -640,6 +650,7 @@ function MenuScreen({ view, setView, level, diff, setDiff, settings, account, on
         <div className="menu-a">
           <div className="card-top">
             <BackButton onClick={onHome} />
+            <InfoButton onClick={onPreview} />
           </div>
           <p className="eyebrow">Calcul mental · {levelLabel(level)}</p>
           <h1 id="game-title" className="title title-2l" aria-label="Course à l’encre">

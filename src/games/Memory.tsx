@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { BackButton, useFitRows } from '../components/BackButton';
+import { InfoButton, PREVIEWS, PreviewBar } from '../components/Preview';
 import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
 import { Sfx } from '../game/audio';
@@ -12,6 +13,8 @@ import { addMemoryScore, clearMemoryScores, loadMemoryMode, loadMemoryScores, lo
 import type { MemoryScore } from '../game/memory/scores';
 import { newRunId } from '../game/history';
 import { parseMemory } from '../game/sessionConfig';
+import { effectiveGrade, gradeLabel, levelOf } from '../game/grade';
+import type { Grade } from '../game/grade';
 import { loadSettings, saveSettings } from '../game/storage';
 import type { Settings, TextSize } from '../game/storage';
 import { explain } from '../server/api';
@@ -25,7 +28,7 @@ import type { BoardRow, RunPayload, Scope, SessionInfo, StudentAccount } from '.
  */
 
 type Phase = 'menu' | 'play' | 'pause' | 'over';
-type MenuView = 'main' | 'howto' | 'scores' | 'settings';
+type MenuView = 'main' | 'howto' | 'scores' | 'settings' | 'preview';
 type Cloud = 'off' | 'sending' | 'sent' | 'queued';
 
 const TEXT_LABEL: Record<TextSize, string> = { normal: 'normal', large: 'grand', xlarge: 'très grand' };
@@ -64,6 +67,7 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
   const [phase, setPhase] = useState<Phase>('menu');
   const [view, setView] = useState<MenuView>('main');
   const [settings, setSettings] = useState<Settings>(loadSettings);
+  const grade = levelOf(effectiveGrade(account?.student.id ?? null));
   const [mode, setMode] = useState<Mode>(() => (session ? parseMemory(session.config).mode : loadMemoryMode()));
   const ses = useSessionRun(account, session);
   const sesRef = useRef(ses);
@@ -177,9 +181,10 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
     saveSettings(settings);
     sfx.enabled = settings.sound;
     gameRef.current?.setOptions({ shake: settings.shake });
+    gameRef.current?.setGrade(grade);
     document.documentElement.dataset.text = settings.textSize;
     document.documentElement.dataset.comfort = settings.comfort ? 'on' : 'off';
-  }, [settings, sfx]);
+  }, [settings, sfx, grade]);
 
   const change = useCallback(
     (patch: Partial<Settings>) => {
@@ -351,12 +356,17 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
           <MenuScreen
             view={view}
             setView={setView}
+            grade={grade}
             mode={mode}
             setMode={setMode}
             settings={settings}
             account={account}
             onChange={change}
             onStart={begin}
+            onPreview={() => {
+              gameRef.current?.startDemo();
+              setView('preview');
+            }}
             startPage={startPage}
             setStartPage={setStartPage}
             onHome={onHome}
@@ -448,23 +458,29 @@ function SettingsRow({ settings, onChange }: { settings: Settings; onChange: (p:
 interface MenuProps {
   view: MenuView;
   setView: (v: MenuView) => void;
+  grade: Grade;
   mode: Mode;
   setMode: (m: Mode) => void;
   settings: Settings;
   account: StudentAccount | null;
   onChange: (p: Partial<Settings>) => void;
   onStart: (m: Mode) => void;
+  onPreview: () => void;
   startPage: number;
   setStartPage: (p: number) => void;
   onHome: () => void;
 }
 
-function MenuScreen({ view, setView, mode, setMode, settings, account, onChange, onStart, startPage, setStartPage, onHome }: MenuProps) {
+function MenuScreen({ view, setView, grade, mode, setMode, settings, account, onChange, onStart, onPreview, startPage, setStartPage, onHome }: MenuProps) {
   const [scores, setScores] = useState<MemoryScore[]>(() => loadMemoryScores(mode));
   const [sMode, setSMode] = useState<Mode>(mode);
   useEffect(() => {
     setScores(loadMemoryScores(sMode));
   }, [sMode, view]);
+
+  if (view === 'preview') {
+    return <PreviewBar title={PREVIEWS.memory.title} steps={[...PREVIEWS.memory.steps]} onClose={() => setView('main')} onPlay={() => onStart(mode)} />;
+  }
 
   if (view !== 'main') {
     const titles = { howto: 'Comment jouer', scores: 'Scores', settings: 'Réglages' } as const;
@@ -542,8 +558,9 @@ function MenuScreen({ view, setView, mode, setMode, settings, account, onChange,
         <div className="menu-a">
           <div className="card-top">
             <BackButton onClick={onHome} />
+            <InfoButton onClick={onPreview} />
           </div>
-          <p className="eyebrow">Mémoire · tous âges</p>
+          <p className="eyebrow">Mémoire · {gradeLabel(grade)}</p>
           <h1 id="game-title" className="title title-2l" aria-label="Mémoire d’encre">
             <span className="tl" aria-hidden="true">
               {'MÉMOIRE'.split('').map((ch, i) => (

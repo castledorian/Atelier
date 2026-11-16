@@ -613,6 +613,19 @@ export const COURSE_TUNING: Record<CourseDiff, CourseTuning> = {
   expert: { time: 0.8, drain: 1.3, wrong: 0.38, heal: 0.06 },
 };
 
+/**
+ * Réglage par classe, appliqué en plus de la difficulté : les plus jeunes laissent moins vite l'encre monter
+ * et sont moins punis d'une erreur (ils découvrent le calcul), les CM2 sont au rythme de référence ou un peu au-dessus.
+ * Valeurs de départ à ajuster d'après les parties réelles (serveur/stats-equilibrage.sql).
+ */
+export const LEVEL_TUNING: Record<Level, { drain: number; wrong: number }> = {
+  cp: { drain: 0.55, wrong: 0.6 },
+  ce1: { drain: 0.7, wrong: 0.75 },
+  ce2: { drain: 0.85, wrong: 0.9 },
+  cm1: { drain: 1, wrong: 1 },
+  cm2: { drain: 1.08, wrong: 1.05 },
+};
+
 export const isCourseDiff = (v: unknown): v is CourseDiff => v === 'apprenti' || v === 'standard' || v === 'expert';
 
 /** Clé d'un classement : « cm1 » = Standard (comme avant l'ajout des difficultés), « cm1-apprenti », « cm1-expert »… */
