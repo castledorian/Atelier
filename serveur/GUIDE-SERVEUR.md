@@ -223,3 +223,26 @@ Supabase → **SQL Editor** → **New query** → collez le contenu de `serveur/
 Ensuite, dans l'espace enseignant, chaque classe a un réglage **« Niveau de la classe »** (CP, CE1, CE2, CM1, CM2). Les élèves de la classe voient alors seulement les jeux de leur niveau, sans rien choisir, au bout de quelques secondes après leur connexion. Tant que le niveau n'est pas fixé, chaque élève choisit sa classe sur l'accueil.
 
 Sans cette mise à jour, le site fonctionne : le réglage n'apparaît pas et les élèves choisissent leur classe eux-mêmes.
+
+## Mise à jour « sécurité des scores » (anti-triche)
+
+**À faire une fois** : dans Supabase → SQL Editor, collez et exécutez `serveur/mise-a-jour-securite.sql` (sans danger si répété). À exécuter **après** les autres mises à jour : ne rejouez pas `mise-a-jour-seances.sql` ensuite, il remettrait l'ancienne version de l'envoi des parties (sans contrôle). Une installation neuve avec `schema.sql` est déjà à jour.
+
+**Principe.** Tout ce que le navigateur envoie peut être falsifié par un élève qui ouvre les outils de développement : on ne peut pas rendre un site « infalsifiable » côté navigateur. La vraie protection est donc sur le serveur, qui connaît les règles des jeux :
+
+- chaque partie est comparée aux maxima réels : 200 mots/min en Frappe, 60 points par lettre, 0,25 s minimum par réponse en Course, 30 manches en Mémoire, 10 phrases et 25 points par phrase en Orthographe, durée cohérente avec le nombre de réponses ;
+- le temps de jeu cumulé est contrôlé : pas plus de 2 h de parties dans une même heure ;
+- une partie impossible **n'est pas enregistrée** ; l'élève voit le message « Félicitations, tu as triché ! » et la partie est notée dans `private.cheat_log` (illisible depuis le navigateur, effacée après 90 jours) ;
+- les bornes sont larges : elles écartent ce qu'aucun joueur ne peut obtenir, jamais un très bon joueur. Une triche « plausible » (un score élevé mais réaliste) reste possible : c'est la limite de toute vérification sans rejouer la partie.
+
+Côté navigateur, la page porte une politique de sécurité du contenu (CSP) : un script injecté ne s'exécute pas et aucune donnée ne peut être envoyée ailleurs que vers le serveur de l'école.
+
+**Voir les tentatives** (SQL Editor) :
+
+```sql
+select c.at, s.name as eleve, c.game, c.reason, c.values_
+from private.cheat_log c left join public.students s on s.id = c.student_id
+order by c.at desc limit 50;
+```
+
+Si un élève très honnête apparaît par erreur (cas rare : deux appareils en même temps), dites-le moi avec les valeurs de la ligne : on desserre la borne concernée.

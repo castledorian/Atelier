@@ -36,7 +36,10 @@ export async function studentLogout(token: string) {
   }
 }
 
-export type SendStatus = 'ok' | 'invalid_session' | 'invalid_data' | 'no_attempts_left' | 'session_closed';
+export type SendStatus = 'ok' | 'invalid_session' | 'invalid_data' | 'no_attempts_left' | 'session_closed' | 'cheat';
+
+/** Évènement émis quand le serveur refuse une partie impossible : l'écran affiche alors le message « félicitations ». */
+export const CHEAT_EVENT = 'atelier:cheat';
 
 /** Envoie une partie (libre ou de séance). Lève en cas de réseau ; renvoie l'état d'essais pour une séance. */
 export async function submitRun(token: string, r: RunPayload): Promise<{ status: SendStatus; attemptsUsed?: number }> {
@@ -74,12 +77,16 @@ export async function submitRun(token: string, r: RunPayload): Promise<{ status:
   if (res.ok) return { status: 'ok', attemptsUsed: res.attempts_used };
   if (res.error === 'rate_limited') throw new ApiError('network'); // on réessaiera plus tard
   if (res.error === 'invalid_session') return { status: 'invalid_session' };
+  if (res.error === 'cheat') {
+    window.dispatchEvent(new Event(CHEAT_EVENT));
+    return { status: 'cheat' };
+  }
   if (res.error === 'no_attempts_left' || res.error === 'session_closed') return { status: res.error };
   return { status: 'invalid_data' };
 }
 
 /** Renvoie l'état de la partie envoyée ; lève en cas de réseau. */
-export async function sendRun(token: string, r: RunPayload): Promise<'ok' | 'invalid_session' | 'invalid_data'> {
+export async function sendRun(token: string, r: RunPayload): Promise<'ok' | 'invalid_session' | 'invalid_data'> {   // « cheat » est traité comme « invalid_data » : la partie refusée n'est jamais renvoyée
   const { status } = await submitRun(token, r);
   return status === 'ok' || status === 'invalid_session' ? status : 'invalid_data';
 }

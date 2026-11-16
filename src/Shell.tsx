@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import App from './App';
 import BreakNotice from './components/BreakNotice';
+import CheatNotice from './components/CheatNotice';
 import { useInstall } from './install';
 import Course from './games/Course';
 import Memory from './games/Memory';
@@ -23,6 +24,15 @@ const ARRIVAL = serverEnabled() ? takeAuthHash() : null;
 
 /** Racine : accueil, connexion, espace enseignant et jeux. */
 export default function Shell() {
+  return (
+    <>
+      <Pages />
+      <CheatNotice />
+    </>
+  );
+}
+
+function Pages() {
   const [student, setStudent] = useState<StudentAccount | null>(() => (serverEnabled() ? loadStudent() : null));
   const [teacher, setTeacher] = useState<TeacherSession | null>(() => (serverEnabled() ? loadTeacher() : null));
   const [recovery, setRecovery] = useState(ARRIVAL?.type === 'recovery');

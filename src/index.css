@@ -2072,3 +2072,28 @@ html[data-comfort='on'] .title-sm {
 .gwrap .gcard-name {
   padding-right: 44px;
 }
+
+/* Message « tu as triché » */
+.cheat-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(27, 25, 21, 0.62);
+}
+.cheat-card {
+  width: 100%;
+  max-width: 520px;
+  padding: 22px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+  box-shadow: 6px 6px 0 var(--color-ink);
+}
+.cheat-text {
+  margin: 12px 0 16px;
+  font-size: 17px;
+  line-height: 1.45;
+}

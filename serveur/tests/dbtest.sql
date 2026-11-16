@@ -89,9 +89,9 @@ select public.submit_run((select v from ctx where k='tok_lea'),'run0000002','typ
 select public.submit_run((select v from ctx where k='tok_lea'),'run0000002','typing','standard','game',99999,8,30,95,200,150); -- renvoi : ignoré
 select public.submit_run((select v from ctx where k='tok_tom'),'run0000003','typing','standard','game',1800,6,20,80,100,90);
 select public.submit_run((select v from ctx where k='tok_nina'),'run0000004','typing','standard','game',9000,12,50,99,400,300);
-select public.submit_run((select v from ctx where k='tok_lea'),'run0000005','typing','perso','game',50000,3,10,90,10,60);
-select public.submit_run((select v from ctx where k='tok_lea'),'run0000006','typing','standard','drill',77777,3,10,90,10,60);
-select pg_temp.eq('valeurs absurdes bornées', public.submit_run((select v from ctx where k='tok_tom'),'run0000007','typing','expert','game',2000000000,-5,9999,500,-3,99999)->>'ok','true');
+select public.submit_run((select v from ctx where k='tok_lea'),'run0000005','typing','perso','game',5000,3,10,90,10,60);
+select public.submit_run((select v from ctx where k='tok_lea'),'run0000006','typing','standard','drill',7777,3,10,90,10,60);
+select pg_temp.eq('valeurs absurdes : partie refusée (triche)', public.submit_run((select v from ctx where k='tok_tom'),'run0000007','typing','expert','game',2000000000,-5,9999,500,-3,99999)->>'error','cheat');
 select pg_temp.eq('client_id invalide refusé', public.submit_run((select v from ctx where k='tok_tom'),'../..','typing','expert','game',1,1,1,1,1,1)->>'error','invalid_data');
 select pg_temp.eq('jeton invalide : partie refusée', public.submit_run('faux','run0000008','typing','standard','game',1,1,1,1,1,1)->>'error','invalid_session');
 
@@ -108,7 +108,7 @@ select pg_temp.eq('mon historique contient 5 parties (hors renvoi)', jsonb_array
 select pg_temp.eq('l''historique d''un élève n''est pas celui d''un autre', jsonb_array_length(public.my_runs((select v from ctx where k='tok_nina'),'typing')->'rows'), 1);
 select pg_temp.as_admin();
 select pg_temp.eq('renvoi ignoré (2500 conservé)', (select score from public.runs where client_id='run0000002'), 2500);
-select pg_temp.eq('bornes appliquées', (select score||'/'||wave||'/'||wpm||'/'||acc||'/'||correct||'/'||duration from public.runs where client_id='run0000007'), '10000000/0/300.0/100.0/0/7200');
+select pg_temp.eq('la partie truquée n''est pas enregistrée', (select count(*) from public.runs where client_id='run0000007'), 0::bigint);
 
 -- ═══ Enseignant A : lit ses résultats, jamais ceux de B ═══
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
@@ -245,6 +245,7 @@ select pg_temp.eq('séance d''orthographe créée', (select count(*) from jsonb_
 select pg_temp.as_anon();
 select pg_temp.eq('essai d''orthographe en séance', public.submit_session_run((select v from ctx where k='tok_lea'), (select v::uuid from ctx where k='sessSp'), 'ortho000001', 135, 6, 0, 90, 9, 240)->>'attempts_used', '1');
 select pg_temp.eq('partie libre d''orthographe', public.submit_run((select v from ctx where k='tok_lea'), 'ortho000002', 'spelling', 'cm1', 'game', 120, 4, 0, 80, 8, 200)->>'ok', 'true');
+select pg_temp.eq('refus d''une triche en séance', public.submit_session_run((select v from ctx where k='tok_tom'), (select v::uuid from ctx where k='sessSp'), 'triche00002', 99999, 9, 0, 100, 10, 60)->>'error', 'cheat');
 select pg_temp.eq('classement orthographe', jsonb_array_length(public.class_leaderboard((select v from ctx where k='tok_lea'), 'spelling', 'cm1')->'rows'), 1);
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 select public.delete_class_session((select v::uuid from ctx where k='sessSp'));
@@ -275,3 +276,29 @@ select pg_temp.eq('plus aucune donnée de l''école A', (select (select count(*)
   + (select count(*) from public.runs where school_id=(select v::uuid from ctx where k='schoolA')) + (select count(*) from public.classes where school_id=(select v::uuid from ctx where k='schoolA'))), 0::bigint);
 select pg_temp.eq('l''école B est intacte', (select count(*) from public.students where school_id=(select v::uuid from ctx where k='schoolB')), 2::bigint);
 \echo TOUS LES TESTS SQL PASSENT
+
+-- ───────────────────────── Sécurité des scores ─────────────────────────
+select pg_temp.as_admin();
+select pg_temp.eq('plausible : un très bon joueur de Frappe passe', private.run_violation('typing', 20000, 25, 120, 98, 1500, 480) is null, true);
+select pg_temp.eq('Frappe : 10 millions en 60 s', private.run_violation('typing', 10000000, 5, 40, 95, 200, 60), 'score supérieur au maximum possible');
+select pg_temp.eq('Frappe : 400 mots/min', private.run_violation('typing', 1000, 2, 400, 95, 200, 60), 'vitesse de frappe impossible');
+select pg_temp.eq('Frappe : 5000 lettres en 60 s', private.run_violation('typing', 1000, 2, 100, 95, 5000, 60), 'trop de lettres pour la durée');
+select pg_temp.eq('score sans durée', private.run_violation('typing', 100, 1, 10, 90, 10, 0), 'score sans durée de jeu');
+select pg_temp.eq('Course : le maximum réel passe', private.run_violation('math', 48 * 70 + 50 * 6 + 250, 48, 0, 100, 48, 240) is null, true);
+select pg_temp.eq('Course : 48 réponses en 5 s', private.run_violation('math', 1000, 20, 0, 100, 48, 5), 'réponses trop rapides');
+select pg_temp.eq('Course : score impossible', private.run_violation('math', 99999, 10, 0, 100, 30, 200), 'score supérieur au maximum possible');
+select pg_temp.eq('Mémoire : plus de manches que le jeu', private.run_violation('memory', 500, 40, 0, 100, 40, 300), 'plus de manches que le jeu n''en contient');
+select pg_temp.eq('Mémoire : un vrai score passe', private.run_violation('memory', 1800, 12, 0, 95, 12, 200) is null, true);
+select pg_temp.eq('Orthographe : 10 phrases parfaites passent', private.run_violation('spelling', 250, 10, 0, 100, 10, 90) is null, true);
+select pg_temp.eq('Orthographe : score impossible', private.run_violation('spelling', 5000, 10, 0, 100, 10, 90), 'score supérieur au maximum possible');
+select pg_temp.eq('Orthographe : 10 phrases en 5 s', private.run_violation('spelling', 100, 5, 0, 100, 10, 5), 'phrases trop rapides');
+select pg_temp.eq('jeu inconnu', private.run_violation('piratage', 1, 1, 0, 1, 1, 10), 'jeu inconnu');
+
+select pg_temp.eq('refus d''une triche en partie libre', public.submit_run((select v from ctx where k='tok_nina'),'triche00001','math','standard','game',900000,50,0,100,50,100)->>'error', 'cheat');
+select pg_temp.eq('la triche n''apparaît pas dans les parties', (select count(*) from public.runs where client_id='triche00001'), 0::bigint);
+select pg_temp.eq('la triche est notée dans le journal', (select count(*) from private.cheat_log where game='math' and (values_->>'score')::int = 900000), 1::bigint);
+-- plus de temps de jeu que de temps écoulé : une heure ne contient pas plus de 2 h de parties (deux appareils)
+select pg_temp.eq('1 h de jeu : accepté', public.submit_run((select v from ctx where k='tok_nina'),'temps000001','math','standard','game',500,10,0,100,20,3600)->>'ok', 'true');
+select pg_temp.eq('50 min de plus : accepté', public.submit_run((select v from ctx where k='tok_nina'),'temps000002','math','standard','game',500,10,0,100,20,3000)->>'ok', 'true');
+select pg_temp.eq('au-delà de 2 h dans l''heure : refusé', public.submit_run((select v from ctx where k='tok_nina'),'temps000003','math','standard','game',500,10,0,100,20,600)->>'error', 'cheat');
+select pg_temp.eq('le journal est inaccessible au navigateur', has_schema_privilege('anon', 'private', 'USAGE'), false);
