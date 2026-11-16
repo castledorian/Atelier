@@ -5,6 +5,7 @@ import { Frame, Notice } from './Frame';
 import { SessionsPanel } from './SessionsTeacher';
 import { downloadText, fmtDate, toCsv } from '../game/history';
 import { ApiError, explain } from '../server/api';
+import { GRADES } from '../game/grade';
 import * as T from '../server/teacher';
 import { Check } from '../components/Screens';
 import type { ClassRow, NewStudent, Overview, School } from '../server/types';
@@ -386,6 +387,7 @@ function ClassPanel({
   /** une seule partie de la classe à la fois : la page reste courte */
   const [part, setPart] = useState<'results' | 'add' | 'session' | 'danger'>('results');
   const [boardHidden, setBoardHidden] = useState(cls.hide_board === true);
+  const [grade, setGrade] = useState<string | null>(cls.grade ?? null);
 
   const reload = useCallback(async () => {
     const r = await act(() => T.classOverview(cls.id));
@@ -480,6 +482,37 @@ function ClassPanel({
               </button>
             </div>
           </div>
+          {cls.grade !== undefined && (
+            <div className="mb-2">
+              <span className="subhead" id={`grade-${cls.id}`}>
+                Niveau de la classe
+              </span>
+              <div className="seg mt-1" role="radiogroup" aria-labelledby={`grade-${cls.id}`}>
+                {GRADES.map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={grade === g.id}
+                    className="seg-b"
+                    onClick={async () => {
+                      const ok = await act(async () => {
+                        await T.setClassGrade(cls.id, g.id);
+                        return true;
+                      });
+                      if (ok) setGrade(g.id);
+                    }}
+                  >
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1 text-[14px] leading-snug text-ink/75">
+                Tes élèves ne voient que les jeux de leur niveau, sans rien avoir à choisir.
+                {grade === null && ' Niveau non fixé : chaque élève choisit sa classe.'}
+              </p>
+            </div>
+          )}
           {cls.hide_board !== undefined && (
             <div className="mb-2">
               <Check

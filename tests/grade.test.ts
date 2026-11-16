@@ -1,7 +1,7 @@
 import { beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { installFakeStorage } from './helpers';
-import { AVAILABLE, GRADES, isAvailable, levelOf, loadGrade, saveGrade } from '../src/game/grade';
+import { AVAILABLE, GRADES, effectiveGrade, isAvailable, levelOf, loadClassGrade, loadGrade, saveClassGrade, saveGrade } from '../src/game/grade';
 
 beforeEach(() => installFakeStorage());
 
@@ -27,4 +27,16 @@ test('niveau de contenu : CM2 pour le CM2, CM1 sinon', () => {
   assert.equal(levelOf('cm2'), 'cm2');
   assert.equal(levelOf('cm1'), 'cm1');
   assert.equal(levelOf(null), 'cm1');
+});
+
+test('niveau fixé par l’enseignant : prioritaire, propre à chaque élève', () => {
+  saveGrade('cm1');
+  assert.equal(effectiveGrade(null), 'cm1');
+  assert.equal(effectiveGrade('eleve-1'), 'cm1');
+  saveClassGrade('eleve-1', 'ce2');
+  assert.equal(effectiveGrade('eleve-1'), 'ce2');
+  assert.equal(loadClassGrade('eleve-2'), null);
+  assert.equal(effectiveGrade('eleve-2'), 'cm1');
+  saveClassGrade('eleve-1', null);
+  assert.equal(effectiveGrade('eleve-1'), 'cm1');
 });

@@ -51,3 +51,30 @@ export function saveGrade(g: Grade) {
     /* stockage refusé : la classe sera redemandée */
   }
 }
+
+// ───────────── Niveau fixé par l'enseignant pour la classe d'un élève connecté ─────────────
+
+const CLASS_KEY = 'atelier.grade.class.v1';
+
+/** Niveau de la classe de cet élève, tel que l'enseignant l'a fixé (gardé pour jouer sans réseau). */
+export function loadClassGrade(studentId: string | null): Grade | null {
+  if (!studentId) return null;
+  try {
+    const v = JSON.parse(localStorage.getItem(CLASS_KEY) ?? 'null') as { id?: unknown; grade?: unknown } | null;
+    return v && v.id === studentId && isGrade(v.grade) ? v.grade : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveClassGrade(studentId: string, grade: Grade | null) {
+  try {
+    if (grade) localStorage.setItem(CLASS_KEY, JSON.stringify({ id: studentId, grade }));
+    else localStorage.removeItem(CLASS_KEY);
+  } catch {
+    /* ignoré */
+  }
+}
+
+/** Classe à utiliser : celle de l'enseignant si elle est fixée, sinon celle choisie sur cet appareil. */
+export const effectiveGrade = (studentId: string | null): Grade | null => loadClassGrade(studentId) ?? loadGrade();

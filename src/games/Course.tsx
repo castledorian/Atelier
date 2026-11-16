@@ -23,7 +23,7 @@ import {
   saveCourseLevel,
 } from '../game/course/scores';
 import type { CourseScore } from '../game/course/scores';
-import { levelOf, loadGrade } from '../game/grade';
+import { effectiveGrade, levelOf } from '../game/grade';
 import { newRunId } from '../game/history';
 import { parseMath } from '../game/sessionConfig';
 import { loadSettings, saveSettings } from '../game/storage';
@@ -79,7 +79,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
   const [phase, setPhase] = useState<Phase>('menu');
   const [view, setView] = useState<MenuView>('main');
   const [settings, setSettings] = useState<Settings>(loadSettings);
-  const [level, setLevel] = useState<Level>(() => (session ? parseMath(session.config).level : levelOf(loadGrade())));
+  const [level, setLevel] = useState<Level>(() => (session ? parseMath(session.config).level : levelOf(effectiveGrade(account?.student.id ?? null))));
   const [diff, setDiff] = useState<CourseDiff>(() => (session ? parseMath(session.config).diff : loadCourseDiff()));
   const ses = useSessionRun(account, session);
   const sesRef = useRef(ses);

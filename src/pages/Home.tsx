@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { Frame } from './Frame';
 import type { InstallInfo } from '../components/Screens';
 import { serverEnabled } from '../server/api';
-import { fetchSessions } from '../server/student';
+import { fetchSessionsInfo } from '../server/student';
 import type { StudentAccount } from '../server/types';
 import { loadCourseStamps } from '../game/course/scores';
-import { GRADES, isAvailable, loadGrade, saveGrade } from '../game/grade';
+import { GRADES, gradeLabel, isAvailable, loadClassGrade, loadGrade, saveClassGrade, saveGrade } from '../game/grade';
 import type { Grade } from '../game/grade';
 import { loadTypingStamps } from '../game/storage';
 import type { TeacherSession } from '../server/teacher';
@@ -24,7 +24,14 @@ interface HomeProps {
 
 export default function Home({ student, teacher, onPlay, onSessions, onLogin, onDashboard, onPrivacy, onLogout, install }: HomeProps) {
   const online = serverEnabled();
-  const [grade, setGrade] = useState<Grade | null>(loadGrade);
+  const [ownGrade, setGrade] = useState<Grade | null>(loadGrade);
+  const studentId = student?.student.id ?? null;
+  /** niveau fixé par l'enseignant pour la classe de l'élève connecté */
+  const [classGrade, setClassGradeState] = useState<Grade | null>(() => loadClassGrade(studentId));
+  const grade = classGrade ?? ownGrade;
+  useEffect(() => {
+    setClassGradeState(loadClassGrade(studentId));
+  }, [studentId]);
   const pick = (g: Grade) => {
     saveGrade(g);
     setGrade(g);
@@ -34,13 +41,18 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
   useEffect(() => {
     if (!token) return;
     let alive = true;
-    fetchSessions(token)
-      .then((r) => alive && setTodo(r.filter((s) => s.active && s.attempts_used < s.max_attempts).length))
+    fetchSessionsInfo(token)
+      .then((r) => {
+        if (!alive) return;
+        setTodo(r.sessions.filter((s) => s.active && s.attempts_used < s.max_attempts).length);
+        if (studentId) saveClassGrade(studentId, r.grade);
+        setClassGradeState(r.grade);
+      })
       .catch(() => alive && setTodo(null));
     return () => {
       alive = false;
     };
-  }, [token]);
+  }, [token, studentId]);
   return (
     <Frame>
       <p className="eyebrow">Jeux pour apprendre</p>
@@ -108,13 +120,19 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
       <h2 className="subhead mt-[var(--sp)]" id="grade-h">
         Ma classe
       </h2>
-      <div className="seg mt-1" role="radiogroup" aria-labelledby="grade-h">
-        {GRADES.map((g) => (
-          <button key={g.id} type="button" role="radio" aria-checked={grade === g.id} className="seg-b" onClick={() => pick(g.id)}>
-            {g.label}
-          </button>
-        ))}
-      </div>
+      {classGrade ? (
+        <p className="mt-1 text-[16px]">
+          <strong>{gradeLabel(classGrade)}</strong> <span className="text-ink/75">(choisi par ton enseignant)</span>
+        </p>
+      ) : (
+        <div className="seg mt-1" role="radiogroup" aria-labelledby="grade-h">
+          {GRADES.map((g) => (
+            <button key={g.id} type="button" role="radio" aria-checked={grade === g.id} className="seg-b" onClick={() => pick(g.id)}>
+              {g.label}
+            </button>
+          ))}
+        </div>
+      )}
       {grade === null && <p className="mt-2 text-[15px] leading-snug">Choisis ta classe pour voir les jeux qui te conviennent.</p>}
 
       {grade !== null && <h2 className="subhead mt-[var(--sp)]">Choisis un jeu</h2>}

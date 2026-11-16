@@ -9,7 +9,7 @@ import type { CourseDiff, Level } from '../game/course/questions';
 import { ruleInfo, rulesOf } from '../game/encre/rules';
 import type { RuleId } from '../game/encre/rules';
 import { DUEL_SIZE, activeRules, dayKey, loadStore, recordDuel, recordGame, saveStore, stateOf } from '../game/encre/tracker';
-import { levelOf, loadGrade, gradeLabel } from '../game/grade';
+import { effectiveGrade, gradeLabel, levelOf } from '../game/grade';
 import { newRunId } from '../game/history';
 import { parseSpelling } from '../game/sessionConfig';
 import { loadSettings, saveSettings } from '../game/storage';
@@ -112,7 +112,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
   const [phase, setPhase] = useState<Phase>('menu');
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const prefs = useRef(loadSpellingPrefs());
-  const [level] = useState<Level>(() => (session ? parseSpelling(session.config).level : levelOf(loadGrade())));
+  const [level] = useState<Level>(() => (session ? parseSpelling(session.config).level : levelOf(effectiveGrade(account?.student.id ?? null))));
   const [diff, setDiff] = useState<CourseDiff>(() => (session ? parseSpelling(session.config).diff : prefs.current.diff));
   const ses = useSessionRun(account, session);
   const sesRef = useRef(ses);

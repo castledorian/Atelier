@@ -1,3 +1,5 @@
+import { isGrade } from '../game/grade';
+import type { Grade } from '../game/grade';
 import { ApiError, rpc } from './api';
 import type { BoardRow, ClassWeek, GameId, RunPayload, Scope, ServerRun, SessionInfo, StudentAccount } from './types';
 
@@ -83,10 +85,15 @@ export async function sendRun(token: string, r: RunPayload): Promise<'ok' | 'inv
 }
 
 /** Les séances de la classe, avec les essais déjà utilisés par l'élève. */
-export async function fetchSessions(token: string): Promise<SessionInfo[]> {
-  const r = await rpc<{ ok?: boolean; sessions?: SessionInfo[]; error?: string }>('my_sessions', { p_token: token });
+/** Séances de l'élève et niveau de sa classe (null tant que l'enseignant ne l'a pas fixé). */
+export async function fetchSessionsInfo(token: string): Promise<{ sessions: SessionInfo[]; grade: Grade | null }> {
+  const r = await rpc<{ ok?: boolean; sessions?: SessionInfo[]; grade?: unknown; error?: string }>('my_sessions', { p_token: token });
   if (!r.ok || !Array.isArray(r.sessions)) throw new ApiError(r.error ?? 'invalid_session');
-  return r.sessions;
+  return { sessions: r.sessions, grade: isGrade(r.grade) ? r.grade : null };
+}
+
+export async function fetchSessions(token: string): Promise<SessionInfo[]> {
+  return (await fetchSessionsInfo(token)).sessions;
 }
 
 export async function fetchBoard(token: string, game: GameId, mode: string, scope: Scope, limit = 10): Promise<BoardRow[]> {

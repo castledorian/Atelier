@@ -215,3 +215,11 @@ Tant qu'elle n'est pas appliquée, le site continue de fonctionner : la case n'a
 Supabase → **SQL Editor** → **New query** → collez le contenu de `serveur/mise-a-jour-orthographe.sql` → **Run**. À faire une seule fois ; aucune donnée n'est modifiée. Elle autorise « Chasse aux fautes » dans les **séances de classe**.
 
 Sans elle, le jeu fonctionne en jeu libre (scores et classement de classe compris) ; seule la création d'une séance « Chasse aux fautes » est refusée. Les fautes rangées par créature (le bestiaire) restent sur l'appareil de l'élève : le serveur ne les reçoit jamais.
+
+## Mise à jour « niveau de la classe »
+
+Supabase → **SQL Editor** → **New query** → collez le contenu de `serveur/mise-a-jour-niveau.sql` → **Run**. À faire une seule fois ; aucune donnée n'est modifiée (une colonne vide est ajoutée).
+
+Ensuite, dans l'espace enseignant, chaque classe a un réglage **« Niveau de la classe »** (CP, CE1, CE2, CM1, CM2). Les élèves de la classe voient alors seulement les jeux de leur niveau, sans rien choisir, au bout de quelques secondes après leur connexion. Tant que le niveau n'est pas fixé, chaque élève choisit sa classe sur l'accueil.
+
+Sans cette mise à jour, le site fonctionne : le réglage n'apparaît pas et les élèves choisissent leur classe eux-mêmes.

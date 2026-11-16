@@ -132,17 +132,22 @@ export const deleteSchool = (id: string) => authed((t) => rpc('delete_school', {
 export const listClasses = (school: string) =>
   authed(async (t) => {
     const q = (cols: string) => select<ClassRow[]>('classes', `select=${cols}&school_id=eq.${school}&order=name`, t);
-    try {
-      return await q('id,school_id,name,session_config,hide_board');
-    } catch (e) {
-      // base pas encore mise à jour (colonne absente) : on lit sans elle, la case « masquer » ne s'affiche pas
-      if (e instanceof ApiError && e.status === 400) return q('id,school_id,name,session_config');
-      throw e;
+    // base pas encore mise à jour (colonne absente) : on lit sans elle ; la case « masquer » ou le niveau ne s'affichent pas
+    for (const cols of ['id,school_id,name,session_config,hide_board,grade', 'id,school_id,name,session_config,hide_board']) {
+      try {
+        return await q(cols);
+      } catch (e) {
+        if (!(e instanceof ApiError && e.status === 400)) throw e;
+      }
     }
+    return q('id,school_id,name,session_config');
   });
 
 export const setBoardHidden = (cls: string, hidden: boolean) =>
   authed((t) => patch('classes', `id=eq.${cls}`, { hide_board: hidden }, t));
+
+export const setClassGrade = (cls: string, grade: string | null) =>
+  authed((t) => patch('classes', `id=eq.${cls}`, { grade }, t));
 
 export const createClass = (school: string, name: string) =>
   authed((t) => rpc<ClassRow>('create_class', { p_school: school, p_name: name }, t));

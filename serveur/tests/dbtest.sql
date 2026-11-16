@@ -249,6 +249,18 @@ select pg_temp.eq('classement orthographe', jsonb_array_length(public.class_lead
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 select public.delete_class_session((select v::uuid from ctx where k='sessSp'));
 
+-- ═══ Niveau de la classe ═══
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+update public.classes set grade = 'cm2' where id = (select v::uuid from ctx where k='classA');
+select pg_temp.as_anon();
+select pg_temp.eq('l''élève reçoit le niveau de sa classe', public.my_sessions((select v from ctx where k='tok_lea'))->>'grade', 'cm2');
+select pg_temp.eq('niveau absent : null', (public.my_sessions((select v from ctx where k='tok_nina'))->'grade') = 'null'::jsonb, true);
+select pg_temp.as_user('bbbbbbbb-0000-0000-0000-000000000002');
+update public.classes set grade = 'cp' where id = (select v::uuid from ctx where k='classA');
+select pg_temp.as_admin();
+select pg_temp.eq('un autre enseignant ne change pas le niveau', (select grade from public.classes where id = (select v::uuid from ctx where k='classA')), 'cm2');
+select pg_temp.fails($$update public.classes set grade = 'terminale' where id = (select v::uuid from ctx where k='classA')$$, 'check');
+
 -- suppression d'une séance : ses essais disparaissent avec elle
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 select public.delete_class_session((select v::uuid from ctx where k='sess'));

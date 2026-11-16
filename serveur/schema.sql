@@ -42,6 +42,8 @@ create table public.classes (
                     or (jsonb_typeof(session_config) = 'object' and octet_length(session_config::text) < 2000)),
   -- l'enseignant peut masquer les classements pour sa classe
   hide_board      boolean not null default false,
+  -- niveau de la classe fixé par l'enseignant (les élèves de la classe n'ont pas à le choisir)
+  grade           text check (grade is null or grade in ('cp', 'ce1', 'ce2', 'cm1', 'cm2')),
   created_at      timestamptz not null default now()
 );
 create index on public.classes (school_id);
@@ -585,7 +587,9 @@ declare
 begin
   if v_sid is null then return jsonb_build_object('error', 'invalid_session'); end if;
   select * into v_s from public.students where id = v_sid;
-  return jsonb_build_object('ok', true, 'sessions', coalesce((
+  return jsonb_build_object('ok', true,
+    'grade', (select c.grade from public.classes c where c.id = v_s.class_id),
+    'sessions', coalesce((
     select jsonb_agg(to_jsonb(t) order by t.created desc) from (
       select x.id, x.title, x.game, x.config, x.max_attempts, x.active,
              (select count(*) from public.runs r where r.session_id = x.id and r.student_id = v_sid)::integer as attempts_used,
@@ -743,7 +747,7 @@ grant execute on function public.delete_my_account(text)         to authenticate
 
 grant select on public.schools, public.school_members, public.classes, public.students, public.runs to authenticated;
 grant update (name) on public.schools to authenticated;
-grant update (name, session_config, hide_board), delete on public.classes  to authenticated;
+grant update (name, session_config, hide_board, grade), delete on public.classes  to authenticated;
 grant update (name), delete on public.students                 to authenticated;
 grant delete on public.runs                                    to authenticated;
 

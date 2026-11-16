@@ -95,6 +95,8 @@ export interface ClassRow {
   session_config: Record<string, unknown> | null;
   /** absent tant que la mise à jour SQL « classement » n'est pas faite */
   hide_board?: boolean;
+  /** niveau de la classe fixé par l'enseignant (absent si la base n'est pas à jour) */
+  grade?: 'cp' | 'ce1' | 'ce2' | 'cm1' | 'cm2' | null;
 }
 export interface ClassWeek {
   games: number;
