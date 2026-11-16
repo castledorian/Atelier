@@ -1,3 +1,4 @@
+import { InkEnemy, PenIcon } from './InkEnemy';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Sfx } from '../game/audio';
 import type { SfxName } from '../game/audio';
@@ -12,7 +13,7 @@ import type { PreviewGame } from './Preview';
 const STEP_MS = 5200;
 
 /** Sons joués à chaque étape de l'extrait d'orthographe (les autres jeux jouent leurs propres sons). */
-const SPELLING_SOUNDS: Array<SfxName | null> = [null, 'key', null, 'clear'];
+const SPELLING_SOUNDS: Array<SfxName | null> = [null, 'key', 'hit', 'kill'];
 
 /**
  * Fenêtre d'extrait : s'ouvre par-dessus l'accueil comme un petit onglet. En haut, le jeu joué tout seul
@@ -152,32 +153,48 @@ export default function PreviewWindow({ game, grade, onClose, onPlay }: { game: 
 }
 
 /**
- * Extrait de « Chasse aux fautes » : la phrase du jeu, jouée à la main par étapes (le mot fautif est montré du doigt,
- * puis la bonne écriture est choisie). Décor seulement : rien n'est cliquable.
+ * Extrait de « Chasse aux fautes » : un combat joué à la main par étapes (l'ennemi dit sa phrase, le mot fautif est montré
+ * du doigt, puis la bonne écriture est choisie et l'ennemi s'efface). Décor seulement : rien n'est cliquable.
  */
 function SpellingScene({ step }: { step: number }) {
   const fixed = step >= 3;
   return (
     <div className="sp-demo" aria-hidden="true">
-      <div className="sp-sentence">
-        <span className="sp-plain">Les</span>
-        <span className="sp-plain">enfants</span>
-        {step === 0 && <span className="sp-demo-word">joue</span>}
-        {step === 1 && <span className="sp-demo-word sp-demo-point">joue</span>}
-        {step === 2 && <span className="sp-mark">joue</span>}
-        {fixed && <span className="sp-ok">jouent</span>}
-        <span className="sp-plain">dehors.</span>
+      <div className="sp-hud">
+        <div className="sp-me">
+          <PenIcon />
+          <div className="sp-hp">
+            {[0, 1, 2, 3, 4].map((k) => (
+              <span key={k} className={k < 4 ? 'on' : ''} />
+            ))}
+          </div>
+        </div>
       </div>
-      <div className="sp-choices" style={{ visibility: step >= 2 ? 'visible' : 'hidden' }}>
+      <div className="sp-arena">
+        <div className="sp-foe">
+          <div className="foe-in" key={fixed ? 'd' : 'a'}>
+            <InkEnemy kind={4} mood={fixed ? 'dead' : 'idle'} name="Pâté" />
+          </div>
+        </div>
+        <div className="sp-bubble">
+          <div className="sp-sentence">
+            <span className="sp-plain">Les</span>
+            <span className="sp-plain">enfants</span>
+            {step === 0 && <span className="sp-demo-word">joue</span>}
+            {step === 1 && <span className="sp-demo-word sp-demo-point">joue</span>}
+            {step === 2 && <span className="sp-mark">joue</span>}
+            {fixed && <span className="sp-ok">jouent</span>}
+            <span className="sp-plain">dehors.</span>
+          </div>
+        </div>
+      </div>
+      <div className="sp-choices" style={{ visibility: step === 2 ? 'visible' : 'hidden' }}>
         {['joue', 'jouent', 'joues'].map((c) => (
-          <span key={c} className={`btn btn-ghost sp-choice${fixed && c === 'jouent' ? ' sp-demo-right' : ''}`}>
+          <span key={c} className="btn btn-ghost sp-choice">
             {c}
           </span>
         ))}
       </div>
-      <p className="sp-tip" style={{ visibility: fixed ? 'visible' : 'hidden' }}>
-        <strong>Astuce :</strong> « Les enfants » est au pluriel, le verbe prend donc -nt.
-      </p>
     </div>
   );
 }

@@ -2184,3 +2184,263 @@ html[data-comfort='on'] .title-sm {
     margin-right: 0;
   }
 }
+
+/* ───────── Chasse aux fautes : combat contre les ennemis d'encre ───────── */
+.sp-hud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.sp-me {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pen-icon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+}
+.sp-hp-label {
+  display: block;
+  font-size: 15px;
+}
+.sp-hp {
+  display: flex;
+  gap: 4px;
+  margin-top: 3px;
+}
+.sp-hp span {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--color-ink);
+  border-radius: 50% 50% 50% 8%;
+  transform: rotate(-45deg);
+  background: transparent;
+}
+.sp-hp span.on {
+  background: var(--color-ribbon);
+}
+.sp-hp.hit {
+  animation: sp-shake 0.4s;
+}
+.sp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 13px;
+}
+.sp-chips span {
+  padding: 1px 8px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper);
+}
+.sp-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 15px;
+}
+.sp-bar span.boss {
+  border-width: 3px;
+}
+.sp-arena {
+  display: grid;
+  grid-template-columns: minmax(150px, 230px) 1fr;
+  gap: 8px clamp(10px, 2vw, 24px);
+  align-items: end;
+  margin-top: 12px;
+}
+.sp-foe {
+  text-align: center;
+}
+.sp-foe .en {
+  display: block;
+  width: 100%;
+  max-height: 24vh;
+  overflow: visible;
+}
+.sp-foe-name {
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+.sp-bubble {
+  position: relative;
+  padding: 10px clamp(10px, 1.8vw, 20px) 14px;
+  border: 2px solid var(--color-ink);
+  border-radius: 10px;
+  background: var(--color-paper-hi);
+  box-shadow: 4px 4px 0 var(--color-ink);
+}
+.sp-bubble::before {
+  content: '';
+  position: absolute;
+  left: -11px;
+  bottom: 38px;
+  width: 18px;
+  height: 18px;
+  border-left: 2px solid var(--color-ink);
+  border-bottom: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+  transform: rotate(45deg);
+}
+.sp-card .sp-bubble .sp-sentence {
+  margin-top: 4px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  font-size: clamp(22px, 3vw, 38px);
+}
+.sp-ask {
+  font-size: 15px;
+  font-weight: 700;
+}
+.sp-bad,
+.sp-bad:disabled {
+  border-color: var(--color-ribbon);
+  color: var(--color-ribbon);
+  text-decoration: line-through;
+}
+.sp-msg {
+  color: var(--color-ribbon);
+  font-weight: 700;
+}
+.sp-boon {
+  margin-top: 14px;
+}
+.sp-boon-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+.sp-card .sp-boon-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  justify-content: flex-start;
+  min-height: 96px;
+  padding: 12px 14px;
+  text-align: left;
+  font-size: clamp(16px, 1.9vw, 22px);
+}
+.sp-boon-btn span {
+  font-size: 0.82em;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.en-puddle {
+  transition: rx 0.3s, ry 0.3s;
+}
+.en-body {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+.en-idle .en-body {
+  animation: en-breathe 2.6s ease-in-out infinite;
+}
+.en-dead .en-body {
+  animation: en-splat 0.55s ease-in forwards;
+}
+.en-attack .en-body {
+  animation: en-breathe 0.9s ease-in-out infinite;
+}
+.foe-in {
+  animation: en-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+.foe-lunge {
+  animation: en-lunge 0.4s ease-out;
+}
+@keyframes en-in {
+  from {
+    opacity: 0;
+    transform: translateY(-40px) scale(0.8);
+  }
+}
+@keyframes en-breathe {
+  50% {
+    transform: scale(1.03, 0.97);
+  }
+}
+@keyframes en-splat {
+  to {
+    transform: scale(1.25, 0.04);
+    opacity: 0;
+  }
+}
+@keyframes en-lunge {
+  40% {
+    transform: translateX(-26px) scale(1.1);
+  }
+}
+@keyframes sp-shake {
+  20%,
+  60% {
+    transform: translateX(-5px);
+  }
+  40%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .en-body,
+  .foe-in,
+  .foe-lunge,
+  .sp-hp.hit {
+    animation: none !important;
+  }
+  .en-dead .en-body {
+    transform: scale(1.25, 0.04);
+    opacity: 0;
+  }
+}
+@media (max-width: 640px) {
+  .sp-arena {
+    grid-template-columns: 1fr;
+  }
+  .sp-foe .en {
+    width: 130px;
+    margin: 0 auto;
+  }
+  .sp-bubble::before {
+    left: 50%;
+    bottom: auto;
+    top: -11px;
+    margin-left: -9px;
+    transform: rotate(135deg);
+  }
+  .sp-info {
+    align-items: flex-start;
+  }
+}
+
+.pw-view.pw-doc .sp-demo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pw-view.pw-doc .sp-foe .en {
+  max-height: 20vh;
+}
+.pw-view.pw-doc .sp-choices {
+  justify-content: center;
+  margin-top: 0;
+}
+.pw-view.pw-doc .sp-choice {
+  min-height: 40px;
+  font-size: 18px;
+}
+.sp-bubble .sp-sentence {
+  margin-top: 4px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+}

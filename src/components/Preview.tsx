@@ -57,12 +57,12 @@ export const PREVIEWS: Record<PreviewGame, PreviewInfo> = {
   },
   spelling: {
     title: 'Chasse aux fautes',
-    goal: 'Trouve le mot mal écrit dans la phrase, puis corrige-le.',
+    goal: 'Bats les ennemis d’encre : trouve la faute de leur phrase, sans perdre toutes tes vies.',
     steps: [
-      { title: 'Lis la phrase', text: 'Une faute s’est glissée dans la phrase.' },
-      { title: 'Touche le mot fautif', text: 'Repère le mot qui n’est pas bien écrit et touche-le.' },
-      { title: 'Choisis la correction', text: 'Plusieurs écritures te sont proposées : choisis la bonne.' },
-      { title: 'Retiens la règle', text: 'Une astuce explique pourquoi. Elle t’aide à ne plus faire la faute.' },
+      { title: 'Un ennemi arrive', text: 'Un ennemi d’encre dit une phrase. Une faute s’y est glissée.' },
+      { title: 'Touche le mot fautif', text: 'Touche le mot mal écrit. Attention : te tromper te coûte une vie.' },
+      { title: 'Choisis la correction', text: 'Plusieurs écritures te sont proposées. Une mauvaise réponse coûte aussi une vie.' },
+      { title: 'Ennemi vaincu !', text: 'L’ennemi s’efface et une astuce t’aide à retenir la règle. Tous les 3 ennemis, choisis un bonus. Le 10e est un boss !' },
     ],
   },
 };

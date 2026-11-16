@@ -93,3 +93,15 @@ test('Course : l’encre monte moins vite et pardonne plus l’erreur pour les p
   assert.equal(LEVEL_TUNING.cm1.drain, 1);
   assert.equal(LEVEL_TUNING.cm1.wrong, 1);
 });
+
+import { BOONS, BOON_AFTER, HP, ROUNDS, offerBoons } from '../src/game/spelling/engine';
+
+test('Chasse aux fautes : vies selon la difficulté, bonus distincts, boss en dernier', () => {
+  assert.ok(HP.apprenti > HP.standard && HP.standard > HP.expert && HP.expert >= 3);
+  for (const n of BOON_AFTER) assert.ok(n > 0 && n < ROUNDS - 1);
+  for (let i = 0; i < 40; i++) {
+    const [a, b] = offerBoons();
+    assert.notEqual(a.id, b.id);
+  }
+  assert.equal(new Set(BOONS.map((b) => b.id)).size, BOONS.length);
+});

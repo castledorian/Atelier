@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackButton } from '../components/BackButton';
 import { DuelResult, ReviewNote } from '../components/EncreNotes';
 import type { DuelInfo } from '../components/EncreNotes';
+import { BOSS_KIND, BOSS_NAME, ENEMY_KINDS, ENEMY_NAMES, InkEnemy, PenIcon } from '../components/InkEnemy';
 import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
 import { COURSE_DIFFS, boardKey } from '../game/course/questions';
@@ -10,12 +11,13 @@ import { ruleInfo, rulesOf } from '../game/encre/rules';
 import type { RuleId } from '../game/encre/rules';
 import { DUEL_SIZE, activeRules, dayKey, loadStore, recordDuel, recordGame, saveStore, stateOf } from '../game/encre/tracker';
 import { effectiveGrade, gradeLabel, levelOf } from '../game/grade';
+import { Sfx } from '../game/audio';
 import { newRunId } from '../game/history';
 import { parseSpelling } from '../game/sessionConfig';
 import { loadSettings, saveSettings } from '../game/storage';
 import type { Settings } from '../game/storage';
-import { HINT, ROUNDS, choicesFor, duelItems, isFault, isPerfect, nextItem, pointsFor } from '../game/spelling/engine';
-import type { Item, RoundOutcome } from '../game/spelling/engine';
+import { BOON_AFTER, HINT, HP, ROUNDS, choicesFor, duelItems, isFault, isPerfect, nextItem, offerBoons, pointsFor, shuffle } from '../game/spelling/engine';
+import type { Boon, Item, RoundOutcome } from '../game/spelling/engine';
 import { addSpellingScore, loadSpellingPrefs, loadSpellingScores, saveSpellingPrefs } from '../game/spelling/scores';
 import { enqueue, flush } from '../server/outbox';
 import { sendRun } from '../server/student';
@@ -23,8 +25,10 @@ import type { RunPayload, SessionInfo, StudentAccount } from '../server/types';
 import { Frame } from '../pages/Frame';
 
 /**
- * « Chasse aux fautes » — jeu d'orthographe (CM1 / CM2) : une faute s'est glissée dans chaque phrase.
- * On touche le mot faux, puis on choisit la bonne écriture. Chaque faute se range dans une règle.
+ * « Chasse aux fautes » — jeu d'orthographe (CM1 / CM2), en petit « rogue-lite » : des ennemis d'encre arrivent un par un
+ * et disent une phrase où se cache une faute. On touche le mot faux, puis on choisit la bonne écriture pour les vaincre ;
+ * chaque erreur coûte une vie. Un bonus au choix après le 3e et le 6e ennemi, un boss en dernier.
+ * Chaque faute se range dans une règle (l'Encre).
  */
 
 type Phase = 'menu' | 'play' | 'over';
@@ -56,6 +60,13 @@ interface GameState {
   /** phrases des parties précédentes */
   avoid: Set<string>;
   t0: number;
+  /** vies (le duel de l'Encre n'en a pas : maxHp = 0) */
+  hp: number;
+  maxHp: number;
+  shield: number;
+  loupe: number;
+  /** dessin de chaque ennemi, dans l'ordre */
+  order: number[];
 }
 
 interface Round {
@@ -70,6 +81,10 @@ interface Round {
   msg: string;
   revealed: boolean;
   gained: number;
+  badTaps: number[];
+  hits: number;
+  loupeOn: boolean;
+  lost: boolean;
 }
 
 interface Over {
@@ -85,6 +100,12 @@ interface Over {
   missed: Item[];
   level: Level;
   diff: CourseDiff;
+  /** partie perdue : plus de vie avant la fin */
+  dead: boolean;
+  /** ennemis vaincus */
+  defeated: number;
+  hpLeft: number;
+  maxHp: number;
 }
 
 const SEEN_KEY = 'atelier.spelling.seen.v1';
@@ -119,11 +140,23 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
   sesRef.current = ses;
   const g = useRef<GameState | null>(null);
   const [round, setRound] = useState<Round | null>(null);
+  const rr = useRef<Round | null>(null);
+  const upd = (r: Round | null) => {
+    rr.current = r;
+    setRound(r);
+  };
+  const [sfx] = useState(() => new Sfx());
+  const [boon, setBoon] = useState<Boon[] | null>(null);
+  const [hurtKey, setHurtKey] = useState(0);
   const [counter, setCounter] = useState({ n: 0, score: 0 });
   const [summon, setSummon] = useState<RuleId | null>(null);
   const [over, setOver] = useState<Over | null>(null);
   const [cloud, setCloud] = useState<Cloud>('off');
   const lost = useRef(false);
+
+  useEffect(() => {
+    sfx.enabled = settings.sound;
+  }, [settings.sound, sfx]);
 
   useEffect(() => {
     saveSettings(settings);
@@ -157,8 +190,11 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
     }
     s.used.add(item.id);
     setSummon(summoned);
+    setBoon(null);
     setCounter({ n: s.asked + 1, score: s.score });
-    setRound({
+    const loupeOn = s.loupe > 0;
+    if (loupeOn) s.loupe--;
+    upd({
       item,
       choices: choicesFor(item, s.diff),
       step: 'tap',
@@ -170,10 +206,15 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
       msg: '',
       revealed: false,
       gained: 0,
+      badTaps: [],
+      hits: 0,
+      loupeOn,
+      lost: false,
     });
-  }, []);
+    sfx.play('wave');
+  }, [sfx]);
 
-  const finish = useCallback(() => {
+  const finish = useCallback((dead = false) => {
     const s = g.current;
     if (!s) return;
     const total = s.duel ? s.duel.items.length : ROUNDS;
@@ -184,7 +225,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
       const d = recordDuel(loadStore(), s.duel.rule, won, dayKey());
       saveStore(d.store);
       encre = { top: null, promoted: [], duel: { rule: s.duel.rule, before: d.before, after: d.after, won } };
-      setOver({ score: 0, okRounds: s.okRounds, total, bestStreak: 0, rank: -1, record: false, level: s.level, diff: s.diff, missed: [], ...encre });
+      setOver({ score: 0, okRounds: s.okRounds, total, bestStreak: 0, rank: -1, record: false, level: s.level, diff: s.diff, missed: [], dead: false, defeated: total, hpLeft: 0, maxHp: 0, ...encre });
       setPhase('over');
       return;
     }
@@ -239,9 +280,10 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
       encre = { top: seen[0] ?? null, promoted: r.promoted };
     }
     rememberSeen([...s.used]);
-    setOver({ score: s.score, okRounds: s.okRounds, total, bestStreak: s.best, rank, record, level: s.level, diff: s.diff, missed: s.missed, ...encre });
+    setOver({ score: s.score, okRounds: s.okRounds, total, bestStreak: s.best, rank, record, level: s.level, diff: s.diff, missed: s.missed, dead, defeated: dead ? s.asked : total, hpLeft: s.hp, maxHp: s.maxHp, ...encre });
+    sfx.play(dead ? 'over' : 'clear');
     setPhase('over');
-  }, [account]);
+  }, [account, sfx]);
 
   const begin = useCallback(
     (duel?: RuleId) => {
@@ -265,21 +307,58 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
         missed: [],
         avoid: new Set(loadSeen()),
         t0: Date.now(),
+        hp: duel ? 0 : HP[diff],
+        maxHp: duel ? 0 : HP[diff],
+        shield: 0,
+        loupe: 0,
+        order: shuffle([...Array(ENEMY_KINDS).keys()]),
       };
+      sfx.unlock();
+      sfx.play('start');
       setOver(null);
+      setBoon(null);
+      setHurtKey(0);
       setCloud('off');
       setPhase('play');
       openRound();
     },
-    [level, diff, openRound],
+    [level, diff, openRound, sfx],
   );
 
+  /** Une erreur : le bouclier l'absorbe, sinon l'ennemi nous prend une vie. Renvoie la manche à jour. */
+  const hurt = (r: Round, why: string): Round => {
+    const s = g.current as GameState;
+    const nr = { ...r, hits: r.hits + 1 };
+    setHurtKey((k) => k + 1);
+    if (s.duel) {
+      sfx.play('error');
+      return { ...nr, msg: why };
+    }
+    if (s.shield > 0) {
+      s.shield--;
+      sfx.play('ding');
+      return { ...nr, msg: 'Ton bouclier de buvard a absorbé l’attaque : tu ne perds aucune vie.' };
+    }
+    s.hp = Math.max(0, s.hp - 1);
+    sfx.play('breach');
+    if (s.hp > 0) return { ...nr, msg: `${why} Tu perds une vie.` };
+    // plus de vie : l'ennemi gagne cette manche
+    s.faults[r.item.rule] = (s.faults[r.item.rule] ?? 0) + 1;
+    s.missed.push(r.item);
+    s.lastOk.push(false);
+    s.streak = 0;
+    return { ...nr, step: 'done', lost: true, revealed: true, gained: 0, msg: '' };
+  };
+
   const tapWord = (i: number) => {
-    setRound((r) => {
-      if (!r || r.step !== 'tap') return r;
-      if (i === r.item.before.length) return { ...r, step: 'fix', msg: '', tipShown: HINT[diff] === 'free' };
-      return { ...r, tapFirst: false, msg: 'Ce mot est bien écrit. Cherche encore !' };
-    });
+    const r = rr.current;
+    if (!r || r.step !== 'tap' || r.badTaps.includes(i)) return;
+    if (i === r.item.before.length) {
+      sfx.play('hit');
+      upd({ ...r, step: 'fix', msg: '', tipShown: HINT[diff] === 'free' || r.loupeOn });
+      return;
+    }
+    upd(hurt({ ...r, tapFirst: false, badTaps: [...r.badTaps, i] }, 'Ce mot est bien écrit : l’encre t’éclabousse !'));
   };
 
   const settle = (r: Round, tries: number): Round => {
@@ -292,39 +371,60 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
     if (isFault(out)) {
       s.faults[r.item.rule] = (s.faults[r.item.rule] ?? 0) + 1;
       s.missed.push(r.item);
-    }
-    else s.okRounds++;
+    } else s.okRounds++;
     s.lastOk.push(!isFault(out));
-    return { ...r, step: 'done', gained, revealed: tries === 3 };
+    if (tries < 3) sfx.play(s.asked === ROUNDS - 1 && !s.duel ? 'bigkill' : 'kill');
+    return { ...r, step: 'done', gained, revealed: tries === 3, msg: '' };
   };
 
   const pick = (choice: string) => {
-    setRound((r) => {
-      if (!r || r.step !== 'fix') return r;
-      if (choice === r.item.right) return settle({ ...r, tries: r.tries + 1 }, r.tries + 1);
-      const wrongPicks = [...r.wrongPicks, choice];
-      if (r.tries + 1 >= 2) return settle({ ...r, tries: 2, wrongPicks }, 3);
-      return { ...r, tries: r.tries + 1, wrongPicks, tipShown: true, msg: 'Pas tout à fait. Relis l’astuce et réessaie !' };
-    });
+    const r = rr.current;
+    if (!r || r.step !== 'fix') return;
+    if (choice === r.item.right) {
+      upd(settle({ ...r, tries: r.tries + 1 }, r.tries + 1));
+      return;
+    }
+    const wrongPicks = [...r.wrongPicks, choice];
+    const nr = hurt({ ...r, tries: r.tries + 1, wrongPicks, tipShown: true }, 'Pas la bonne écriture : relis l’astuce !');
+    if (nr.lost) upd(nr);
+    else if (r.tries + 1 >= 2) upd(settle({ ...nr, tries: 2 }, 3));
+    else upd(nr);
+  };
+
+  const takeBoon = (b: Boon) => {
+    const s = g.current;
+    if (!s) return;
+    if (b.id === 'vie') s.hp = Math.min(s.maxHp, s.hp + 2);
+    if (b.id === 'bouclier') s.shield++;
+    if (b.id === 'loupe') s.loupe += 3;
+    sfx.play('ding');
+    openRound();
   };
 
   const next = () => {
     const s = g.current;
     if (!s) return;
+    if (rr.current?.lost) {
+      finish(true);
+      return;
+    }
     s.asked++;
     const total = s.duel ? s.duel.items.length : ROUNDS;
-    if (s.asked >= total) finish();
-    else openRound();
+    if (s.asked >= total) finish(false);
+    else if (!s.duel && BOON_AFTER.includes(s.asked)) {
+      setBoon(offerBoons());
+      sfx.play('mult');
+    } else openRound();
   };
 
   const toMenu = () => {
     setPhase('menu');
-    setRound(null);
+    upd(null);
+    setBoon(null);
     if (lost.current) onSessionLost();
   };
 
   const inSession = !!ses.sess;
-  const closing = round?.step === 'done';
   const nextRef = useRef<HTMLButtonElement>(null);
   const fixRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -347,9 +447,10 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
           </h1>
           <div className="rule" aria-hidden="true" />
           <ol className="mt-3 list-decimal space-y-1 pl-6 text-[16px] leading-snug">
-            <li>Une faute s’est glissée dans chaque phrase : touche le mot mal écrit.</li>
-            <li>Choisis ensuite la bonne écriture.</li>
-            <li>Chaque phrase te donne une astuce pour retenir la règle.</li>
+            <li>Des ennemis d’encre arrivent un par un. Chacun dit une phrase où se cache une faute.</li>
+            <li>Touche le mot mal écrit, puis choisis la bonne écriture pour le vaincre.</li>
+            <li>Chaque erreur te coûte une vie. Après le 3<sup>e</sup> et le 6<sup>e</sup> ennemi, tu choisis un bonus.</li>
+            <li>Le 10<sup>e</sup> ennemi est un boss. Chaque phrase te donne une astuce pour retenir la règle.</li>
           </ol>
           <h2 className="subhead mt-[var(--sp)]">Ta difficulté</h2>
           <div className="seg mt-1" role="radiogroup" aria-label="Difficulté">
@@ -363,6 +464,15 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
           <div className="mt-[var(--sp)] flex flex-wrap gap-2">
             <Check on={settings.comfort} onClick={() => setSettings((s) => ({ ...s, comfort: !s.comfort }))}>
               Lecture confortable
+            </Check>
+            <Check
+              on={settings.sound}
+              onClick={() => {
+                sfx.unlock();
+                setSettings((s) => ({ ...s, sound: !s.sound }));
+              }}
+            >
+              Sons
             </Check>
           </div>
           <div className="mt-[var(--sp)]">
@@ -379,19 +489,133 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
       )}
 
       {phase === 'play' && round && g.current && (
-        <section aria-label="Partie en cours">
-          <div className="flex flex-wrap items-baseline justify-between gap-2 text-[15px]">
-            <span className="subhead">
-              {g.current.duel ? `Duel · ${ruleInfo(g.current.duel.rule).name}` : `Phrase ${counter.n} sur ${ROUNDS}`}
-              {g.current.duel ? ` · ${counter.n} sur ${g.current.duel.items.length}` : ''}
-            </span>
-            {!g.current.duel && <span className="num">Score : {fmt(counter.score)}</span>}
-          </div>
-          <div className="sp-bar" aria-hidden="true">
-            {Array.from({ length: g.current.duel ? g.current.duel.items.length : ROUNDS }, (_, k) => (
-              <span key={k} className={k < counter.n ? 'on' : ''} />
+        <PlayView
+          s={g.current}
+          round={round}
+          counter={counter}
+          summon={summon}
+          boon={boon}
+          hurtKey={hurtKey}
+          diff={diff}
+          onTap={tapWord}
+          onPick={pick}
+          onBoon={takeBoon}
+          onNext={next}
+          onTip={() => upd({ ...round, tipShown: true, hintUsed: true })}
+          nextRef={nextRef}
+          fixRef={fixRef}
+        />
+      )}
+
+      {phase === 'over' && over && !ses.sess && (
+        <OverPanel over={over} cloud={cloud} account={!!account} onRestart={() => begin()} onDuel={(r) => begin(r)} onMenu={toMenu} />
+      )}
+      {phase === 'over' && over && ses.sess && (
+        <SessionOver
+          session={ses.sess}
+          state={ses.state}
+          score={over.score}
+          left={ses.left}
+          details={
+            <p className="mt-1 text-[15px]">
+              Ennemis vaincus : <strong>{over.defeated}</strong> sur {over.total} · phrases réussies : <strong>{over.okRounds}</strong>
+            </p>
+          }
+          onRetry={() => begin()}
+          onBack={() => (onSessions ?? onHome)()}
+        />
+      )}
+      </div>
+    </Frame>
+  );
+}
+
+const HINT_TEXT: Record<CourseDiff, string> = {
+  apprenti: '6 vies. Deux propositions seulement, et l’astuce s’affiche toute seule.',
+  standard: '5 vies. Trois propositions. Un indice est possible, mais il rapporte moins de points.',
+  expert: '4 vies. Jusqu’à quatre propositions, sans indice : il faut connaître la règle.',
+};
+
+interface PlayProps {
+  s: GameState;
+  round: Round;
+  counter: { n: number; score: number };
+  summon: RuleId | null;
+  boon: Boon[] | null;
+  hurtKey: number;
+  diff: CourseDiff;
+  onTap: (i: number) => void;
+  onPick: (c: string) => void;
+  onBoon: (b: Boon) => void;
+  onNext: () => void;
+  onTip: () => void;
+  nextRef: React.RefObject<HTMLButtonElement | null>;
+  fixRef: React.RefObject<HTMLButtonElement | null>;
+}
+
+/** L'écran de combat : toi (la plume et tes vies) en haut, l'ennemi d'encre et sa phrase au milieu, les réponses dessous. */
+function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPick, onBoon, onNext, onTip, nextRef, fixRef }: PlayProps) {
+  const duel = !!s.duel;
+  const total = duel ? (s.duel as { items: Item[] }).items.length : ROUNDS;
+  const boss = !duel && s.asked === ROUNDS - 1;
+  const kind = boss ? BOSS_KIND : s.order[s.asked % ENEMY_KINDS];
+  const name = boss ? BOSS_NAME : ENEMY_NAMES[kind];
+  const done = round.step === 'done';
+  const mood = done ? (round.lost ? 'attack' : 'dead') : 'idle';
+  const closing = done;
+  return (
+    <section aria-label="Partie en cours" className="sp-play">
+      <div className="sp-hud">
+        <div className="sp-me">
+          <PenIcon />
+          {!duel && (
+            <div>
+              <span className="sp-hp-label">
+                Vie : <strong>{s.hp}</strong> sur {s.maxHp}
+              </span>
+              <div key={hurtKey} className={`sp-hp${hurtKey > 0 ? ' hit' : ''}`} role="img" aria-label={`Vie : ${s.hp} sur ${s.maxHp}`}>
+                {Array.from({ length: s.maxHp }, (_, k) => (
+                  <span key={k} className={k < s.hp ? 'on' : ''} />
+                ))}
+              </div>
+              {(s.shield > 0 || s.loupe > 0) && (
+                <p className="sp-chips">
+                  {s.shield > 0 && <span>Bouclier × {s.shield}</span>}
+                  {s.loupe > 0 && <span>Loupe : {s.loupe} ennemi{s.loupe > 1 ? 's' : ''}</span>}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="sp-info">
+          <span className="subhead">
+            {duel ? `Duel · ${ruleInfo((s.duel as { rule: RuleId }).rule).name} · ${counter.n} sur ${total}` : `Ennemi ${counter.n} sur ${ROUNDS}`}
+          </span>
+          {!duel && <span className="num">Score : {fmt(counter.score)}</span>}
+        </div>
+      </div>
+      <div className="sp-bar" aria-hidden="true">
+        {Array.from({ length: total }, (_, k) => (
+          <span key={k} className={`${k < counter.n ? 'on' : ''}${!duel && k === ROUNDS - 1 ? ' boss' : ''}`} />
+        ))}
+      </div>
+
+      {boon ? (
+        <div className="sp-boon" role="group" aria-labelledby="sp-boon-t">
+          <h2 id="sp-boon-t" className="subhead">
+            Butin de la page : choisis un bonus
+          </h2>
+          <div className="sp-boon-list">
+            {boon.map((b, i) => (
+              <button key={b.id} type="button" className="btn btn-ghost sp-boon-btn" autoFocus={i === 0} onClick={() => onBoon(b)}>
+                <strong>{b.name}</strong>
+                <span>{b.text}</span>
+              </button>
             ))}
           </div>
+        </div>
+      ) : (
+        <>
           {summon && (
             <div className="summon-inline" role="status">
               <span>
@@ -399,36 +623,52 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
               </span>
             </div>
           )}
-          <p className="mt-3 text-[15px] font-bold" aria-live="polite">
-            {round.step === 'tap' && 'Touche le mot qui n’est pas bien écrit.'}
-            {round.step === 'fix' && 'Choisis la bonne écriture.'}
-            {round.step === 'done' && (round.revealed ? 'Voici la bonne écriture.' : round.tapFirst && round.tries === 1 ? 'Bravo !' : 'Bien joué, tu as trouvé !')}
-          </p>
-          <div className="sp-sentence" role="group" aria-label="Phrase">
-            {round.item.before.map((w, i) => (
-              <Word key={`b${i}`} text={w} onTap={() => tapWord(i)} disabled={round.step !== 'tap'} />
-            ))}
-            <span className={`sp-target sp-${round.step}`}>
-              {round.step === 'tap' ? (
-                <button type="button" className="sp-word" onClick={() => tapWord(round.item.before.length)}>
-                  {round.item.wrong}
-                  {round.item.suffix}
-                </button>
-              ) : round.step === 'fix' ? (
-                <span className="sp-mark">
-                  {round.item.wrong}
-                  {round.item.suffix}
+          <div className="sp-arena">
+            <div className="sp-foe">
+              <div key={round.item.id} className="foe-in">
+                <div key={round.hits} className={round.hits > 0 && !done ? 'foe-lunge' : ''}>
+                  <InkEnemy kind={kind} mood={mood} name={name} />
+                </div>
+              </div>
+              <p className="sp-foe-name">
+                {name}
+                {boss ? ' · boss' : ''}
+              </p>
+            </div>
+            <div className="sp-bubble">
+              <p className="sp-ask" aria-live="polite">
+                {round.step === 'tap' && 'Touche le mot qui n’est pas bien écrit.'}
+                {round.step === 'fix' && 'Choisis la bonne écriture.'}
+                {done && (round.lost ? 'L’encre t’a submergé… Voici la bonne phrase.' : round.revealed ? 'Il s’enfuit… mais tu as perdu des vies. Voici la bonne écriture.' : 'Ennemi vaincu !')}
+              </p>
+              <div className="sp-sentence" role="group" aria-label="Phrase">
+                {round.item.before.map((w, i) => (
+                  <Word key={`b${i}`} text={w} onTap={() => onTap(i)} disabled={round.step !== 'tap' || round.badTaps.includes(i)} bad={round.badTaps.includes(i)} />
+                ))}
+                <span className={`sp-target sp-${round.step}`}>
+                  {round.step === 'tap' ? (
+                    <button type="button" className="sp-word" onClick={() => onTap(round.item.before.length)}>
+                      {round.item.wrong}
+                      {round.item.suffix}
+                    </button>
+                  ) : round.step === 'fix' ? (
+                    <span className="sp-mark">
+                      {round.item.wrong}
+                      {round.item.suffix}
+                    </span>
+                  ) : (
+                    <span className="sp-ok">
+                      {round.item.right}
+                      {round.item.suffix}
+                    </span>
+                  )}
                 </span>
-              ) : (
-                <span className="sp-ok">
-                  {round.item.right}
-                  {round.item.suffix}
-                </span>
-              )}
-            </span>
-            {round.item.after.map((w, i) => (
-              <Word key={`a${i}`} text={w} onTap={() => tapWord(round.item.before.length + 1 + i)} disabled={round.step !== 'tap'} />
-            ))}
+                {round.item.after.map((w, i) => {
+                  const k = round.item.before.length + 1 + i;
+                  return <Word key={`a${i}`} text={w} onTap={() => onTap(k)} disabled={round.step !== 'tap' || round.badTaps.includes(k)} bad={round.badTaps.includes(k)} />;
+                })}
+              </div>
+            </div>
           </div>
 
           <p className="sp-msg" role="status">
@@ -448,7 +688,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
                       className="btn btn-ghost sp-choice"
                       disabled={tried}
                       aria-label={tried ? `${c} : ce n’est pas la bonne écriture` : c}
-                      onClick={() => pick(c)}
+                      onClick={() => onPick(c)}
                     >
                       {c}
                     </button>
@@ -456,11 +696,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
                 })}
               </div>
               {HINT[diff] === 'cost' && !round.tipShown && (
-                <button
-                  type="button"
-                  className="btn btn-ghost mt-3"
-                  onClick={() => setRound((r) => (r ? { ...r, tipShown: true, hintUsed: true } : r))}
-                >
+                <button type="button" className="btn btn-ghost mt-3" onClick={onTip}>
                   Un indice
                 </button>
               )}
@@ -480,48 +716,22 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
               <p className="sp-tip">
                 <strong>Astuce :</strong> {round.item.tip}
               </p>
-              {!g.current.duel && round.gained > 0 && <p className="mt-1 text-[15px]">+ {round.gained} points</p>}
-              <button ref={nextRef} type="button" className="btn btn-primary mt-3" onClick={next}>
-                {g.current.asked + 1 >= (g.current.duel ? g.current.duel.items.length : ROUNDS) ? 'Terminer' : 'Phrase suivante'}
+              {!duel && round.gained > 0 && <p className="mt-1 text-[15px]">+ {round.gained} points</p>}
+              <button ref={nextRef} type="button" className="btn btn-primary mt-3" onClick={onNext}>
+                {round.lost ? 'Voir mon bilan' : s.asked + 1 >= total ? 'Terminer' : boss ? 'Terminer' : 'Ennemi suivant'}
               </button>
             </div>
           )}
-        </section>
+        </>
       )}
-
-      {phase === 'over' && over && !ses.sess && (
-        <OverPanel over={over} cloud={cloud} account={!!account} onRestart={() => begin()} onDuel={(r) => begin(r)} onMenu={toMenu} />
-      )}
-      {phase === 'over' && over && ses.sess && (
-        <SessionOver
-          session={ses.sess}
-          state={ses.state}
-          score={over.score}
-          left={ses.left}
-          details={
-            <p className="mt-1 text-[15px]">
-              Phrases réussies : <strong>{over.okRounds}</strong> sur {over.total}
-            </p>
-          }
-          onRetry={() => begin()}
-          onBack={() => (onSessions ?? onHome)()}
-        />
-      )}
-      </div>
-    </Frame>
+    </section>
   );
 }
 
-const HINT_TEXT: Record<CourseDiff, string> = {
-  apprenti: 'Deux propositions seulement, et l’astuce s’affiche toute seule.',
-  standard: 'Trois propositions. Un indice est possible, mais il rapporte moins de points.',
-  expert: 'Jusqu’à quatre propositions, sans indice : il faut connaître la règle.',
-};
-
-function Word({ text, onTap, disabled }: { text: string; onTap: () => void; disabled: boolean }) {
+function Word({ text, onTap, disabled, bad }: { text: string; onTap: () => void; disabled: boolean; bad?: boolean }) {
   if (!isWord(text)) return <span className="sp-plain">{text}</span>;
   return (
-    <button type="button" className="sp-word" disabled={disabled} onClick={onTap}>
+    <button type="button" className={`sp-word${bad ? ' sp-bad' : ''}`} disabled={disabled} onClick={onTap}>
       {text}
     </button>
   );
@@ -548,7 +758,7 @@ function BestScores({ level, diff }: { level: Level; diff: CourseDiff }) {
 
 function OverPanel({ over, cloud, account, onRestart, onDuel, onMenu }: { over: Over; cloud: Cloud; account: boolean; onRestart: () => void; onDuel: (r: RuleId) => void; onMenu: () => void }) {
   const duel = !!over.duel;
-  const title = duel ? 'Duel terminé' : over.record ? 'Nouveau record !' : over.okRounds === over.total ? 'Sans faute !' : 'Partie terminée';
+  const title = duel ? 'Duel terminé' : over.dead ? 'L’encre a gagné, cette fois…' : over.record ? 'Nouveau record !' : over.okRounds === over.total ? 'Page nettoyée, sans faute !' : 'Page nettoyée !';
   return (
     <section aria-labelledby="sp-over">
       <h1 id="sp-over" className="title">
@@ -561,8 +771,9 @@ function OverPanel({ over, cloud, account, onRestart, onDuel, onMenu }: { over: 
             <strong className="score-big">{fmt(over.score)}</strong> points{over.rank > 0 ? ` · n° ${over.rank} sur cet appareil` : ''}
           </p>
           <p className="mt-2 text-[16px] font-bold">
-            {over.okRounds} phrase{over.okRounds > 1 ? 's' : ''} réussie{over.okRounds > 1 ? 's' : ''} sur {over.total}
-            {over.bestStreak >= 3 ? `, dont ${over.bestStreak} parfaites d’affilée` : ''}. Bien joué&nbsp;!
+            {over.dead
+              ? `Tu as vaincu ${over.defeated} ennemi${over.defeated > 1 ? 's' : ''} sur ${over.total}. Relis les astuces ci-dessous, puis retente : les phrases changent à chaque partie !`
+              : `${over.okRounds} phrase${over.okRounds > 1 ? 's' : ''} réussie${over.okRounds > 1 ? 's' : ''} sur ${over.total}${over.bestStreak >= 3 ? `, dont ${over.bestStreak} parfaites d’affilée` : ''}. Il te restait ${over.hpLeft} vie${over.hpLeft > 1 ? 's' : ''}. Bien joué !`}
           </p>
         </>
       )}

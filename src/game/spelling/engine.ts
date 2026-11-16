@@ -13,6 +13,23 @@ export const CHOICES: Record<CourseDiff, number> = { apprenti: 2, standard: 3, e
 /** Indice (la parade de la règle) : donné d'office aux Apprentis, au prix de points pour les Standard, absent pour les Experts. */
 export const HINT: Record<CourseDiff, 'free' | 'cost' | 'none'> = { apprenti: 'free', standard: 'cost', expert: 'none' };
 
+/** Vies du joueur au début d'une partie, selon la difficulté : chaque erreur en coûte une. */
+export const HP: Record<CourseDiff, number> = { apprenti: 6, standard: 5, expert: 4 };
+/** Après combien d'ennemis vaincus on choisit un bonus (le dernier ennemi, le 10e, est le boss). */
+export const BOON_AFTER: readonly number[] = [3, 6];
+
+export type BoonId = 'vie' | 'bouclier' | 'loupe';
+export interface Boon {
+  id: BoonId;
+  name: string;
+  text: string;
+}
+export const BOONS: readonly Boon[] = [
+  { id: 'vie', name: 'Goutte de vie', text: 'Tu récupères 2 vies.' },
+  { id: 'bouclier', name: 'Bouclier de buvard', text: 'Il absorbe ta prochaine erreur.' },
+  { id: 'loupe', name: 'Loupe', text: 'L’astuce s’affiche toute seule pendant 3 ennemis, sans retirer de points.' },
+];
+
 export type Rng = () => number;
 
 export interface Item {
@@ -116,6 +133,14 @@ export function nextItem(
 /** Phrases d'un duel : trois phrases distinctes de la même règle. */
 export function duelItems(level: Level, rule: RuleId, count: number, r: Rng = Math.random): Item[] {
   return shuffle(itemsFor(level, [rule]), r).slice(0, count);
+}
+
+/** Deux bonus différents à proposer. */
+export function offerBoons(r: Rng = Math.random): Boon[] {
+  const a = [...BOONS];
+  const out: Boon[] = [];
+  while (out.length < 2) out.push(a.splice(Math.floor(r() * a.length), 1)[0]);
+  return out;
 }
 
 // ───────────── Points ─────────────
