@@ -340,11 +340,11 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
     if (s.shield > 0) {
       s.shield--;
       sfx.play('ding');
-      return { ...nr, msg: 'Ton bouclier de buvard a absorbé l’attaque : tu ne perds aucune vie.' };
+      return { ...nr, msg: 'Le bouclier a tout absorbé : aucune vie perdue !' };
     }
     s.hp = Math.max(0, s.hp - 1);
     sfx.play('breach');
-    if (s.hp > 0) return { ...nr, msg: `${why} Tu perds une vie.` };
+    if (s.hp > 0) return { ...nr, msg: `${why} −1 vie.` };
     // plus de vie : l'ennemi gagne cette manche
     s.faults[r.item.rule] = (s.faults[r.item.rule] ?? 0) + 1;
     s.missed.push(r.item);
@@ -361,7 +361,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
       upd({ ...r, step: 'fix', msg: '', tipShown: HINT[diff] === 'free' || r.loupeOn });
       return;
     }
-    upd(hurt({ ...r, tapFirst: false, badTaps: [...r.badTaps, i] }, 'Ce mot est bien écrit : l’encre t’éclabousse !'));
+    upd(hurt({ ...r, tapFirst: false, badTaps: [...r.badTaps, i] }, 'Ce mot est bien écrit !'));
   };
 
   const settle = (r: Round, tries: number): Round => {
@@ -394,7 +394,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
       return;
     }
     const wrongPicks = [...r.wrongPicks, choice];
-    const nr = hurt({ ...r, tries: r.tries + 1, wrongPicks, tipShown: true }, 'Pas la bonne écriture : relis l’astuce !');
+    const nr = hurt({ ...r, tries: r.tries + 1, wrongPicks, tipShown: true }, 'Pas celle-là : relis l’astuce !');
     if (nr.lost) upd(nr);
     else if (r.tries + 1 >= 2) upd(settle({ ...nr, tries: 2 }, 3));
     else upd(nr);
@@ -612,6 +612,7 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [strike, round.item.id]);
+  const penFx = (round.hits > 0 && !done) || round.lost ? <PenFx key={`pf-${round.item.id}-${round.hits}`} word={HURT_WORDS[round.hits % HURT_WORDS.length]} /> : null;
   const mood = done ? (round.lost ? 'attack' : round.revealed || impact ? 'dead' : 'angry') : round.hits > 0 ? 'angry' : 'idle';
   const shake = round.hits > 0 && !done ? (round.hits % 2 ? ' sh-a' : ' sh-b') : '';
   const closing = done;
@@ -671,12 +672,16 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
             </div>
           )}
           <div className="sp-arena">
-            <div className="sp-battle" ref={battleRef}>
+            <div className={`sp-battle${impact ? ' sh-a' : shake}`} ref={battleRef}>
               <div className="sp-pen" ref={penRef}>
-                <div key={`${round.item.id}-${round.hits}-${strike}`} className={`pen-wrap${round.hits > 0 && !done ? ' pen-hurt' : ''}${strike ? ' pen-dash' : ''}${round.lost ? ' pen-down' : ''}`}>
+                <div key={`${round.item.id}-${round.hits}-${strike}`} className={`pen-wrap${round.hits > 0 && !done ? ' pen-hurt' : ''}${strike ? ' pen-dash' : ''}${round.lost ? ' pen-down' : ''}${round.step === 'fix' ? ' pen-ready' : ''}`}>
+                  {strike && <span className="pen-trail" aria-hidden="true" />}
                   <PenIcon />
                 </div>
-                <p className="sp-foe-name">Toi</p>
+                {penFx}
+                <div className="plate plate-me">
+                  <span className="plate-name">Toi</span>
+                </div>
               </div>
               <div className="sp-foe" ref={foeRef}>
                 <div key={round.item.id} className="foe-in">
@@ -684,17 +689,27 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
                     <InkEnemy kind={kind} mood={mood} name={name} />
                   </div>
                   {strike && <span className="sp-slash" aria-hidden="true" />}
+                  {impact && <FoeFx key={round.item.id} word={HIT_WORDS[hashOf(round.item.id) % HIT_WORDS.length]} />}
                 </div>
-                <p className="sp-foe-name">
-                  {name}
-                  <span className="sp-role">{ROLE_LABEL[role]}</span>
-                </p>
+                <div className={`plate plate-${role}`} key={`pl-${round.item.id}`}>
+                  <span className="plate-name">{name}</span>
+                  <span className="plate-role">
+                    {ROLE_LABEL[role]}
+                    <span className="menace" aria-hidden="true">
+                      {[0, 1, 2, 3].map((k) => (
+                        <i key={k} className={k < MENACE[role] ? 'on' : ''} />
+                      ))}
+                    </span>
+                    <span className="sr-only">Menace : {MENACE[role]} sur 4</span>
+                  </span>
+                </div>
               </div>
             </div>
             <div className={`sp-bubble${shake}`}>
-              <p className="sp-ask" aria-live="polite">
-                {round.step === 'tap' && 'Touche le mot qui n’est pas bien écrit.'}
-                {round.step === 'fix' && 'Choisis la bonne écriture.'}
+              <p className={`sp-ask${round.msg && !done ? ' sp-ask-bad' : ''}`} aria-live="polite">
+                {round.msg && !done && round.msg}
+                {!round.msg && round.step === 'tap' && 'Touche le mot qui n’est pas bien écrit.'}
+                {!round.msg && round.step === 'fix' && 'Choisis la bonne écriture.'}
                 {done && (round.lost ? 'L’encre t’a submergé… Voici la bonne phrase.' : round.revealed ? 'Il s’enfuit… mais tu as perdu des vies. Voici la bonne écriture.' : 'Ennemi vaincu !')}
               </p>
               <div className="sp-sentence" role="group" aria-label="Phrase">
@@ -727,12 +742,8 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
             </div>
           </div>
 
-          <p className="sp-msg" role="status">
-            {round.msg}
-          </p>
-
-          {round.step === 'fix' && (
-            <>
+          <div className="sp-zone">
+            <div className={`sp-layer${round.step === 'fix' ? '' : ' off'}`}>
               <div className="sp-choices" role="group" aria-label="Propositions">
                 {round.choices.map((c, i) => {
                   const tried = round.wrongPicks.includes(c);
@@ -750,38 +761,68 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
                     </button>
                   );
                 })}
+                {HINT[diff] === 'cost' && (
+                  <button type="button" className={`btn btn-ghost sp-hint${round.tipShown ? ' ghost' : ''}`} onClick={onTip}>
+                    Un indice
+                  </button>
+                )}
               </div>
-              {HINT[diff] === 'cost' && !round.tipShown && (
-                <button type="button" className="btn btn-ghost mt-3" onClick={onTip}>
-                  Un indice
-                </button>
-              )}
-              {round.tipShown && (
-                <p className="sp-tip">
-                  <strong>Astuce :</strong> {round.item.tip}
-                </p>
-              )}
-            </>
-          )}
-
-          {closing && (
-            <div className="mt-3">
-              <p className="text-[16px] leading-snug">
-                <strong>{round.item.fixed}</strong>
+              <p className={`sp-tip${round.tipShown ? '' : ' ghost'}`}>
+                <strong>Astuce :</strong> {round.item.tip}
               </p>
+            </div>
+            <div className={`sp-layer${closing ? '' : ' off'}`}>
               <p className="sp-tip">
                 <strong>Astuce :</strong> {round.item.tip}
               </p>
-              {!duel && round.gained > 0 && <p className="sp-pop mt-1 text-[15px]">+ {round.gained} points</p>}
-              {round.healed && <p className="sp-pop sp-heal">Pâté vaincu sans erreur : tu récupères une vie !</p>}
+              <p className={`sp-pop sp-gain${closing && !duel && (round.gained > 0 || round.healed) ? '' : ' ghost'}`}>
+                + {round.gained} points{round.healed ? <strong className="sp-heal"> · +1 vie (pâté sans erreur !)</strong> : ''}
+              </p>
               <button ref={nextRef} type="button" className="btn btn-primary mt-3" onClick={onNext}>
                 {round.lost ? 'Voir mon bilan' : s.asked + 1 >= total ? 'Terminer' : boss ? 'Terminer' : 'Ennemi suivant'}
               </button>
             </div>
-          )}
+          </div>
         </>
       )}
     </section>
+  );
+}
+
+const MENACE: Record<'splash' | 'tache' | 'pate' | 'boss', number> = { splash: 1, tache: 2, pate: 3, boss: 4 };
+const HIT_WORDS = ['PAF !', 'SPLASH !', 'ZLOUF !', 'BAM !'];
+const HURT_WORDS = ['AÏE !', 'OUILLE !', 'ARGH !'];
+const hashOf = (id: string) => [...id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+
+/** Étoile d'impact (cases à bords vifs, façon bande dessinée). */
+const STAR = Array.from({ length: 16 }, (_, i) => {
+  const a = (Math.PI * i) / 8;
+  const r = i % 2 === 0 ? 48 : 26;
+  return `${(50 + r * Math.cos(a)).toFixed(1)},${(50 + r * Math.sin(a)).toFixed(1)}`;
+}).join(' ');
+
+/** Effet sur l'ennemi quand la plume le touche : étoile, onde d'encre et onomatopée. Décor seulement. */
+function FoeFx({ word }: { word: string }) {
+  return (
+    <span className="fx fx-foe" aria-hidden="true">
+      <svg viewBox="0 0 100 100" className="fx-star">
+        <polygon points={STAR} />
+      </svg>
+      <i className="fx-ring" />
+      <b className="fx-word">{word}</b>
+    </span>
+  );
+}
+
+/** Effet sur la plume quand l'ennemi la touche : éclaboussure rouge et cri. */
+function PenFx({ word }: { word: string }) {
+  return (
+    <span className="fx fx-pen" aria-hidden="true">
+      <svg viewBox="0 0 100 100" className="fx-star fx-star-red">
+        <polygon points={STAR} />
+      </svg>
+      <b className="fx-word fx-word-red">{word}</b>
+    </span>
   );
 }
 
