@@ -135,6 +135,20 @@ export function duelItems(level: Level, rule: RuleId, count: number, r: Rng = Ma
   return shuffle(itemsFor(level, [rule]), r).slice(0, count);
 }
 
+/**
+ * Rôle d'un ennemi, qui fixe son dessin et sa taille :
+ * éclaboussure (phrase courte, petite et vive), tache (standard), pâté (phrase longue ou difficile, costaud : le vaincre sans
+ * erreur redonne une vie), boss (le dernier).
+ */
+export type EnemyRole = 'splash' | 'tache' | 'pate' | 'boss';
+export const wordCount = (i: Item) => i.before.length + 1 + i.after.length;
+export function roleOf(item: Item, boss: boolean): EnemyRole {
+  if (boss) return 'boss';
+  const n = wordCount(item);
+  if (item.level === 2 || n >= 9) return 'pate';
+  return n <= 5 ? 'splash' : 'tache';
+}
+
 /** Deux bonus différents à proposer. */
 export function offerBoons(r: Rng = Math.random): Boon[] {
   const a = [...BOONS];

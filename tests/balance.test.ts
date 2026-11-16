@@ -105,3 +105,11 @@ test('Chasse aux fautes : vies selon la difficulté, bonus distincts, boss en de
   }
   assert.equal(new Set(BOONS.map((b) => b.id)).size, BOONS.length);
 });
+
+import { ITEMS, roleOf } from '../src/game/spelling/engine';
+
+test('Chasse aux fautes : les rôles d’ennemis sont tous représentés et le boss est le dernier', () => {
+  const roles = new Set(ITEMS.map((i) => roleOf(i, false)));
+  for (const r of ['splash', 'tache', 'pate']) assert.ok(roles.has(r as never), r);
+  assert.equal(roleOf(ITEMS[0], true), 'boss');
+});

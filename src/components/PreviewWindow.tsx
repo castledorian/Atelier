@@ -173,7 +173,7 @@ function SpellingScene({ step }: { step: number }) {
       <div className="sp-arena">
         <div className="sp-foe">
           <div className="foe-in" key={fixed ? 'd' : 'a'}>
-            <InkEnemy kind={4} mood={fixed ? 'dead' : 'idle'} name="Pâté" />
+            <InkEnemy kind={0} mood={fixed ? 'dead' : 'idle'} name="Pâté" />
           </div>
         </div>
         <div className="sp-bubble">

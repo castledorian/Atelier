@@ -2444,3 +2444,149 @@ html[data-comfort='on'] .title-sm {
   border: 0;
   background: none;
 }
+
+/* ───────── Chasse aux fautes : HUD compact, rôles des ennemis, effets d'encre ───────── */
+.sp-hud {
+  flex-wrap: nowrap;
+  gap: 10px 14px;
+}
+.sp-hud .back-btn {
+  flex: none;
+}
+.sp-hud .sp-me {
+  flex: 1;
+  justify-content: center;
+}
+.sp-hud .sp-info {
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.sp-hud .sp-info .num {
+  font-family: var(--font-display);
+  font-size: 22px;
+}
+.sp-hp span.lost {
+  animation: sp-heart-pop 0.5s ease-out;
+}
+.sp-role {
+  display: block;
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(27, 25, 21, 0.72);
+}
+.sp-foe {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+.sp-foe .en {
+  margin: 0 auto;
+}
+.sp-foe .en-r-splash {
+  width: 62%;
+}
+.sp-foe .en-r-tache {
+  width: 84%;
+}
+.sp-foe .en-r-pate,
+.sp-foe .en-r-boss {
+  width: 100%;
+}
+.en-drops circle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: en-drop 0.65s cubic-bezier(0.2, 0.7, 0.4, 1) forwards;
+}
+@keyframes en-drop {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), calc(var(--dy) + 70px)) scale(0.3);
+  }
+}
+@keyframes sp-heart-pop {
+  30% {
+    transform: rotate(-45deg) scale(1.5);
+  }
+}
+@keyframes sh-a {
+  25%,
+  75% {
+    transform: translateX(-5px);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+}
+@keyframes sh-b {
+  25%,
+  75% {
+    transform: translateX(-5px);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+}
+.sp-bubble.sh-a {
+  animation: sh-a 0.28s;
+}
+.sp-bubble.sh-b {
+  animation: sh-b 0.28s;
+}
+.sp-pop {
+  animation: sp-pop 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+.sp-heal {
+  margin-top: 4px;
+  font-weight: 700;
+  color: var(--color-ribbon);
+}
+@keyframes sp-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.9);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .en-drops circle,
+  .sp-bubble.sh-a,
+  .sp-bubble.sh-b,
+  .sp-pop,
+  .sp-hp span.lost {
+    animation: none !important;
+  }
+}
+@media (max-width: 640px) {
+  .sp-hud {
+    flex-wrap: wrap;
+  }
+  .sp-hud .sp-me {
+    order: 3;
+    flex: 1 0 100%;
+    justify-content: flex-start;
+  }
+  .sp-hud .sp-info {
+    margin-left: auto;
+  }
+  .sp-foe .en-r-splash {
+    width: 90px;
+  }
+  .sp-foe .en-r-tache {
+    width: 120px;
+  }
+  .sp-foe .en-r-pate,
+  .sp-foe .en-r-boss {
+    width: 150px;
+  }
+}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackButton } from '../components/BackButton';
 import { DuelResult, ReviewNote } from '../components/EncreNotes';
 import type { DuelInfo } from '../components/EncreNotes';
-import { BOSS_KIND, BOSS_NAME, ENEMY_KINDS, ENEMY_NAMES, InkEnemy, PenIcon } from '../components/InkEnemy';
+import { BOSS_NAME, ENEMY_KINDS, ENEMY_NAMES, InkEnemy, PenIcon, ROLE_LABEL, kindFor } from '../components/InkEnemy';
 import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
 import { COURSE_DIFFS, boardKey } from '../game/course/questions';
@@ -16,7 +16,7 @@ import { newRunId } from '../game/history';
 import { parseSpelling } from '../game/sessionConfig';
 import { loadSettings, saveSettings } from '../game/storage';
 import type { Settings } from '../game/storage';
-import { BOON_AFTER, HINT, HP, ROUNDS, choicesFor, duelItems, isFault, isPerfect, nextItem, offerBoons, pointsFor, shuffle } from '../game/spelling/engine';
+import { BOON_AFTER, HINT, HP, ROUNDS, choicesFor, duelItems, isFault, isPerfect, nextItem, offerBoons, pointsFor, roleOf, shuffle } from '../game/spelling/engine';
 import type { Boon, Item, RoundOutcome } from '../game/spelling/engine';
 import { addSpellingScore, loadSpellingPrefs, loadSpellingScores, saveSpellingPrefs } from '../game/spelling/scores';
 import { enqueue, flush } from '../server/outbox';
@@ -85,6 +85,8 @@ interface Round {
   hits: number;
   loupeOn: boolean;
   lost: boolean;
+  /** un pâté vaincu sans erreur redonne une vie */
+  healed: boolean;
 }
 
 interface Over {
@@ -210,6 +212,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
       hits: 0,
       loupeOn,
       lost: false,
+      healed: false,
     });
     sfx.play('wave');
   }, [sfx]);
@@ -374,7 +377,13 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
     } else s.okRounds++;
     s.lastOk.push(!isFault(out));
     if (tries < 3) sfx.play(s.asked === ROUNDS - 1 && !s.duel ? 'bigkill' : 'kill');
-    return { ...r, step: 'done', gained, revealed: tries === 3, msg: '' };
+    // un pâté (ennemi costaud) vaincu sans aucune erreur : on récupère une vie
+    const healed = !s.duel && s.hp < s.maxHp && isPerfect(out) && r.hits === 0 && roleOf(r.item, s.asked === ROUNDS - 1) === 'pate';
+    if (healed) {
+      s.hp++;
+      sfx.play('ding');
+    }
+    return { ...r, step: 'done', gained, revealed: tries === 3, msg: '', healed };
   };
 
   const pick = (choice: string) => {
@@ -435,9 +444,11 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
   return (
     <Frame wide>
       <div className="sp-card">
-      <div className="card-top">
-        <BackButton onClick={phase === 'menu' ? (onSessions ?? onHome) : toMenu} label={phase === 'menu' ? (inSession ? 'Mes séances' : 'Accueil') : 'Menu'} />
-      </div>
+      {phase !== 'play' && (
+        <div className="card-top">
+          <BackButton onClick={phase === 'menu' ? (onSessions ?? onHome) : toMenu} label={phase === 'menu' ? (inSession ? 'Mes séances' : 'Accueil') : 'Menu'} />
+        </div>
+      )}
 
       {phase === 'menu' && !inSession && (
         <section aria-labelledby="sp-title">
@@ -501,6 +512,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
           onPick={pick}
           onBoon={takeBoon}
           onNext={next}
+          onBack={toMenu}
           onTip={() => upd({ ...round, tipShown: true, hintUsed: true })}
           nextRef={nextRef}
           fixRef={fixRef}
@@ -548,50 +560,49 @@ interface PlayProps {
   onPick: (c: string) => void;
   onBoon: (b: Boon) => void;
   onNext: () => void;
+  onBack: () => void;
   onTip: () => void;
   nextRef: React.RefObject<HTMLButtonElement | null>;
   fixRef: React.RefObject<HTMLButtonElement | null>;
 }
 
 /** L'écran de combat : toi (la plume et tes vies) en haut, l'ennemi d'encre et sa phrase au milieu, les réponses dessous. */
-function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPick, onBoon, onNext, onTip, nextRef, fixRef }: PlayProps) {
+function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPick, onBoon, onNext, onBack, onTip, nextRef, fixRef }: PlayProps) {
   const duel = !!s.duel;
   const total = duel ? (s.duel as { items: Item[] }).items.length : ROUNDS;
   const boss = !duel && s.asked === ROUNDS - 1;
-  const kind = boss ? BOSS_KIND : s.order[s.asked % ENEMY_KINDS];
-  const name = boss ? BOSS_NAME : ENEMY_NAMES[kind];
+  const role = roleOf(round.item, boss);
+  const kind = kindFor(role, s.order[s.asked % ENEMY_KINDS]);
+  const name = boss ? BOSS_NAME : role === 'pate' ? 'Gros Pâté' : ENEMY_NAMES[s.order[s.asked % ENEMY_KINDS]];
   const done = round.step === 'done';
-  const mood = done ? (round.lost ? 'attack' : 'dead') : 'idle';
+  const mood = done ? (round.lost ? 'attack' : 'dead') : round.hits > 0 ? 'angry' : 'idle';
+  const shake = round.hits > 0 && !done ? (round.hits % 2 ? ' sh-a' : ' sh-b') : '';
   const closing = done;
   return (
     <section aria-label="Partie en cours" className="sp-play">
       <div className="sp-hud">
-        <div className="sp-me">
-          <PenIcon />
-          {!duel && (
-            <div>
-              <span className="sp-hp-label">
-                Vie : <strong>{s.hp}</strong> sur {s.maxHp}
-              </span>
-              <div key={hurtKey} className={`sp-hp${hurtKey > 0 ? ' hit' : ''}`} role="img" aria-label={`Vie : ${s.hp} sur ${s.maxHp}`}>
-                {Array.from({ length: s.maxHp }, (_, k) => (
-                  <span key={k} className={k < s.hp ? 'on' : ''} />
-                ))}
-              </div>
-              {(s.shield > 0 || s.loupe > 0) && (
-                <p className="sp-chips">
-                  {s.shield > 0 && <span>Bouclier × {s.shield}</span>}
-                  {s.loupe > 0 && <span>Loupe : {s.loupe} ennemi{s.loupe > 1 ? 's' : ''}</span>}
-                </p>
-              )}
+        <BackButton onClick={onBack} label="Menu" />
+        {!duel && (
+          <div className="sp-me">
+            <PenIcon />
+            <div key={hurtKey} className={`sp-hp${hurtKey > 0 ? ' hit' : ''}`} role="img" aria-label={`Vie : ${s.hp} sur ${s.maxHp}`}>
+              {Array.from({ length: s.maxHp }, (_, k) => (
+                <span key={k} className={`${k < s.hp ? 'on' : ''}${hurtKey > 0 && k === s.hp ? ' lost' : ''}`} />
+              ))}
             </div>
-          )}
-        </div>
+            {(s.shield > 0 || s.loupe > 0) && (
+              <p className="sp-chips">
+                {s.shield > 0 && <span title="Bouclier de buvard">Bouclier × {s.shield}</span>}
+                {s.loupe > 0 && <span title="Loupe">Loupe × {s.loupe}</span>}
+              </p>
+            )}
+          </div>
+        )}
         <div className="sp-info">
           <span className="subhead">
-            {duel ? `Duel · ${ruleInfo((s.duel as { rule: RuleId }).rule).name} · ${counter.n} sur ${total}` : `Ennemi ${counter.n} sur ${ROUNDS}`}
+            {duel ? `Duel · ${ruleInfo((s.duel as { rule: RuleId }).rule).name} · ${counter.n}/${total}` : `Ennemi ${counter.n}/${ROUNDS}`}
           </span>
-          {!duel && <span className="num">Score : {fmt(counter.score)}</span>}
+          {!duel && <span className="num">{fmt(counter.score)} pts</span>}
         </div>
       </div>
       <div className="sp-bar" aria-hidden="true">
@@ -632,10 +643,10 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
               </div>
               <p className="sp-foe-name">
                 {name}
-                {boss ? ' · boss' : ''}
+                <span className="sp-role">{ROLE_LABEL[role]}</span>
               </p>
             </div>
-            <div className="sp-bubble">
+            <div className={`sp-bubble${shake}`}>
               <p className="sp-ask" aria-live="polite">
                 {round.step === 'tap' && 'Touche le mot qui n’est pas bien écrit.'}
                 {round.step === 'fix' && 'Choisis la bonne écriture.'}
@@ -716,7 +727,8 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
               <p className="sp-tip">
                 <strong>Astuce :</strong> {round.item.tip}
               </p>
-              {!duel && round.gained > 0 && <p className="mt-1 text-[15px]">+ {round.gained} points</p>}
+              {!duel && round.gained > 0 && <p className="sp-pop mt-1 text-[15px]">+ {round.gained} points</p>}
+              {round.healed && <p className="sp-pop sp-heal">Pâté vaincu sans erreur : tu récupères une vie !</p>}
               <button ref={nextRef} type="button" className="btn btn-primary mt-3" onClick={onNext}>
                 {round.lost ? 'Voir mon bilan' : s.asked + 1 >= total ? 'Terminer' : boss ? 'Terminer' : 'Ennemi suivant'}
               </button>
