@@ -3566,3 +3566,176 @@ html[data-comfort='on'] .title-sm {
 .sp-bubble-tuto {
   padding-bottom: 36px;
 }
+
+/* ───── Le canon à encre (remplace le crayon) ───── */
+.sp-pen .pen-icon,
+.pen-ready .pen-icon {
+  animation: none;
+}
+.cannon-icon {
+  overflow: visible;
+  transform-origin: 40% 85%;
+  /* un peu plus grand que l'ancien stylo : la bouche du canon est alors à 97 % / 33 % */
+  transform: scale(1.2);
+}
+.cn-barrel {
+  transform-origin: 18px 30px;
+  transition: transform 0.25s;
+}
+/* il vise vers le haut et se met à briller dès qu'on peut corriger : « prêt à tirer » */
+.pen-ready .cn-barrel {
+  animation: cn-aim 0.9s ease-in-out infinite;
+}
+@keyframes cn-aim {
+  50% {
+    transform: rotate(-7deg);
+  }
+}
+.pen-wrap {
+  z-index: 4;
+}
+.cannon-fire {
+  animation: cn-kick 0.42s ease-out both;
+}
+.cannon-fire .cn-barrel {
+  animation: cn-recoil 0.42s ease-out both;
+}
+@keyframes cn-kick {
+  0% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-9px) rotate(-3deg);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+@keyframes cn-recoil {
+  0% {
+    transform: translate(0, 0);
+  }
+  18% {
+    transform: translate(-5px, 2px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+.cball {
+  position: absolute;
+  left: 97%;
+  top: 33%;
+  width: 13px;
+  height: 13px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #5b6b8f 0 12%, var(--color-ink) 45%);
+  box-shadow: 0 0 6px rgba(29, 42, 68, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  animation: cball 0.26s 0.05s cubic-bezier(0.25, 0.1, 0.6, 1) both;
+}
+@keyframes cball {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(calc(var(--bx, 120px) * 0.5), calc(var(--by, 0px) * 0.5 - 16px)) scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(var(--bx, 120px), var(--by, 0px)) scale(1.1);
+  }
+}
+.cflash {
+  position: absolute;
+  left: 97%;
+  top: 33%;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff6c2 0 25%, #ffb830 55%, transparent 72%);
+  opacity: 0;
+  pointer-events: none;
+  animation: cflash 0.22s ease-out both;
+}
+@keyframes cflash {
+  0% {
+    opacity: 1;
+    transform: scale(0.3);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+.csmoke {
+  position: absolute;
+  left: 97%;
+  top: 29%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  background: rgba(150, 150, 160, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  animation: csmoke 0.6s 0.1s ease-out both;
+}
+@keyframes csmoke {
+  0% {
+    opacity: 0.7;
+    transform: translate(0, 0) scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(14px, -22px) scale(1.7);
+  }
+}
+.pen-hurt {
+  animation: cn-hurt 0.45s ease-out;
+}
+@keyframes cn-hurt {
+  15% {
+    transform: translateX(-10px) rotate(-6deg);
+  }
+  45% {
+    transform: translateX(5px) rotate(3deg);
+  }
+}
+.pen-down {
+  transform: rotate(-24deg) translateY(6px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cannon-fire,
+  .cannon-fire .cn-barrel,
+  .pen-ready .cn-barrel,
+  .cflash,
+  .csmoke,
+  .pen-hurt {
+    animation: none !important;
+  }
+  /* sans animation, le boulet est simplement montré un instant sur l'ennemi */
+  .cball {
+    animation: cball-still 0.3s both;
+  }
+  @keyframes cball-still {
+    0%,
+    99% {
+      opacity: 1;
+      transform: translate(var(--bx, 120px), var(--by, 0px));
+    }
+    100% {
+      opacity: 0;
+      transform: translate(var(--bx, 120px), var(--by, 0px));
+    }
+  }
+}

@@ -8,6 +8,7 @@ export type SfxName =
   | 'error'
   | 'breach'
   | 'sweep'
+  | 'cannon'
   | 'mult'
   | 'ready'
   | 'wave'
@@ -34,6 +35,7 @@ const LENGTH: Record<SfxName, number> = {
   error: 0.18,
   breach: 0.65,
   sweep: 1.4,
+  cannon: 0.5,
   mult: 0.25,
   ready: 0.42,
   wave: 1.15,
@@ -149,6 +151,12 @@ class Synth {
         this.burst('bandpass', 500, 5000, 0.45, 0.7, 0, 3);
         this.burst('highpass', 3000, 6000, 0.45, 0.2);
         this.bell(0.45, 0.3);
+        break;
+      case 'cannon':
+        // coup de canon : un « boum » grave, un souffle de poudre et un sifflement
+        this.tone('sine', 220, 45, 0.3, 0.9);
+        this.burst('lowpass', 1400, 200, 0.3, 0.7);
+        this.burst('bandpass', 900, 3000, 0.18, 0.25, 0.04, 2);
         break;
       case 'mult':
         this.tone('triangle', 660, 660, 0.09, 0.22);

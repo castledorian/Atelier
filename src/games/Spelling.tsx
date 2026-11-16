@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { BackButton } from '../components/BackButton';
 import { DuelResult, ReviewNote } from '../components/EncreNotes';
 import type { DuelInfo } from '../components/EncreNotes';
-import { BOSS_NAME, ENEMY_KINDS, ENEMY_NAMES, InkEnemy, PATE_NAMES, PenIcon, ROLE_LABEL, SPLASH_NAMES, kindFor } from '../components/InkEnemy';
+import { BOSS_NAME, ENEMY_KINDS, ENEMY_NAMES, InkEnemy, PATE_NAMES, CannonIcon, ROLE_LABEL, SPLASH_NAMES, kindFor } from '../components/InkEnemy';
 import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
 import { COURSE_DIFFS, boardKey } from '../game/course/questions';
@@ -631,7 +631,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
           onNext={next}
           onBack={toMenu}
           onImpact={(big) => sfx.play(big ? 'bigkill' : 'kill')}
-          onDash={() => sfx.play('sweep')}
+          onDash={() => sfx.play('cannon')}
           onTip={() => upd({ ...round, tipShown: true, hintUsed: true })}
           onGomme={useGomme}
           nextRef={nextRef}
@@ -681,7 +681,7 @@ interface PlayProps {
   onBoon: (b: Boon) => void;
   onNext: () => void;
   onBack: () => void;
-  /** le coup de plume touche l'ennemi (pour le son) */
+  /** le boulet touche l'ennemi (pour le son) */
   onImpact: (boss: boolean) => void;
   onDash: () => void;
   onTip: () => void;
@@ -690,7 +690,7 @@ interface PlayProps {
   fixRef: React.RefObject<HTMLButtonElement | null>;
 }
 
-/** L'écran de combat : toi (la plume et tes vies) en haut, l'ennemi d'encre et sa phrase au milieu, les réponses dessous. */
+/** L'écran de combat : toi (le canon et tes vies) en haut, l'ennemi d'encre et sa phrase au milieu, les réponses dessous. */
 function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPick, onBoon, onNext, onBack, onImpact, onDash, onTip, onGomme, nextRef, fixRef }: PlayProps) {
   const duel = !!s.duel;
   const total = duel ? (s.duel as { items: Item[] }).items.length : ROUNDS;
@@ -701,14 +701,14 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
   const pick = (list: string[]) => list[s.order[s.asked % ENEMY_KINDS] % list.length];
   const name = boss ? BOSS_NAME : role === 'pate' ? pick(PATE_NAMES) : role === 'splash' ? pick(SPLASH_NAMES) : pick(ENEMY_NAMES);
   const done = round.step === 'done';
-  /** bonne réponse : la plume fonce sur l'ennemi (sauf s'il a fallu lui donner la réponse) */
+  /** bonne réponse : le canon tire sur l'ennemi (sauf s'il a fallu lui donner la réponse) */
   const strike = done && !round.lost && !round.revealed;
   const [impact, setImpact] = useState(false);
   const battleRef = useRef<HTMLDivElement>(null);
   const penRef = useRef<HTMLDivElement>(null);
   const foeRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
-  // distance plume → ennemi, mesurée pour que le coup de plume et la charge de l'ennemi s'arrêtent au contact
+  // distance canon → ennemi : le boulet part de la bouche du canon et s'arrête sur l'ennemi ; la charge de l'ennemi s'arrête au contact
   useLayoutEffect(() => {
     const b = battleRef.current;
     const p = penRef.current;
@@ -719,6 +719,14 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
     const gap = Math.max(0, fr.left + fr.width * 0.18 - pr.right);
     b.style.setProperty('--dx', `${Math.round(gap)}px`);
     b.style.setProperty('--ex', `${-Math.round(gap)}px`);
+    // trajet du boulet : de la bouche du canon (97 % / 33 % de l'icône) au flanc de l'ennemi
+    const cw = p.querySelector('.pen-wrap')?.getBoundingClientRect();
+    if (cw) {
+      const mx = cw.left + cw.width * 0.97;
+      const my = cw.top + cw.height * 0.33;
+      b.style.setProperty('--bx', `${Math.round(fr.left + fr.width * 0.3 - mx)}px`);
+      b.style.setProperty('--by', `${Math.round(fr.top + fr.height * 0.55 - my)}px`);
+    }
     const bub = bubbleRef.current;
     if (bub) bub.style.setProperty('--tail', `${Math.round(fr.left + fr.width / 2 - bub.getBoundingClientRect().left)}px`);
   }, [round.item.id, round.hits, done]);
@@ -810,11 +818,17 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
               <div className="sp-pen" ref={penRef}>
                 <div className="plate plate-me">
                   <span className="plate-name">Toi</span>
-                  <span className="plate-role">{s.maxHp > 0 ? `${s.hp} vie${s.hp > 1 ? 's' : ''}` : 'Ta plume'}</span>
+                  <span className="plate-role">{s.maxHp > 0 ? `${s.hp} vie${s.hp > 1 ? 's' : ''}` : 'Ton canon'}</span>
                 </div>
-                <div key={`${round.item.id}-${round.hits}-${strike}`} className={`pen-wrap${round.hits > 0 && !done ? ' pen-hurt' : ''}${strike ? ' pen-dash' : ''}${round.lost ? ' pen-down' : ''}${round.step === 'fix' ? ' pen-ready' : ''}`}>
-                  {strike && <span className="pen-trail" aria-hidden="true" />}
-                  <PenIcon />
+                <div key={`${round.item.id}-${round.hits}-${strike}`} className={`pen-wrap${round.hits > 0 && !done ? ' pen-hurt' : ''}${strike ? ' cannon-fire' : ''}${round.lost ? ' pen-down' : ''}${round.step === 'fix' ? ' pen-ready' : ''}`}>
+                  {strike && (
+                    <>
+                      <span className="cball" aria-hidden="true" />
+                      <span className="cflash" aria-hidden="true" />
+                      <span className="csmoke" aria-hidden="true" />
+                    </>
+                  )}
+                  <CannonIcon />
                 </div>
                 {penFx}
               </div>
@@ -960,7 +974,7 @@ const STAR = Array.from({ length: 16 }, (_, i) => {
   return `${(50 + r * Math.cos(a)).toFixed(1)},${(50 + r * Math.sin(a)).toFixed(1)}`;
 }).join(' ');
 
-/** Effet sur l'ennemi quand la plume le touche : étoile, onde d'encre et onomatopée. Décor seulement. */
+/** Effet sur l'ennemi quand le boulet le touche : étoile, onde d'encre et onomatopée. Décor seulement. */
 function FoeFx({ word }: { word: string }) {
   return (
     <span className="fx fx-foe" aria-hidden="true">
@@ -973,7 +987,7 @@ function FoeFx({ word }: { word: string }) {
   );
 }
 
-/** Effet sur la plume quand l'ennemi la touche : éclaboussure rouge et cri. */
+/** Effet sur le canon quand l'ennemi le touche : éclaboussure rouge et cri. */
 function PenFx({ word }: { word: string }) {
   return (
     <span className="fx fx-pen" aria-hidden="true">

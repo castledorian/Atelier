@@ -1,4 +1,4 @@
-import { InkEnemy, PenIcon } from './InkEnemy';
+import { CannonIcon, InkEnemy } from './InkEnemy';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Sfx } from '../game/audio';
 import type { SfxName } from '../game/audio';
@@ -161,10 +161,17 @@ function SpellingScene({ step }: { step: number }) {
   return (
     <div className="sp-demo" aria-hidden="true">
       <div className="sp-arena">
-        <div className="sp-battle" style={{ ['--dx' as string]: '150px', ['--ex' as string]: '-150px' }}>
+        <div className="sp-battle" style={{ ['--dx' as string]: '150px', ['--ex' as string]: '-150px', ['--bx' as string]: '120px', ['--by' as string]: '-14px' }}>
           <div className="sp-pen">
-            <div key={fixed ? 'd' : 'a'} className={`pen-wrap${fixed ? ' pen-dash' : ''}`}>
-              <PenIcon />
+            <div key={fixed ? 'd' : 'a'} className={`pen-wrap${fixed ? ' cannon-fire' : ''}`}>
+              {fixed && (
+                <>
+                  <span className="cball" aria-hidden="true" />
+                  <span className="cflash" aria-hidden="true" />
+                  <span className="csmoke" aria-hidden="true" />
+                </>
+              )}
+              <CannonIcon />
             </div>
           </div>
           <div className="sp-foe">

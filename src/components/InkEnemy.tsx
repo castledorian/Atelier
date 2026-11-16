@@ -182,7 +182,29 @@ export function InkEnemy({ kind, mood, name }: { kind: number; mood: EnemyMood; 
   );
 }
 
-/** Petit stylo-plume : « toi », à côté de la barre de vie. */
+/**
+ * Petit canon à encre : « toi ». Il regarde vers la droite (vers l'ennemi) ; le tube (`cn-barrel`) recule quand il tire.
+ * Affiché à l'échelle 1,2 : la bouche du canon est à environ 97 % de la largeur et 33 % de la hauteur (le boulet part de là).
+ */
+export function CannonIcon() {
+  return (
+    <svg className="pen-icon cannon-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+      <path d="M6 33 L30 33 L32 38 L8 38 Z" fill={INK} />
+      <g className="cn-barrel">
+        <g transform="rotate(-20 18 30)">
+          <rect x="12" y="24" width="28" height="12" rx="4" fill={INK} />
+          <rect x="37" y="22" width="7" height="16" rx="2.5" fill={INK} stroke="#c8932b" strokeWidth="1.6" />
+          <path d="M16 27.5 L34 27.5" stroke={PAPER} strokeWidth="1.8" strokeLinecap="round" opacity="0.55" />
+        </g>
+      </g>
+      <circle cx="18" cy="38" r="8" fill="#c8932b" stroke={INK} strokeWidth="3" />
+      <circle cx="18" cy="38" r="2.6" fill={PAPER} />
+      <path d="M18 31 V45 M11 38 H25" stroke={INK} strokeWidth="1.6" />
+    </svg>
+  );
+}
+
+/** Petit stylo-plume (ancien « toi »). */
 export function PenIcon() {
   return (
     <svg className="pen-icon" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
