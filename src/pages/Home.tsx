@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Frame } from './Frame';
 import { InfoButton } from '../components/Preview';
+import type { PreviewGame } from '../components/Preview';
+import PreviewWindow from '../components/PreviewWindow';
 import type { InstallInfo } from '../components/Screens';
 import { serverEnabled } from '../server/api';
 import { fetchSessionsInfo } from '../server/student';
@@ -15,8 +17,6 @@ interface HomeProps {
   student: StudentAccount | null;
   teacher: TeacherSession | null;
   onPlay: (game: 'typing' | 'math' | 'memory' | 'spelling') => void;
-  /** extrait animé du jeu (le « i » en haut à droite de la carte) */
-  onPreview: (game: 'typing' | 'math' | 'memory' | 'spelling') => void;
   onSessions: () => void;
   onLogin: (tab: 'student' | 'teacher') => void;
   onDashboard: () => void;
@@ -25,8 +25,10 @@ interface HomeProps {
   install: InstallInfo;
 }
 
-export default function Home({ student, teacher, onPlay, onPreview, onSessions, onLogin, onDashboard, onPrivacy, onLogout, install }: HomeProps) {
+export default function Home({ student, teacher, onPlay, onSessions, onLogin, onDashboard, onPrivacy, onLogout, install }: HomeProps) {
   const online = serverEnabled();
+  /** jeu dont l'extrait est ouvert (le « i » d'une carte) */
+  const [preview, setPreview] = useState<PreviewGame | null>(null);
   const [ownGrade, setGrade] = useState<Grade | null>(loadGrade);
   const studentId = student?.student.id ?? null;
   /** niveau fixé par l'enseignant pour la classe de l'élève connecté */
@@ -153,7 +155,7 @@ export default function Home({ student, teacher, onPlay, onPreview, onSessions, 
           )}
             <span className="gcard-go">Jouer →</span>
           </button>
-            <InfoButton onClick={() => onPreview('typing')} label="Voir un extrait : Frappe !" />
+            <InfoButton onClick={() => setPreview('typing')} label="Voir un extrait : Frappe !" />
           </div>
         )}
         {isAvailable('math', grade) && (
@@ -169,7 +171,7 @@ export default function Home({ student, teacher, onPlay, onPreview, onSessions, 
           )}
             <span className="gcard-go">Jouer →</span>
           </button>
-            <InfoButton onClick={() => onPreview('math')} label="Voir un extrait : Course à l’encre" />
+            <InfoButton onClick={() => setPreview('math')} label="Voir un extrait : Course à l’encre" />
           </div>
         )}
         {isAvailable('spelling', grade) && (
@@ -180,7 +182,7 @@ export default function Home({ student, teacher, onPlay, onPreview, onSessions, 
             <span className="gcard-text">Une faute s’est glissée dans la phrase : trouve-la, puis corrige-la.</span>
             <span className="gcard-go">Jouer →</span>
           </button>
-            <InfoButton onClick={() => onPreview('spelling')} label="Voir un extrait : Chasse aux fautes" />
+            <InfoButton onClick={() => setPreview('spelling')} label="Voir un extrait : Chasse aux fautes" />
           </div>
         )}
         {isAvailable('memory', grade) && (
@@ -191,7 +193,7 @@ export default function Home({ student, teacher, onPlay, onPreview, onSessions, 
             <span className="gcard-text">Retiens les taches qui s’allument, puis refais la suite ou retrouve leurs places.</span>
             <span className="gcard-go">Jouer →</span>
           </button>
-            <InfoButton onClick={() => onPreview('memory')} label="Voir un extrait : Mémoire d’encre" />
+            <InfoButton onClick={() => setPreview('memory')} label="Voir un extrait : Mémoire d’encre" />
           </div>
         )}
         <div className="gcard gcard-soon" aria-label="Autres jeux à venir">
@@ -221,6 +223,18 @@ export default function Home({ student, teacher, onPlay, onPreview, onSessions, 
           Confidentialité et données
         </button>
       </p>
+      {preview && (
+        <PreviewWindow
+          game={preview}
+          grade={grade}
+          onClose={() => setPreview(null)}
+          onPlay={() => {
+            const g = preview;
+            setPreview(null);
+            onPlay(g);
+          }}
+        />
+      )}
     </Frame>
   );
 }

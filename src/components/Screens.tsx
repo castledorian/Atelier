@@ -10,7 +10,6 @@ import type { Layout, ScoreEntry, Settings, TextSize } from '../game/storage';
 import type { StudentAccount } from '../server/types';
 import { BackButton, useFitRows } from './BackButton';
 import { ScoresPanel } from './Extras';
-import { PREVIEWS, PreviewBar } from './Preview';
 
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
 
@@ -294,14 +293,12 @@ interface MenuProps {
   onChange: (patch: Partial<Settings>) => void;
   onClear: () => void;
   onProgress: () => void;
-  /** ouvert depuis l'accueil : on commence par l'extrait et « Fermer » ramène à l'accueil */
-  startPreview?: boolean;
   /** élève connecté (prénom imposé, classements Classe et École) */
   account: StudentAccount | null;
   onHome: () => void;
 }
 
-type MenuView = 'main' | 'howto' | 'scores' | 'settings' | 'preview';
+type MenuView = 'main' | 'howto' | 'scores' | 'settings';
 
 /** Règles du jeu, en phrases courtes. */
 function HowTo({ assist, kbOn }: { assist: boolean; kbOn: boolean }) {
@@ -337,11 +334,11 @@ function HowTo({ assist, kbOn }: { assist: boolean; kbOn: boolean }) {
   );
 }
 
-export function Menu({ scores, settings, kbOn, install, onStart, onChange, onClear, onProgress, startPreview, account, onHome }: MenuProps) {
+export function Menu({ scores, settings, kbOn, install, onStart, onChange, onClear, onProgress, account, onHome }: MenuProps) {
   const diff = settings.difficulty;
   const list = scoresFor(scores, diff);
   const assist = diff === 'perso' ? settings.custom.autoTarget : DIFFICULTIES[diff].autoTarget;
-  const [view, setView] = useState<MenuView>(startPreview ? 'preview' : 'main');
+  const [view, setView] = useState<MenuView>('main');
   const rows = useFitRows(330, 31, 3, 10);
   const back = () => setView('main');
 
@@ -371,9 +368,6 @@ export function Menu({ scores, settings, kbOn, install, onStart, onChange, onCle
     </section>
   );
 
-  if (view === 'preview') {
-    return <PreviewBar title={PREVIEWS.typing.title} steps={[...PREVIEWS.typing.steps]} onClose={startPreview ? onHome : back} onPlay={onStart} />;
-  }
   if (view === 'howto') {
     return (
       <div className="overlay">

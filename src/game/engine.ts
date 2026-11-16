@@ -168,6 +168,8 @@ export class Game {
   private cwFont = '';
   /** démo d'arrière-plan figée (ordinateur trop lent : le menu reste fluide) */
   private demoStill = false;
+  /** extrait ouvert depuis l'accueil : la démonstration est jouée avec le son */
+  private demoSound = false;
 
   // Géométrie (pixels CSS)
   private W = 0;
@@ -286,6 +288,10 @@ export class Game {
     this.snd('start');
     this.startWave(1);
     this.last = performance.now();
+  }
+
+  setDemoSound(on: boolean) {
+    this.demoSound = on;
   }
 
   startDemo() {
@@ -578,7 +584,7 @@ export class Game {
   }
 
   private snd(name: SfxName) {
-    if (this.mode !== 'demo') this.sfx.play(name);
+    if (this.mode !== 'demo' || this.demoSound) this.sfx.play(name);
   }
 
   private addTrauma(v: number) {

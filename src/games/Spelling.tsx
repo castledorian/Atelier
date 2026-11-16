@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackButton } from '../components/BackButton';
-import { PREVIEWS, PreviewBar, SpellingDemo } from '../components/Preview';
 import { DuelResult, ReviewNote } from '../components/EncreNotes';
 import type { DuelInfo } from '../components/EncreNotes';
 import { Check } from '../components/Screens';
@@ -37,8 +36,6 @@ interface Props {
   onSessionLost: () => void;
   session?: SessionInfo | null;
   onSessions?: () => void;
-  /** ouvert depuis le « i » de l'accueil : on commence par l'extrait, et « Fermer » ramène à l'accueil */
-  startPreview?: boolean;
 }
 
 interface GameState {
@@ -111,9 +108,8 @@ const rememberSeen = (ids: string[]) => {
 const isWord = (w: string) => /[\p{L}\p{N}]/u.test(w);
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
-export default function Spelling({ account, onHome, onSessionLost, session, onSessions, startPreview }: Props) {
+export default function Spelling({ account, onHome, onSessionLost, session, onSessions }: Props) {
   const [phase, setPhase] = useState<Phase>('menu');
-  const [preview, setPreview] = useState(!!startPreview);
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const prefs = useRef(loadSpellingPrefs());
   const [level] = useState<Level>(() => (session ? parseSpelling(session.config).level : levelOf(effectiveGrade(account?.student.id ?? null))));
@@ -343,13 +339,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
         <BackButton onClick={phase === 'menu' ? (onSessions ?? onHome) : toMenu} label={phase === 'menu' ? (inSession ? 'Mes séances' : 'Accueil') : 'Menu'} />
       </div>
 
-      {phase === 'menu' && !inSession && preview && (
-        <PreviewBar inline title={PREVIEWS.spelling.title} steps={[...PREVIEWS.spelling.steps]} onClose={() => (startPreview ? onHome() : setPreview(false))} onPlay={() => begin()}>
-          <SpellingDemo />
-        </PreviewBar>
-      )}
-
-      {phase === 'menu' && !inSession && !preview && (
+      {phase === 'menu' && !inSession && (
         <section aria-labelledby="sp-title">
           <p className="eyebrow">Orthographe · {gradeLabel(level)}</p>
           <h1 id="sp-title" className="title title-wrap">

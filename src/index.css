@@ -1871,67 +1871,6 @@ html[data-comfort='on'] .title-sm {
   box-shadow: 0 0 0 var(--color-ink);
 }
 
-.preview-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 30;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  align-items: center;
-  padding: 10px 10px max(14px, env(safe-area-inset-bottom));
-  pointer-events: none;
-  animation: fade-in 0.16s ease-out both;
-}
-.preview-layer.inline {
-  position: static;
-  display: block;
-  padding: 0;
-  pointer-events: auto;
-}
-.preview-bar {
-  width: 100%;
-  max-width: 640px;
-  padding: 12px 16px 14px;
-  border: 2px solid var(--color-ink);
-  background: var(--color-paper-hi);
-  box-shadow: 5px 5px 0 var(--color-ink);
-  pointer-events: auto;
-}
-.preview-layer.inline .preview-bar {
-  max-width: none;
-  margin-top: 14px;
-  box-shadow: none;
-}
-.preview-text {
-  min-height: 2.8em;
-  margin-top: 4px;
-  font-size: clamp(17px, 2.2vw, 24px);
-  font-weight: 700;
-  line-height: 1.35;
-}
-.preview-foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-top: 8px;
-}
-.preview-dots {
-  display: inline-flex;
-  gap: 6px;
-  margin-right: auto;
-}
-.preview-dots span {
-  width: 10px;
-  height: 10px;
-  border: 2px solid var(--color-ink);
-  border-radius: 50%;
-}
-.preview-dots span.on {
-  background: var(--color-ink);
-}
-
 /* Extrait de Chasse aux fautes */
 .sp-demo .sp-sentence {
   margin-top: 0;
@@ -2008,46 +1947,6 @@ html[data-comfort='on'] .title-sm {
   margin-top: 12px;
 }
 
-/* Extrait : bandeau compact (légende à gauche, boutons à droite) pour cacher le moins possible du jeu */
-.preview-bar {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  column-gap: 16px;
-  max-width: 760px;
-  padding: 10px 14px;
-}
-.preview-bar .eyebrow {
-  grid-column: 1 / -1;
-}
-.preview-text {
-  min-height: 2.7em;
-  font-size: clamp(16px, 2vw, 22px);
-}
-.preview-foot {
-  flex-wrap: nowrap;
-  margin-top: 0;
-}
-.preview-foot .btn {
-  min-width: 0;
-  padding-inline: 16px;
-}
-.preview-dots {
-  display: none;
-}
-.preview-layer.inline .preview-dots {
-  display: inline-flex;
-}
-@media (max-width: 560px) {
-  .preview-bar {
-    grid-template-columns: 1fr;
-    row-gap: 8px;
-  }
-  .preview-foot {
-    justify-content: flex-end;
-  }
-}
-
 /* Accueil : le « i » d'une carte de jeu, en haut à droite */
 .gwrap {
   position: relative;
@@ -2096,4 +1995,192 @@ html[data-comfort='on'] .title-sm {
   margin: 12px 0 16px;
   font-size: 17px;
   line-height: 1.45;
+}
+
+/* ───────── Fenêtre d'extrait : un petit onglet par-dessus l'accueil ───────── */
+.pw-back {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  background: rgba(27, 25, 21, 0.62);
+  animation: fade-in 0.16s ease-out both;
+}
+.pw {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 900px;
+  max-height: 100%;
+  overflow: hidden;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+  box-shadow: 8px 8px 0 var(--color-ink);
+  animation: card-in 0.24s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+}
+.pw-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 12px;
+  border-bottom: 2px solid var(--color-ink);
+  background: var(--color-paper);
+}
+.pw-lights {
+  display: inline-flex;
+  gap: 6px;
+}
+.pw-lights span {
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--color-ink);
+  border-radius: 50%;
+}
+.pw-tab {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pw-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 44px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: 15px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.pw-icon:hover {
+  background: #fff;
+}
+.pw-view {
+  position: relative;
+  flex: none;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 46vh;
+  overflow: hidden;
+  border-bottom: 2px solid var(--color-ink);
+  background: var(--color-paper);
+}
+.pw-view canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.pw-view.pw-doc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.pw-view.pw-doc .sp-demo {
+  width: 100%;
+  max-width: 640px;
+}
+.pw-view.pw-doc .sp-sentence {
+  font-size: clamp(22px, 3.4vw, 38px);
+}
+.pw-body {
+  padding: 12px 18px 16px;
+  overflow-y: auto;
+}
+.pw-goal {
+  font-size: 15px;
+  line-height: 1.35;
+  color: rgba(27, 25, 21, 0.78);
+}
+.pw-step {
+  min-height: 5.6em;
+  margin-top: 8px;
+}
+.pw-step-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-size: clamp(20px, 2.6vw, 28px);
+  line-height: 1.1;
+}
+.pw-step-n {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: var(--color-ink);
+  color: var(--color-paper-hi);
+  font-size: 18px;
+}
+.pw-step-text {
+  margin-top: 6px;
+  font-size: clamp(16px, 1.9vw, 20px);
+  line-height: 1.4;
+}
+.pw-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.pw-dots {
+  display: inline-flex;
+  gap: 4px;
+  margin-right: auto;
+}
+.pw-dots button {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.pw-dots button::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 2px solid var(--color-ink);
+  border-radius: 50%;
+}
+.pw-dots button.on::after {
+  background: var(--color-ink);
+}
+@media (max-width: 600px) {
+  .pw-view {
+    aspect-ratio: 4 / 5;
+    max-height: 44vh;
+  }
+  .pw-icon-text,
+  .pw-lights {
+    display: none;
+  }
+  .pw-foot {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .pw-dots {
+    flex: 1 0 100%;
+    justify-content: center;
+    margin-right: 0;
+  }
 }

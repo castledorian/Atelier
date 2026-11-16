@@ -149,6 +149,8 @@ export class MemoryGame {
   private slowAvg = 16.7;
   private slowFrames = 0;
   private demoStill = false;
+  /** extrait ouvert depuis l'accueil : la démonstration est jouée avec le son */
+  private demoSound = false;
   private grade: Grade = 'cm1';
   private dirty = true;
   private u = 1;
@@ -296,6 +298,10 @@ export class MemoryGame {
   }
 
   /** classe de l'élève : règle la cadence et la taille des grilles */
+  setDemoSound(on: boolean) {
+    this.demoSound = on;
+  }
+
   setGrade(g: Grade) {
     this.grade = g;
   }
@@ -515,7 +521,7 @@ export class MemoryGame {
   }
 
   private note(i: number) {
-    if (this.run === 'play') this.sfx.play(`n${i % 9}` as SfxName);
+    if (this.run === 'play' || this.demoSound) this.sfx.play(`n${i % 9}` as SfxName);
   }
 
   /** Petite vibration sur téléphone / tablette (retour tactile), désactivée avec les secousses ou si l'appareil demande moins de mouvement. */

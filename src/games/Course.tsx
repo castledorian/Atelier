@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { BackButton, useFitRows } from '../components/BackButton';
-import { PREVIEWS, PreviewBar } from '../components/Preview';
 import { DuelResult, ReviewNote } from '../components/EncreNotes';
 import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
@@ -40,7 +39,7 @@ import type { BoardRow, RunPayload, Scope, SessionInfo, StudentAccount } from '.
  */
 
 type Phase = 'menu' | 'play' | 'pause' | 'over';
-type MenuView = 'main' | 'howto' | 'scores' | 'settings' | 'preview';
+type MenuView = 'main' | 'howto' | 'scores' | 'settings';
 type Cloud = 'off' | 'sending' | 'sent' | 'queued';
 
 const TEXT_LABEL: Record<TextSize, string> = { normal: 'normal', large: 'grand', xlarge: 'très grand' };
@@ -56,8 +55,6 @@ interface Props {
   session?: SessionInfo | null;
   /** retour à la liste des séances */
   onSessions?: () => void;
-  /** ouvert depuis le « i » de l'accueil : on commence par l'extrait, et « Fermer » ramène à l'accueil */
-  startPreview?: boolean;
 }
 
 interface Run {
@@ -75,12 +72,12 @@ interface Run {
   };
 }
 
-export default function Course({ account, onHome, onSessionLost, session, onSessions, startPreview }: Props) {
+export default function Course({ account, onHome, onSessionLost, session, onSessions }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<CourseGame | null>(null);
   const [sfx] = useState(() => new Sfx());
   const [phase, setPhase] = useState<Phase>('menu');
-  const [view, setView] = useState<MenuView>(startPreview ? 'preview' : 'main');
+  const [view, setView] = useState<MenuView>('main');
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const [level, setLevel] = useState<Level>(() => (session ? parseMath(session.config).level : levelOf(effectiveGrade(account?.student.id ?? null))));
   const [diff, setDiff] = useState<CourseDiff>(() => (session ? parseMath(session.config).diff : loadCourseDiff()));
@@ -240,11 +237,6 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
     },
     [sfx],
   );
-
-  useEffect(() => {
-    if (startPreview) gameRef.current?.startDemo(level, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const begin = useCallback(
     (lv: Level, drill?: Missed[], duel?: RuleId) => {
@@ -459,7 +451,6 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
             account={account}
             onChange={change}
             onStart={begin}
-            onClosePreview={() => (startPreview ? onHome() : setView('main'))}
             onHome={onHome}
           />
         )}
@@ -566,19 +557,14 @@ interface MenuProps {
   account: StudentAccount | null;
   onChange: (p: Partial<Settings>) => void;
   onStart: (l: Level) => void;
-  onClosePreview: () => void;
   onHome: () => void;
 }
 
-function MenuScreen({ view, setView, level, diff, setDiff, settings, account, onChange, onStart, onClosePreview, onHome }: MenuProps) {
+function MenuScreen({ view, setView, level, diff, setDiff, settings, account, onChange, onStart, onHome }: MenuProps) {
   const [scores, setScores] = useState<CourseScore[]>(() => loadCourseScores(boardKey(level, diff)));
   useEffect(() => {
     setScores(loadCourseScores(boardKey(level, diff)));
   }, [level, diff, view]);
-
-  if (view === 'preview') {
-    return <PreviewBar title={PREVIEWS.math.title} steps={[...PREVIEWS.math.steps]} onClose={onClosePreview} onPlay={() => onStart(level)} />;
-  }
 
   if (view !== 'main') {
     const titles = { howto: 'Comment jouer', scores: 'Scores', settings: 'Réglages' } as const;

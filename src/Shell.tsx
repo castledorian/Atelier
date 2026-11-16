@@ -41,13 +41,10 @@ function Pages() {
 
   /** séance de classe en cours de jeu (null = jeu libre) */
   const [active, setActive] = useState<SessionInfo | null>(null);
-  /** jeu ouvert depuis le « i » de l'accueil : on commence par l'extrait */
-  const [preview, setPreview] = useState(false);
 
   const install = useInstall();
   const home = useCallback(() => {
     setActive(null);
-    setPreview(false);
     setView('home');
   }, []);
   const toSessions = useCallback(() => {
@@ -143,7 +140,7 @@ function Pages() {
   }
 
   if (view === 'typing' || view === 'math' || view === 'memory' || view === 'spelling') {
-    const props = { key: `${active?.id ?? 'free'}${preview ? '-preview' : ''}`, account: student, onHome: home, onSessionLost: sessionLost, session: active, onSessions: toSessions, startPreview: preview };
+    const props = { key: active?.id ?? 'free', account: student, onHome: home, onSessionLost: sessionLost, session: active, onSessions: toSessions };
     const { key, ...rest } = props;
     return (
       <>
@@ -162,12 +159,6 @@ function Pages() {
       teacher={teacher}
       onPlay={(g) => {
         setActive(null);
-        setPreview(false);
-        setView(g);
-      }}
-      onPreview={(g) => {
-        setActive(null);
-        setPreview(true);
         setView(g);
       }}
       onSessions={() => setView('sessions')}
