@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { BackButton, useFitRows } from '../components/BackButton';
-import { InfoButton, PREVIEWS, PreviewBar } from '../components/Preview';
+import { PREVIEWS, PreviewBar } from '../components/Preview';
 import { DuelResult, ReviewNote } from '../components/EncreNotes';
 import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
@@ -56,6 +56,8 @@ interface Props {
   session?: SessionInfo | null;
   /** retour à la liste des séances */
   onSessions?: () => void;
+  /** ouvert depuis le « i » de l'accueil : on commence par l'extrait, et « Fermer » ramène à l'accueil */
+  startPreview?: boolean;
 }
 
 interface Run {
@@ -73,12 +75,12 @@ interface Run {
   };
 }
 
-export default function Course({ account, onHome, onSessionLost, session, onSessions }: Props) {
+export default function Course({ account, onHome, onSessionLost, session, onSessions, startPreview }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<CourseGame | null>(null);
   const [sfx] = useState(() => new Sfx());
   const [phase, setPhase] = useState<Phase>('menu');
-  const [view, setView] = useState<MenuView>('main');
+  const [view, setView] = useState<MenuView>(startPreview ? 'preview' : 'main');
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const [level, setLevel] = useState<Level>(() => (session ? parseMath(session.config).level : levelOf(effectiveGrade(account?.student.id ?? null))));
   const [diff, setDiff] = useState<CourseDiff>(() => (session ? parseMath(session.config).diff : loadCourseDiff()));
@@ -238,6 +240,11 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
     },
     [sfx],
   );
+
+  useEffect(() => {
+    if (startPreview) gameRef.current?.startDemo(level);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const begin = useCallback(
     (lv: Level, drill?: Missed[], duel?: RuleId) => {
@@ -452,10 +459,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
             account={account}
             onChange={change}
             onStart={begin}
-            onPreview={() => {
-              gameRef.current?.startDemo(level);
-              setView('preview');
-            }}
+            onClosePreview={() => (startPreview ? onHome() : setView('main'))}
             onHome={onHome}
           />
         )}
@@ -562,18 +566,18 @@ interface MenuProps {
   account: StudentAccount | null;
   onChange: (p: Partial<Settings>) => void;
   onStart: (l: Level) => void;
-  onPreview: () => void;
+  onClosePreview: () => void;
   onHome: () => void;
 }
 
-function MenuScreen({ view, setView, level, diff, setDiff, settings, account, onChange, onStart, onPreview, onHome }: MenuProps) {
+function MenuScreen({ view, setView, level, diff, setDiff, settings, account, onChange, onStart, onClosePreview, onHome }: MenuProps) {
   const [scores, setScores] = useState<CourseScore[]>(() => loadCourseScores(boardKey(level, diff)));
   useEffect(() => {
     setScores(loadCourseScores(boardKey(level, diff)));
   }, [level, diff, view]);
 
   if (view === 'preview') {
-    return <PreviewBar title={PREVIEWS.math.title} steps={[...PREVIEWS.math.steps]} onClose={() => setView('main')} onPlay={() => onStart(level)} />;
+    return <PreviewBar title={PREVIEWS.math.title} steps={[...PREVIEWS.math.steps]} onClose={onClosePreview} onPlay={() => onStart(level)} />;
   }
 
   if (view !== 'main') {
@@ -650,7 +654,6 @@ function MenuScreen({ view, setView, level, diff, setDiff, settings, account, on
         <div className="menu-a">
           <div className="card-top">
             <BackButton onClick={onHome} />
-            <InfoButton onClick={onPreview} />
           </div>
           <p className="eyebrow">Calcul mental · {levelLabel(level)}</p>
           <h1 id="game-title" className="title title-2l" aria-label="Course à l’encre">

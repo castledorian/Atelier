@@ -2047,3 +2047,28 @@ html[data-comfort='on'] .title-sm {
     justify-content: flex-end;
   }
 }
+
+/* Accueil : le « i » d'une carte de jeu, en haut à droite */
+.gwrap {
+  position: relative;
+  display: flex;
+}
+.gwrap > .gcard {
+  flex: 1;
+  min-width: 0;
+}
+.gwrap > .info-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  font-size: 22px;
+}
+.gwrap .gcard-tag {
+  padding-right: 48px;
+}
+.gwrap .gcard-name {
+  padding-right: 44px;
+}

@@ -60,9 +60,11 @@ export interface TypingProps {
   session?: SessionInfo | null;
   /** retour à la liste des séances */
   onSessions?: () => void;
+  /** ouvert depuis le « i » de l'accueil : on commence par l'extrait, et « Fermer » ramène à l'accueil */
+  startPreview?: boolean;
 }
 
-export default function App({ account, onHome, onSessionLost, install, session, onSessions }: TypingProps) {
+export default function App({ account, onHome, onSessionLost, install, session, onSessions, startPreview }: TypingProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<Game | null>(null);
   const [sfx] = useState(() => new Sfx());
@@ -485,7 +487,7 @@ export default function App({ account, onHome, onSessionLost, install, session, 
             onChange={changeSettings}
             onClear={() => setScores(clearScores(settings.difficulty))}
             onProgress={() => setScreen('progress')}
-            onPreview={() => gameRef.current?.startDemo()}
+            startPreview={startPreview}
             account={account}
             onHome={onHome}
           />

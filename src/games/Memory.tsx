@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { BackButton, useFitRows } from '../components/BackButton';
-import { InfoButton, PREVIEWS, PreviewBar } from '../components/Preview';
+import { PREVIEWS, PreviewBar } from '../components/Preview';
 import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
 import { Sfx } from '../game/audio';
@@ -47,6 +47,8 @@ interface Props {
   session?: SessionInfo | null;
   /** retour à la liste des séances */
   onSessions?: () => void;
+  /** ouvert depuis le « i » de l'accueil : on commence par l'extrait, et « Fermer » ramène à l'accueil */
+  startPreview?: boolean;
 }
 
 interface Run {
@@ -60,12 +62,12 @@ interface Run {
   stampsAfter: number;
 }
 
-export default function Memory({ account, onHome, onSessionLost, session, onSessions }: Props) {
+export default function Memory({ account, onHome, onSessionLost, session, onSessions, startPreview }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<MemoryGame | null>(null);
   const [sfx] = useState(() => new Sfx());
   const [phase, setPhase] = useState<Phase>('menu');
-  const [view, setView] = useState<MenuView>('main');
+  const [view, setView] = useState<MenuView>(startPreview ? 'preview' : 'main');
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const grade = levelOf(effectiveGrade(account?.student.id ?? null));
   const [mode, setMode] = useState<Mode>(() => (session ? parseMemory(session.config).mode : loadMemoryMode()));
@@ -193,6 +195,11 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
     },
     [sfx],
   );
+
+  useEffect(() => {
+    if (startPreview) gameRef.current?.startDemo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const begin = useCallback(
     (m: Mode) => {
@@ -363,10 +370,7 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
             account={account}
             onChange={change}
             onStart={begin}
-            onPreview={() => {
-              gameRef.current?.startDemo();
-              setView('preview');
-            }}
+            onClosePreview={() => (startPreview ? onHome() : setView('main'))}
             startPage={startPage}
             setStartPage={setStartPage}
             onHome={onHome}
@@ -465,13 +469,13 @@ interface MenuProps {
   account: StudentAccount | null;
   onChange: (p: Partial<Settings>) => void;
   onStart: (m: Mode) => void;
-  onPreview: () => void;
+  onClosePreview: () => void;
   startPage: number;
   setStartPage: (p: number) => void;
   onHome: () => void;
 }
 
-function MenuScreen({ view, setView, grade, mode, setMode, settings, account, onChange, onStart, onPreview, startPage, setStartPage, onHome }: MenuProps) {
+function MenuScreen({ view, setView, grade, mode, setMode, settings, account, onChange, onStart, onClosePreview, startPage, setStartPage, onHome }: MenuProps) {
   const [scores, setScores] = useState<MemoryScore[]>(() => loadMemoryScores(mode));
   const [sMode, setSMode] = useState<Mode>(mode);
   useEffect(() => {
@@ -479,7 +483,7 @@ function MenuScreen({ view, setView, grade, mode, setMode, settings, account, on
   }, [sMode, view]);
 
   if (view === 'preview') {
-    return <PreviewBar title={PREVIEWS.memory.title} steps={[...PREVIEWS.memory.steps]} onClose={() => setView('main')} onPlay={() => onStart(mode)} />;
+    return <PreviewBar title={PREVIEWS.memory.title} steps={[...PREVIEWS.memory.steps]} onClose={onClosePreview} onPlay={() => onStart(mode)} />;
   }
 
   if (view !== 'main') {
@@ -558,7 +562,6 @@ function MenuScreen({ view, setView, grade, mode, setMode, settings, account, on
         <div className="menu-a">
           <div className="card-top">
             <BackButton onClick={onHome} />
-            <InfoButton onClick={onPreview} />
           </div>
           <p className="eyebrow">Mémoire · {gradeLabel(grade)}</p>
           <h1 id="game-title" className="title title-2l" aria-label="Mémoire d’encre">

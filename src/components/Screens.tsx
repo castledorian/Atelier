@@ -10,7 +10,7 @@ import type { Layout, ScoreEntry, Settings, TextSize } from '../game/storage';
 import type { StudentAccount } from '../server/types';
 import { BackButton, useFitRows } from './BackButton';
 import { ScoresPanel } from './Extras';
-import { InfoButton, PREVIEWS, PreviewBar } from './Preview';
+import { PREVIEWS, PreviewBar } from './Preview';
 
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
 
@@ -294,8 +294,8 @@ interface MenuProps {
   onChange: (patch: Partial<Settings>) => void;
   onClear: () => void;
   onProgress: () => void;
-  /** relance la démonstration du jeu avant d'afficher l'extrait */
-  onPreview?: () => void;
+  /** ouvert depuis l'accueil : on commence par l'extrait et « Fermer » ramène à l'accueil */
+  startPreview?: boolean;
   /** élève connecté (prénom imposé, classements Classe et École) */
   account: StudentAccount | null;
   onHome: () => void;
@@ -337,11 +337,11 @@ function HowTo({ assist, kbOn }: { assist: boolean; kbOn: boolean }) {
   );
 }
 
-export function Menu({ scores, settings, kbOn, install, onStart, onChange, onClear, onProgress, onPreview, account, onHome }: MenuProps) {
+export function Menu({ scores, settings, kbOn, install, onStart, onChange, onClear, onProgress, startPreview, account, onHome }: MenuProps) {
   const diff = settings.difficulty;
   const list = scoresFor(scores, diff);
   const assist = diff === 'perso' ? settings.custom.autoTarget : DIFFICULTIES[diff].autoTarget;
-  const [view, setView] = useState<MenuView>('main');
+  const [view, setView] = useState<MenuView>(startPreview ? 'preview' : 'main');
   const rows = useFitRows(330, 31, 3, 10);
   const back = () => setView('main');
 
@@ -372,7 +372,7 @@ export function Menu({ scores, settings, kbOn, install, onStart, onChange, onCle
   );
 
   if (view === 'preview') {
-    return <PreviewBar title={PREVIEWS.typing.title} steps={[...PREVIEWS.typing.steps]} onClose={back} onPlay={onStart} />;
+    return <PreviewBar title={PREVIEWS.typing.title} steps={[...PREVIEWS.typing.steps]} onClose={startPreview ? onHome : back} onPlay={onStart} />;
   }
   if (view === 'howto') {
     return (
@@ -425,12 +425,6 @@ export function Menu({ scores, settings, kbOn, install, onStart, onChange, onCle
         <div className="menu-a">
           <div className="card-top">
             <BackButton onClick={onHome} />
-            <InfoButton
-              onClick={() => {
-                onPreview?.();
-                setView('preview');
-              }}
-            />
           </div>
           <p className="eyebrow">Défense dactylographique</p>
           <h1 id="game-title" className="title" aria-label="Frappe !">

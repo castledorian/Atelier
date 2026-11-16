@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Frame } from './Frame';
+import { InfoButton } from '../components/Preview';
 import type { InstallInfo } from '../components/Screens';
 import { serverEnabled } from '../server/api';
 import { fetchSessionsInfo } from '../server/student';
@@ -14,6 +15,8 @@ interface HomeProps {
   student: StudentAccount | null;
   teacher: TeacherSession | null;
   onPlay: (game: 'typing' | 'math' | 'memory' | 'spelling') => void;
+  /** extrait animé du jeu (le « i » en haut à droite de la carte) */
+  onPreview: (game: 'typing' | 'math' | 'memory' | 'spelling') => void;
   onSessions: () => void;
   onLogin: (tab: 'student' | 'teacher') => void;
   onDashboard: () => void;
@@ -22,7 +25,7 @@ interface HomeProps {
   install: InstallInfo;
 }
 
-export default function Home({ student, teacher, onPlay, onSessions, onLogin, onDashboard, onPrivacy, onLogout, install }: HomeProps) {
+export default function Home({ student, teacher, onPlay, onPreview, onSessions, onLogin, onDashboard, onPrivacy, onLogout, install }: HomeProps) {
   const online = serverEnabled();
   const [ownGrade, setGrade] = useState<Grade | null>(loadGrade);
   const studentId = student?.student.id ?? null;
@@ -138,7 +141,8 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
       {grade !== null && <h2 className="subhead mt-[var(--sp)]">Choisis un jeu</h2>}
       {grade !== null && <div className="games">
         {isAvailable('typing', grade) && (
-          <button type="button" className="gcard" onClick={() => onPlay('typing')}>
+          <div className="gwrap">
+            <button type="button" className="gcard" onClick={() => onPlay('typing')}>
             <span className="gcard-tag">Clavier</span>
             <span className="gcard-name">Frappe&nbsp;!</span>
             <span className="gcard-text">Défends la marge : tape les mots avant que les taches d’encre n’arrivent.</span>
@@ -149,9 +153,12 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
           )}
             <span className="gcard-go">Jouer →</span>
           </button>
+            <InfoButton onClick={() => onPreview('typing')} label="Voir un extrait : Frappe !" />
+          </div>
         )}
         {isAvailable('math', grade) && (
-          <button type="button" className="gcard" onClick={() => onPlay('math')}>
+          <div className="gwrap">
+            <button type="button" className="gcard" onClick={() => onPlay('math')}>
             <span className="gcard-tag">Maths</span>
             <span className="gcard-name">Course à l’encre</span>
             <span className="gcard-text">Place la plume sur la bonne réponse et fuis la tache d’encre !</span>
@@ -162,22 +169,30 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
           )}
             <span className="gcard-go">Jouer →</span>
           </button>
+            <InfoButton onClick={() => onPreview('math')} label="Voir un extrait : Course à l’encre" />
+          </div>
         )}
         {isAvailable('spelling', grade) && (
-          <button type="button" className="gcard" onClick={() => onPlay('spelling')}>
+          <div className="gwrap">
+            <button type="button" className="gcard" onClick={() => onPlay('spelling')}>
             <span className="gcard-tag">Orthographe</span>
             <span className="gcard-name">Chasse aux fautes</span>
             <span className="gcard-text">Une faute s’est glissée dans la phrase : trouve-la, puis corrige-la.</span>
             <span className="gcard-go">Jouer →</span>
           </button>
+            <InfoButton onClick={() => onPreview('spelling')} label="Voir un extrait : Chasse aux fautes" />
+          </div>
         )}
         {isAvailable('memory', grade) && (
-          <button type="button" className="gcard" onClick={() => onPlay('memory')}>
+          <div className="gwrap">
+            <button type="button" className="gcard" onClick={() => onPlay('memory')}>
             <span className="gcard-tag">Mémoire</span>
             <span className="gcard-name">Mémoire d’encre</span>
             <span className="gcard-text">Retiens les taches qui s’allument, puis refais la suite ou retrouve leurs places.</span>
             <span className="gcard-go">Jouer →</span>
           </button>
+            <InfoButton onClick={() => onPreview('memory')} label="Voir un extrait : Mémoire d’encre" />
+          </div>
         )}
         <div className="gcard gcard-soon" aria-label="Autres jeux à venir">
           <span className="gcard-tag">Bientôt</span>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackButton } from '../components/BackButton';
-import { InfoButton, PREVIEWS, PreviewBar, SpellingDemo } from '../components/Preview';
+import { PREVIEWS, PreviewBar, SpellingDemo } from '../components/Preview';
 import { DuelResult, ReviewNote } from '../components/EncreNotes';
 import type { DuelInfo } from '../components/EncreNotes';
 import { Check } from '../components/Screens';
@@ -37,6 +37,8 @@ interface Props {
   onSessionLost: () => void;
   session?: SessionInfo | null;
   onSessions?: () => void;
+  /** ouvert depuis le « i » de l'accueil : on commence par l'extrait, et « Fermer » ramène à l'accueil */
+  startPreview?: boolean;
 }
 
 interface GameState {
@@ -109,9 +111,9 @@ const rememberSeen = (ids: string[]) => {
 const isWord = (w: string) => /[\p{L}\p{N}]/u.test(w);
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
-export default function Spelling({ account, onHome, onSessionLost, session, onSessions }: Props) {
+export default function Spelling({ account, onHome, onSessionLost, session, onSessions, startPreview }: Props) {
   const [phase, setPhase] = useState<Phase>('menu');
-  const [preview, setPreview] = useState(false);
+  const [preview, setPreview] = useState(!!startPreview);
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const prefs = useRef(loadSpellingPrefs());
   const [level] = useState<Level>(() => (session ? parseSpelling(session.config).level : levelOf(effectiveGrade(account?.student.id ?? null))));
@@ -339,11 +341,10 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
       <div className="sp-card">
       <div className="card-top">
         <BackButton onClick={phase === 'menu' ? (onSessions ?? onHome) : toMenu} label={phase === 'menu' ? (inSession ? 'Mes séances' : 'Accueil') : 'Menu'} />
-        {phase === 'menu' && !inSession && !preview && <InfoButton onClick={() => setPreview(true)} />}
       </div>
 
       {phase === 'menu' && !inSession && preview && (
-        <PreviewBar inline title={PREVIEWS.spelling.title} steps={[...PREVIEWS.spelling.steps]} onClose={() => setPreview(false)} onPlay={() => begin()}>
+        <PreviewBar inline title={PREVIEWS.spelling.title} steps={[...PREVIEWS.spelling.steps]} onClose={() => (startPreview ? onHome() : setPreview(false))} onPlay={() => begin()}>
           <SpellingDemo />
         </PreviewBar>
       )}

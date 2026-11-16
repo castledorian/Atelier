@@ -31,10 +31,13 @@ export default function Shell() {
 
   /** séance de classe en cours de jeu (null = jeu libre) */
   const [active, setActive] = useState<SessionInfo | null>(null);
+  /** jeu ouvert depuis le « i » de l'accueil : on commence par l'extrait */
+  const [preview, setPreview] = useState(false);
 
   const install = useInstall();
   const home = useCallback(() => {
     setActive(null);
+    setPreview(false);
     setView('home');
   }, []);
   const toSessions = useCallback(() => {
@@ -130,7 +133,7 @@ export default function Shell() {
   }
 
   if (view === 'typing' || view === 'math' || view === 'memory' || view === 'spelling') {
-    const props = { key: active?.id ?? 'free', account: student, onHome: home, onSessionLost: sessionLost, session: active, onSessions: toSessions };
+    const props = { key: `${active?.id ?? 'free'}${preview ? '-preview' : ''}`, account: student, onHome: home, onSessionLost: sessionLost, session: active, onSessions: toSessions, startPreview: preview };
     const { key, ...rest } = props;
     return (
       <>
@@ -149,6 +152,12 @@ export default function Shell() {
       teacher={teacher}
       onPlay={(g) => {
         setActive(null);
+        setPreview(false);
+        setView(g);
+      }}
+      onPreview={(g) => {
+        setActive(null);
+        setPreview(true);
         setView(g);
       }}
       onSessions={() => setView('sessions')}
