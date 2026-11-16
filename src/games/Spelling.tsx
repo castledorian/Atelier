@@ -16,7 +16,7 @@ import { newRunId } from '../game/history';
 import { parseSpelling } from '../game/sessionConfig';
 import { loadSettings, saveSettings } from '../game/storage';
 import type { Settings } from '../game/storage';
-import { BOON_AFTER, HINT, HP, RETRY_MAX, REVIVE_HP, ROUNDS, choicesFor, duelItems, isFault, isPerfect, nextItem, offerBoons, pickRetry, pointsFor, roleOf, shuffle } from '../game/spelling/engine';
+import { BOON_AFTER, HINT, HP, RETRY_MAX, REVIVE_HP, ROUNDS, choicesFor, duelItems, isFault, isPerfect, nextItem, offerBoons, pickFeedback, pickRetry, pointsFor, roleOf, shuffle } from '../game/spelling/engine';
 import type { Boon, Item, RoundOutcome } from '../game/spelling/engine';
 import { addSpellingScore, loadSpellingPrefs, loadSpellingScores, saveSpellingPrefs } from '../game/spelling/scores';
 import { enqueue, flush } from '../server/outbox';
@@ -433,7 +433,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
       return;
     }
     const wrongPicks = [...r.wrongPicks, choice];
-    const nr = hurt({ ...r, tries: r.tries + 1, wrongPicks, tipShown: true }, 'Pas celle-là : relis l’astuce !');
+    const nr = hurt({ ...r, tries: r.tries + 1, wrongPicks, tipShown: HINT[diff] !== 'none' || r.tipShown }, pickFeedback(r.item, choice));
     if (nr.lost) upd(nr);
     else if (r.tries + 1 >= 2) upd(settle({ ...nr, tries: 2 }, 3));
     else upd(nr);

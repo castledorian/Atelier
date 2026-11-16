@@ -14,13 +14,13 @@ export const CHOICES: Record<CourseDiff, number> = { apprenti: 2, standard: 3, e
 export const HINT: Record<CourseDiff, 'free' | 'cost' | 'none'> = { apprenti: 'free', standard: 'cost', expert: 'none' };
 
 /** Vies du joueur au début d'une partie, selon la difficulté : chaque erreur en coûte une. */
-export const HP: Record<CourseDiff, number> = { apprenti: 6, standard: 5, expert: 4 };
-/** Après combien d'ennemis vaincus on choisit un bonus (le dernier ennemi, le 10e, est le boss). */
+export const HP: Record<CourseDiff, number> = { apprenti: 7, standard: 6, expert: 4 };
 /** Seconde chance : à zéro vie, l'élève revient une seule fois par partie avec ce nombre de vies. */
 export const REVIVE_HP = 2;
 /** Répétition espacée : jusqu'à RETRY_MAX phrases ratées reviennent dans la partie suivante, aux manches RETRY_SLOTS. */
 export const RETRY_MAX = 6;
 export const RETRY_SLOTS: readonly number[] = [2, 5, 7];
+/** Après combien d'ennemis vaincus on choisit un bonus (le dernier ennemi, le 10e, est le boss). */
 export const BOON_AFTER: readonly number[] = [3, 6];
 
 export type BoonId = 'vie' | 'bouclier' | 'loupe';
@@ -100,8 +100,64 @@ export function shuffle<T>(list: readonly T[], r: Rng = Math.random): T[] {
 /** Les propositions de correction : toujours la bonne, jamais le mot déjà écrit. */
 export function choicesFor(item: Item, diff: CourseDiff, r: Rng = Math.random): string[] {
   const n = CHOICES[diff];
-  const pool = shuffle(item.others.filter((o) => o !== item.right && o !== item.wrong), r);
+  const written = shuffle(item.others.filter((o) => o !== item.right && o !== item.wrong), r);
+  // les phrases écrites à la main n'offrent qu'une autre proposition : on complète avec des erreurs plausibles
+  const pool = written.length >= n - 1 ? written : [...written, ...shuffle(extraDistractors(item), r)];
   return shuffle([item.right, ...pool.slice(0, n - 1)], r);
+}
+
+const FAMILIES: readonly (readonly string[])[] = [
+  ['a', 'à', 'as', 'ah'],
+  ['et', 'est', 'es', 'ai'],
+  ['on', 'ont', 'ons', 'un'],
+  ['son', 'sont', 'sons', 'sonts'],
+  ['ou', 'où', 'u', 'oû'],
+  ['ce', 'se', 'ces', 'ses', 'ça', 'sa'],
+  ['peu', 'peut', 'peux', 'peus'],
+  ['la', 'là', 'las', 'l’a'],
+];
+const lower = (w: string) => w.toLowerCase();
+
+/** Des erreurs plausibles pour compléter les propositions (jamais la bonne réponse, jamais le mot déjà écrit). */
+export function extraDistractors(item: Item): string[] {
+  const right = item.right;
+  const taken = new Set([lower(right), lower(item.wrong), ...item.others.map(lower)]);
+  const out: string[] = [];
+  const add = (w: string) => {
+    if (w.length >= 2 && !taken.has(lower(w)) && !/(.)\1\1/.test(w) && !/[sx]s$|xx$/.test(w)) {
+      taken.add(lower(w));
+      out.push(w);
+    }
+  };
+  if (item.rule === 'jumeaux') {
+    const fam = FAMILIES.find((f) => f.includes(lower(right)));
+    if (fam) fam.forEach(add);
+    return out;
+  }
+  if (item.rule === 'doublon') {
+    // une lettre doublée en plus, ou une lettre double réduite
+    for (let i = 1; i < right.length; i++) {
+      if (/[bcdfgjklmnpqrstvz]/.test(right[i]) && right[i] !== right[i - 1] && right[i] !== right[i + 1]) add(right.slice(0, i) + right[i] + right.slice(i));
+      if (right[i] === right[i + 1]) add(right.slice(0, i) + right.slice(i + 1));
+    }
+    // dernier recours : une consonne doublée ailleurs (même au début), pour toujours avoir assez de propositions
+    for (let i = right.length - 1; i >= 0 && out.length < 2; i--) {
+      if (/[bcdfglmnprstv]/.test(right[i]) && right[i] !== right[i + 1] && right[i] !== right[i - 1]) add(right.slice(0, i) + right[i] + right.slice(i));
+    }
+    // une lettre double déplacée : « ville » → « vilel » serait absurde, on ne garde que les doubles voisines d'une voyelle
+    if (out.length < 2 && /[bcdfglmnprst]{2}/.test(right)) add(right.replace(/([bcdfglmnprst])\1/, '$1'));
+    return out;
+  }
+  // accord : la même racine avec une autre terminaison
+  add(right + 's');
+  add(right + 'e');
+  add(right + 'es');
+  add(right.replace(/(es|s|x)$/, ''));
+  add(right.replace(/e$/, ''));
+  add(right.replace(/(ent)$/, 'e'));
+  add(right.replace(/e$/, 'ent'));
+  add(right.replace(/(ons|ez)$/, 'ent'));
+  return out;
 }
 
 /**
@@ -192,4 +248,24 @@ export function pickRetry(level: Level, asked: number, used: ReadonlySet<string>
   const ok = itemsFor(level);
   const todo = retry.map((id) => ok.find((i) => i.id === id)).filter((i): i is Item => !!i && !used.has(i.id));
   return todo[0] ?? null;
+}
+
+/**
+ * Un message court (une seule ligne) qui explique la nature de l'erreur quand l'élève choisit une mauvaise proposition.
+ * Il ne donne pas la réponse : il oriente vers le bon réflexe.
+ */
+export function pickFeedback(item: Item, pick: string): string {
+  const right = item.right;
+  if (item.rule === 'doublon') {
+    if (pick.length < right.length) return 'Il manque une lettre double.';
+    if (pick.length > right.length) return 'Il y a une lettre en trop.';
+    return 'Une lettre n’est pas la bonne.';
+  }
+  if (item.rule === 'jumeaux') return `« ${pick} » ne va pas ici.`;
+  const plural = (w: string) => /(s|x|nt)$/.test(w);
+  const fem = (w: string) => /e(s|nt)?$/.test(w);
+  if (plural(pick) && !plural(right)) return 'Est-ce vraiment au pluriel ?';
+  if (!plural(pick) && plural(right)) return 'Y en a-t-il plusieurs ?';
+  if (fem(pick) !== fem(right)) return 'Pense au masculin ou au féminin.';
+  return 'Regarde bien la fin du mot.';
 }

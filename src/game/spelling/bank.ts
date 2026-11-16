@@ -31,7 +31,7 @@ const CORE: readonly Entry[] = [
   ['doublon', 2, 'Cet exercice est [dificile|difficile|difficille].', 'Pense à « une difficulté » : deux f.'],
 
   ['doublon', 1, 'La [gome|gomme|gommme] est dans ma trousse.', 'Pense à « gommer » : deux m.'],
-  ['doublon', 1, 'Papa [appele|appelle|apelle] le médecin.', 'Dans « appeler », il y a deux p et deux l.'],
+  ['doublon', 1, 'Papa [appele|appelle|apelle|apele] le médecin.', 'Dans « appeler », il y a deux p et deux l.'],
   ['doublon', 1, 'Une [nouvele|nouvelle|nouvèle] élève arrive dans la classe.', 'Pense à « nouveau » : au féminin, « nouvelle » a deux l.'],
   ['doublon', 1, 'Ce [colier|collier|collié] est en perles.', 'Pense à « colle » : deux l.'],
   ['doublon', 1, 'Nous traversons le [pasage|passage|passsage] en courant.', 'Pense à « passer » : deux s.'],

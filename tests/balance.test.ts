@@ -149,3 +149,31 @@ test('Chasse aux fautes : les phrases ratées reviennent aux manches prévues, u
   assert.equal(pickRetry('cm1', RETRY_SLOTS[1], used, [id]), null);
   assert.equal(pickRetry('cm1', RETRY_SLOTS[0], new Set(), ['inconnu']), null);
 });
+
+import { CHOICES, choicesFor, extraDistractors, pickFeedback } from '../src/game/spelling/engine';
+
+test('Chasse aux fautes : assez de propositions pour chaque difficulté, sans doublon ni bonne réponse en trop', () => {
+  for (const i of ITEMS) {
+    const extra = extraDistractors(i);
+    for (const e of extra) {
+      assert.notEqual(e.toLowerCase(), i.right.toLowerCase(), i.fixed);
+      assert.notEqual(e.toLowerCase(), i.wrong.toLowerCase(), i.fixed);
+    }
+    for (const d of ['apprenti', 'standard', 'expert'] as const) {
+      const c = choicesFor(i, d);
+      assert.ok(c.includes(i.right) && !c.includes(i.wrong), i.fixed);
+      assert.equal(new Set(c.map((x) => x.toLowerCase())).size, c.length, i.fixed);
+    }
+  }
+  const four = ITEMS.filter((i) => choicesFor(i, 'expert').length === CHOICES.expert).length;
+  assert.ok(four / ITEMS.length >= 0.4, `Expert : 4 propositions pour ${four}/${ITEMS.length} phrases`);
+  for (const i of ITEMS) assert.ok(choicesFor(i, 'standard').length === CHOICES.standard, `Standard : 3 propositions : ${i.fixed}`);
+});
+
+test('Chasse aux fautes : le retour d\'erreur ne donne pas la réponse et reste court', () => {
+  for (const i of ITEMS) for (const p of [i.wrong, ...i.others]) {
+    const m = pickFeedback(i, p);
+    assert.ok(m.length <= 36, `${m} (${m.length})`);
+    if (i.rule !== 'jumeaux') assert.ok(!m.toLowerCase().includes(i.right.toLowerCase()), m);
+  }
+});

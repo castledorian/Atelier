@@ -43,7 +43,7 @@ test('propositions : la bonne, jamais le mot faux, bon nombre selon la difficult
       const c = choicesFor(i, d, r);
       assert.ok(c.includes(i.right));
       assert.ok(!c.includes(i.wrong));
-      assert.equal(c.length, Math.min(n, 1 + i.others.length));
+      assert.ok(c.length >= Math.min(n, 1 + i.others.length) && c.length <= n);
       assert.equal(new Set(c).size, c.length);
     }
   }

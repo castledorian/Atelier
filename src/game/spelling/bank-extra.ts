@@ -44,8 +44,8 @@ export const EXTRA: readonly Entry[] = [
   ['doublon', 2, 'Cet élève est très [inteligent|intelligent|intelligant].', 'Pense à « l’intelligence » : deux l.'],
   ['doublon', 2, 'La [gramaire|grammaire|grammère] française est riche.', 'Pense à « un grammairien » : deux m.'],
   ['doublon', 2, 'Elle a obtenu un résultat [exellent|excellent|excelent].', 'Pense à « exceller » : puis deux l.'],
-  ['doublon', 2, 'Je suis très [ocupé|occupé|occuppé] aujourd’hui.', 'Dans « occupé », il y a deux c et un seul p.'],
-  ['doublon', 2, 'Le chat est sur le côté [oposé|opposé|oppossé].', 'Pense à « une opposition » : deux p.'],
+  ['doublon', 2, 'Je suis très [ocupé|occupé|occuppé|ocuppé] aujourd’hui.', 'Dans « occupé », il y a deux c et un seul p.'],
+  ['doublon', 2, 'Le chat est sur le côté [oposé|opposé|oppossé|opossé].', 'Pense à « une opposition » : deux p.'],
   ['doublon', 2, 'Cet [aparail|appareil|appareille] est en panne.', 'Dans « appareil », il y a deux p et un seul l.'],
 
   // ─── Les Jumeaux : mots qui sonnent pareil ───
