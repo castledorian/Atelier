@@ -44,3 +44,14 @@ Sur l'accueil : **Installer l'application sur cet appareil** (PC, Android, Chrom
 - Les entraînements ciblés et la séance « Perso » ne comptent pas dans les classements, mais sont dans l'export.
 - Supprimer un élève, une classe ou l'école efface **définitivement** leurs scores.
 - Avant de vous servir du site avec de vrais élèves, lisez la partie *Protection des données* de `serveur/GUIDE-SERVEUR.md` (information des familles, hébergement en Europe).
+
+## Données personnelles (RGPD) — ce qu'il faut savoir
+
+La page **Confidentialité** du site (lien en bas de l'accueil et sur la page de connexion) décrit précisément ce qui est enregistré. Elle contient aussi une **note pour les familles** que vous pouvez imprimer.
+
+- **Responsabilité** : c'est l'école qui décide d'utiliser l'outil avec ses élèves. Prévenez la direction et, si votre académie en a un, le délégué à la protection des données (DPD/DPO) ; certaines académies demandent d'inscrire l'outil au registre des traitements.
+- **Prénoms ou pseudos** : le site n'enregistre que le texte que vous saisissez à la création des élèves. Nous recommandons des **prénoms seuls ou des pseudos** (jamais de nom de famille). Les élèves voient les prénoms/pseudos et scores de leur classe, et de leur école dans le classement d'école.
+- **Sans connexion**, rien ne quitte l'appareil. **Avec un code**, le prénom, la classe et les résultats sont envoyés au serveur (Union européenne).
+- **Suppression** : dans « Mon espace école », vous pouvez supprimer un élève, une classe ou l'école entière à tout moment (définitif). **Supprimez les classes en fin d'année scolaire.**
+- **Droits des familles** (voir, corriger, supprimer, s'opposer) : vous pouvez les satisfaire vous-même (renommer, nouveau code, supprimer) ; sinon, l'éditeur répond via l'adresse indiquée sur la page Confidentialité.
+- Pas de publicité, pas de cookie, aucun service de statistiques.

@@ -10,11 +10,12 @@ interface HomeProps {
   onPlay: (game: 'typing' | 'math' | 'memory') => void;
   onLogin: (tab: 'student' | 'teacher') => void;
   onDashboard: () => void;
+  onPrivacy: () => void;
   onLogout: () => void;
   install: InstallInfo;
 }
 
-export default function Home({ student, teacher, onPlay, onLogin, onDashboard, onLogout, install }: HomeProps) {
+export default function Home({ student, teacher, onPlay, onLogin, onDashboard, onPrivacy, onLogout, install }: HomeProps) {
   const online = serverEnabled();
   return (
     <Frame>
@@ -116,6 +117,12 @@ export default function Home({ student, teacher, onPlay, onLogin, onDashboard, o
           <p className="mt-2 text-[13px] leading-snug text-ink/75">Les jeux s’ouvrent ensuite comme une application, même sans connexion internet.</p>
         </section>
       )}
+      <p className="mt-4 text-[13px] text-ink/75">
+        Pas de pub, pas de cookie.{' '}
+        <button type="button" className="link" onClick={onPrivacy}>
+          Confidentialité et données
+        </button>
+      </p>
     </Frame>
   );
 }

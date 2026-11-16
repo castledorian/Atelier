@@ -1660,3 +1660,12 @@ html[data-text='xlarge'] .card .title {
   letter-spacing: 0.08em;
   color: var(--color-ink);
 }
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .desk {
+    background: #fff !important;
+  }
+}
