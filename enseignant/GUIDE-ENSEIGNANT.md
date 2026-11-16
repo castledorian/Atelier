@@ -59,3 +59,7 @@ La page **Confidentialité** du site (lien en bas de l'accueil et sur la page de
 ## Supprimer son compte
 
 Espace enseignant → **Mon compte** → **Supprimer mon compte…**. Le site vous montre d'abord ce qui sera effacé (les écoles dont vous êtes le seul enseignant disparaissent avec leurs classes, élèves et scores ; les écoles partagées restent), puis il faut recopier votre adresse e-mail **et** cocher une case de confirmation. Pensez à exporter vos résultats avant : la suppression est définitive.
+
+## Vérifier le code (pour la maintenance)
+
+`npm test` lance 25 tests automatiques (règles de Mémoire d'encre, calculs de Course à l'encre, classements locaux, difficultés de Frappe !). `npm run check` y ajoute la vérification des types. Ces tests tournent aussi à chaque publication : si l'un échoue, le site n'est pas mis à jour.
