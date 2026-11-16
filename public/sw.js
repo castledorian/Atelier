@@ -5,7 +5,7 @@
  * - Les autres fichiers (icônes, manifeste) : cache d'abord, mis à jour en arrière-plan.
  * - Les données des comptes (serveur) ne passent jamais par ce cache.
  */
-const CACHE = 'atelier-v30';
+const CACHE = 'atelier-v31';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (event) => {

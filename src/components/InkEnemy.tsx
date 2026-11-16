@@ -6,7 +6,10 @@
 export const ENEMY_KINDS = 6;
 export const BOSS_KIND = 6;
 
-export const ENEMY_NAMES = ['Bavure', 'Pâté', 'Gribouille', 'Barbouille', 'Éclabousse', 'Taupinette'];
+/** Noms des ennemis, par rôle (le nom ne doit jamais contredire le dessin). */
+export const ENEMY_NAMES = ['Bavure', 'Gribouille', 'Barbouille', 'Taupinette', 'Moutardin', 'Sépia'];
+export const SPLASH_NAMES = ['Goutte', 'Giclée', 'Éclat', 'Perle', 'Postillon', 'Mouchette'];
+export const PATE_NAMES = ['Gros Pâté', 'Grosse Flaque', 'Maxi Bavure'];
 export const BOSS_NAME = 'Le Grand Pâté';
 
 export type EnemyMood = 'idle' | 'angry' | 'attack' | 'dead';

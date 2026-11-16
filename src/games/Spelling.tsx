@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackButton } from '../components/BackButton';
 import { DuelResult, ReviewNote } from '../components/EncreNotes';
 import type { DuelInfo } from '../components/EncreNotes';
-import { BOSS_NAME, ENEMY_KINDS, ENEMY_NAMES, InkEnemy, PenIcon, ROLE_LABEL, kindFor } from '../components/InkEnemy';
+import { BOSS_NAME, ENEMY_KINDS, ENEMY_NAMES, InkEnemy, PATE_NAMES, PenIcon, ROLE_LABEL, SPLASH_NAMES, kindFor } from '../components/InkEnemy';
 import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
 import { COURSE_DIFFS, boardKey } from '../game/course/questions';
@@ -573,7 +573,8 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
   const boss = !duel && s.asked === ROUNDS - 1;
   const role = roleOf(round.item, boss);
   const kind = kindFor(role, s.order[s.asked % ENEMY_KINDS]);
-  const name = boss ? BOSS_NAME : role === 'pate' ? 'Gros Pâté' : ENEMY_NAMES[s.order[s.asked % ENEMY_KINDS]];
+  const pick = (list: string[]) => list[s.order[s.asked % ENEMY_KINDS] % list.length];
+  const name = boss ? BOSS_NAME : role === 'pate' ? pick(PATE_NAMES) : role === 'splash' ? pick(SPLASH_NAMES) : pick(ENEMY_NAMES);
   const done = round.step === 'done';
   const mood = done ? (round.lost ? 'attack' : 'dead') : round.hits > 0 ? 'angry' : 'idle';
   const shake = round.hits > 0 && !done ? (round.hits % 2 ? ' sh-a' : ' sh-b') : '';
