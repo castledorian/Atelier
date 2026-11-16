@@ -98,7 +98,7 @@ export default function Privacy({ onBack }: { onBack: () => void }) {
           </li>
           <li>
             <strong>Un élève connecté</strong> voit le prénom (ou le pseudo) et le score des élèves de sa classe, et de son école s’il ouvre le classement de l’école. Il ne voit ni
-            les codes, ni les autres données. <strong>Pour limiter l’exposition, nous recommandons d’utiliser des pseudos ou des prénoms seuls.</strong>
+            les codes, ni les autres données. Les prénoms ou pseudos choisis par l’enseignant sont donc visibles des camarades de classe.
           </li>
           <li>Les autres écoles et le public ne voient rien.</li>
         </ul>
@@ -136,7 +136,7 @@ export default function Privacy({ onBack }: { onBack: () => void }) {
       <Section id="p-duree" title="Combien de temps ?">
         <p>
           Les données restent tant que l’enseignant ne les supprime pas. <strong>Nous recommandons de supprimer les classes en fin d’année scolaire</strong> (bouton « Supprimer » dans
-          l’espace enseignant) ; la suppression est définitive et efface aussi les résultats. Un compte enseignant inactif peut être supprimé sur demande.
+          l’espace enseignant) ; la suppression est définitive et efface aussi les résultats. L’enseignant peut aussi supprimer lui-même son compte (espace enseignant → « Mon compte ») : son adresse e-mail et son mot de passe sont alors effacés, ainsi que les écoles dont il est le seul enseignant.
         </p>
       </Section>
 

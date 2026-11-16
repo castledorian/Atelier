@@ -55,3 +55,7 @@ La page **Confidentialité** du site (lien en bas de l'accueil et sur la page de
 - **Suppression** : dans « Mon espace école », vous pouvez supprimer un élève, une classe ou l'école entière à tout moment (définitif). **Supprimez les classes en fin d'année scolaire.**
 - **Droits des familles** (voir, corriger, supprimer, s'opposer) : vous pouvez les satisfaire vous-même (renommer, nouveau code, supprimer) ; sinon, l'éditeur répond via l'adresse indiquée sur la page Confidentialité.
 - Pas de publicité, pas de cookie, aucun service de statistiques.
+
+## Supprimer son compte
+
+Espace enseignant → **Mon compte** → **Supprimer mon compte…**. Le site vous montre d'abord ce qui sera effacé (les écoles dont vous êtes le seul enseignant disparaissent avec leurs classes, élèves et scores ; les écoles partagées restent), puis il faut recopier votre adresse e-mail **et** cocher une case de confirmation. Pensez à exporter vos résultats avant : la suppression est définitive.

@@ -9,7 +9,7 @@ import Login from './pages/Login';
 import Privacy from './pages/Privacy';
 import { serverEnabled } from './server/api';
 import { loadStudent, saveStudent, studentLogout } from './server/student';
-import { loadTeacher, signOut, takeAuthHash } from './server/teacher';
+import { loadTeacher, saveTeacher, signOut, takeAuthHash } from './server/teacher';
 import type { TeacherSession } from './server/teacher';
 import type { StudentAccount } from './server/types';
 
@@ -87,7 +87,18 @@ export default function Shell() {
   }
 
   if (view === 'dashboard' && teacher) {
-    return <Dashboard email={teacher.email} onHome={home} onSignOut={teacherLost} />;
+    return (
+      <Dashboard
+        email={teacher.email}
+        onHome={home}
+        onSignOut={teacherLost}
+        onAccountDeleted={() => {
+          saveTeacher(null);
+          setTeacher(null);
+          setView('home');
+        }}
+      />
+    );
   }
 
   if (view === 'typing') return <App account={student} onHome={home} onSessionLost={sessionLost} install={install} />;

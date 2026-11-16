@@ -164,3 +164,18 @@ export const classRuns = (cls: string) =>
       t,
     ),
   );
+
+// ───────────────────────── Suppression du compte ─────────────────────────
+
+export interface DeletionPreview {
+  name: string;
+  members: number;
+  classes: number;
+  students: number;
+}
+
+/** Les écoles de l'enseignant et ce qui disparaîtrait avec son compte. */
+export const accountDeletionPreview = () => authed((t) => rpc<DeletionPreview[]>('account_deletion_preview', {}, t));
+
+/** Supprime le compte pour de bon. L'adresse e-mail doit être recopiée (le serveur la vérifie aussi). */
+export const deleteMyAccount = (email: string) => authed((t) => rpc('delete_my_account', { p_email: email }, t));

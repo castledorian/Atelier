@@ -188,3 +188,7 @@ Une vraie application des **magasins** (App Store, Google Play) est possible plu
 - Surveillez *Supabase → Reports* (stockage, utilisateurs actifs). Le stockage est minime : une partie = une ligne de quelques dizaines d'octets.
 - Si vous modifiez la base plus tard (nouveau jeu avec de nouvelles colonnes, etc.), faites-le par un nouveau script SQL daté (dans `serveur/`) et gardez `schema.sql` à jour.
 - Nouveau jeu : le serveur accepte déjà n'importe quel identifiant de jeu (`game`) et de mode ; **le classement, l'export et le tableau de bord sont déjà prêts pour le suivant**.
+
+## Mise à jour « suppression de compte »
+
+Supabase → **SQL Editor** → **New query** → collez le contenu de `serveur/mise-a-jour-compte.sql` → **Run**. À faire une seule fois ; aucune donnée existante n'est modifiée.

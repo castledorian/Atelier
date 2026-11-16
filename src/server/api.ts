@@ -90,6 +90,7 @@ export function explain(e: unknown): string {
     forbidden: 'Action non autorisée.',
     invalid_name: 'Nom invalide (2 à 80 caractères pour une école, 1 à 24 pour un élève).',
     too_many_schools: 'Limite atteinte : 3 écoles par compte.',
+    confirmation_mismatch: 'L’adresse e-mail recopiée n’est pas la bonne. Rien n’a été supprimé.',
     limit_reached: 'Limite atteinte pour cette école.',
     too_many: 'Trop de noms d’un coup (60 maximum).',
   };
