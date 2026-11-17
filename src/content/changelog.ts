@@ -24,6 +24,19 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.6',
+    date: '17 novembre 2026',
+    iso: '2026-11-17',
+    title: 'Chasse aux fautes, nouvelle version',
+    changes: [
+      { kind: 'new', text: 'Chasse aux fautes : chaque créature d’encre apparaît et écrit sa phrase sous tes yeux, lettre après lettre, sur une feuille de cahier.' },
+      { kind: 'better', text: 'Chasse aux fautes : bonne réponse, le canon tire et la phrase est corrigée au stylo rouge (l’ancien mot reste barré au-dessus) ; erreur, la créature se jette en avant et crache son encre sur le canon.' },
+      { kind: 'better', text: 'Chasse aux fautes : nouveaux sons (plume, apparition, attaque, impact, correction) et mise en page aux proportions fixes, identique sur ordinateur, tablette et téléphone, sans rien qui bouge pendant la partie.' },
+      { kind: 'better', text: 'Chasse aux fautes : les bonus, la seconde chance et la collection de créatures sont retirés pour un jeu plus simple et plus sobre ; seule la dernière phrase est écrite par le Grand Pâté.' },
+      { kind: 'better', text: 'Pied de page : les six liens tiennent sur une seule ligne, régulièrement espacés (grille de deux lignes sur téléphone).' },
+    ],
+  },
+  {
     version: '1.5',
     date: '17 novembre 2026',
     iso: '2026-11-17',

@@ -94,16 +94,13 @@ test('Course : l’encre monte moins vite et pardonne plus l’erreur pour les p
   assert.ok(LEVEL_TUNING.cp.wrong < LEVEL_TUNING.cm2.wrong && LEVEL_TUNING.cp.drain < LEVEL_TUNING.cm2.drain);
 });
 
-import { BOONS, BOON_AFTER, HP, ROUNDS, offerBoons } from '../src/game/spelling/engine';
+import { BOSS_AT, HP, ROUNDS } from '../src/game/spelling/engine';
+import * as SpellingEngine from '../src/game/spelling/engine';
 
-test('Chasse aux fautes : vies selon la difficulté, bonus distincts, boss en dernier', () => {
+test('Chasse aux fautes : vies selon la difficulté, pas de bonus ni de seconde chance, boss en dernier', () => {
   assert.ok(HP.apprenti > HP.standard && HP.standard > HP.expert && HP.expert >= 3);
-  for (const n of BOON_AFTER) assert.ok(n > 0 && n < ROUNDS - 1);
-  for (let i = 0; i < 40; i++) {
-    const [a, b] = offerBoons();
-    assert.notEqual(a.id, b.id);
-  }
-  assert.equal(new Set(BOONS.map((b) => b.id)).size, BOONS.length);
+  assert.equal(BOSS_AT, ROUNDS - 1);
+  for (const gone of ['BOONS', 'offerBoons', 'BOON_AFTER', 'REVIVE_HP']) assert.ok(!(gone in SpellingEngine), `${gone} ne devrait plus exister`);
 });
 
 import { ITEMS, roleOf } from '../src/game/spelling/engine';
@@ -162,7 +159,8 @@ test('Chasse aux fautes : assez de propositions pour chaque difficulté, sans do
   }
   // pas de proposition fabriquée invraisemblable : quand il n'existe que deux erreurs plausibles, il n'y en a que deux
   const three = ITEMS.filter((i) => choicesFor(i, 'standard').length === CHOICES.standard).length;
-  assert.ok(three / ITEMS.length >= 0.9, `Standard : 3 propositions pour ${three}/${ITEMS.length} phrases`);
+  // a / à n'a qu'une seule autre erreur plausible (as) : ces phrases-là n'ont que deux propositions
+  assert.ok(three / ITEMS.length >= 0.85, `Standard : 3 propositions pour ${three}/${ITEMS.length} phrases`);
   for (const i of ITEMS) assert.ok(choicesFor(i, 'standard').length >= 2 && choicesFor(i, 'expert').length >= choicesFor(i, 'standard').length, i.fixed);
   const four = ITEMS.filter((i) => choicesFor(i, 'expert').length === CHOICES.expert).length;
   assert.ok(four / ITEMS.length >= 0.15, `Expert : 4 propositions pour ${four}/${ITEMS.length} phrases`);
@@ -176,7 +174,7 @@ test('Chasse aux fautes : le retour d\'erreur ne donne pas la réponse et reste 
   }
 });
 
-import { BOSS_PHASES, difficultyOf, isTypedRight, nextItem } from '../src/game/spelling/engine';
+import { difficultyOf, isTypedRight, nextItem } from '../src/game/spelling/engine';
 
 test('Chasse aux fautes : la difficulté monte au fil de la partie', () => {
   let early = 0;
@@ -191,7 +189,6 @@ test('Chasse aux fautes : la difficulté monte au fil de la partie', () => {
     }
   }
   assert.ok(late > early * 1.3, `début ${early / 600} / fin ${late / 600}`);
-  assert.equal(BOSS_PHASES, 3);
 });
 
 test('Expert : réponse tapée, sans tenir compte des majuscules, espaces ni apostrophes', () => {
@@ -201,12 +198,6 @@ test('Expert : réponse tapée, sans tenir compte des majuscules, espaces ni apo
   assert.ok(isTypedRight(ITEMS.find((x) => x.right === 'à' || x.right === 'à')!, 'à'));
 });
 
-test('Chasse aux fautes : la Gomme n\'est proposée qu\'en Standard', () => {
-  for (let k = 0; k < 50; k++) {
-    for (const d of ['apprenti', 'expert'] as const) assert.ok(!offerBoons(Math.random, d).some((b) => b.id === 'gomme'));
-    assert.equal(new Set(offerBoons(Math.random, 'standard').map((b) => b.id)).size, 3);
-  }
-});
 
 test('Mémoire : Apprenti plus lent et plus généreux, Expert plus serré — à chaque classe', () => {
   const d = R.MEMORY_DIFF;

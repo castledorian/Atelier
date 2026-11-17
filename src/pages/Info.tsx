@@ -31,9 +31,14 @@ export function SiteFooter({ current, onNav }: { current?: InfoView; onNav: (v: 
         <ul className="site-foot-links">
           {LINKS.map((l) => (
             <li key={l.id}>
-              <button type="button" className="link" aria-current={current === l.id ? 'page' : undefined} onClick={() => onNav(l.id)}>
+              <button type="button" className="foot-link" aria-current={current === l.id ? 'page' : undefined} onClick={() => onNav(l.id)}>
                 {l.label}
-                {l.id === 'news' && unread && <span className="new-dot"> · nouveau</span>}
+                {l.id === 'news' && unread && (
+                  <>
+                    <span className="new-dot" aria-hidden="true" />
+                    <span className="sr-only"> (nouveau)</span>
+                  </>
+                )}
               </button>
             </li>
           ))}

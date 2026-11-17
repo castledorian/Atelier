@@ -57,12 +57,12 @@ export const PREVIEWS: Record<PreviewGame, PreviewInfo> = {
   },
   spelling: {
     title: 'Chasse aux fautes',
-    goal: 'Bats les ennemis d’encre : trouve la faute de leur phrase, sans perdre toutes tes vies.',
+    goal: 'Les créatures d’encre ont semé des fautes : trouve-les et corrige-les, sans perdre toutes tes vies.',
     steps: [
-      { title: 'Un ennemi arrive', text: 'Un ennemi d’encre dit une phrase. Une faute s’y est glissée.' },
-      { title: 'Touche le mot fautif', text: 'Touche le mot mal écrit. Attention : te tromper te coûte une vie.' },
-      { title: 'Choisis la correction', text: 'Plusieurs écritures te sont proposées. Une mauvaise réponse coûte aussi une vie.' },
-      { title: 'Ennemi vaincu !', text: 'L’ennemi s’efface et une astuce t’aide à retenir la règle. Tous les 3 ennemis, choisis un bonus. Le 10e est un boss !' },
+      { title: 'Une créature écrit', text: 'Une créature d’encre apparaît et écrit sa phrase. Une faute s’y cache.' },
+      { title: 'Touche le mot fautif', text: 'Touche le mot mal écrit. Attention : un mot juste touché par erreur, et la créature attaque.' },
+      { title: 'Choisis la correction', text: 'Plusieurs écritures sont proposées. Une mauvaise réponse te coûte une vie.' },
+      { title: 'La phrase est corrigée', text: 'Ton canon tire, la créature est vaincue et la phrase est corrigée. Une astuce t’aide à retenir la règle.' },
     ],
   },
 };

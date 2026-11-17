@@ -15,6 +15,13 @@ export type SfxName =
   | 'clear'
   | 'over'
   | 'start'
+  | 'spawn'
+  | 'scribble'
+  | 'select'
+  | 'attack'
+  | 'impact'
+  | 'correct'
+  | 'victory'
   | 'n0'
   | 'n1'
   | 'n2'
@@ -42,6 +49,13 @@ const LENGTH: Record<SfxName, number> = {
   clear: 0.6,
   over: 1.45,
   start: 1.15,
+  spawn: 0.6,
+  scribble: 0.16,
+  select: 0.12,
+  attack: 0.8,
+  impact: 0.75,
+  correct: 0.9,
+  victory: 1.6,
   n0: 0.36,
   n1: 0.36,
   n2: 0.36,
@@ -187,6 +201,55 @@ class Synth {
         this.burst('bandpass', 800, 4000, 0.25, 0.4, 0, 3);
         this.bell(0.22, 0.22);
         break;
+      case 'spawn':
+        // une goutte d'encre qui tombe et s'étale : « bloup » grave puis petite bulle qui remonte
+        this.tone('sine', 340, 85, 0.22, 0.55);
+        this.burst('lowpass', 900, 140, 0.24, 0.45);
+        this.tone('sine', 420, 980, 0.12, 0.12, 0.2);
+        this.burst('bandpass', 1800, 900, 0.1, 0.12, 0.3, 4);
+        break;
+      case 'scribble':
+        // plume sur le papier : trois grattements très courts
+        this.burst('bandpass', 3400, 2600, 0.04, 0.32, 0, 2.5);
+        this.burst('bandpass', 2900, 2300, 0.035, 0.24, 0.045, 2.5);
+        this.burst('bandpass', 3600, 2800, 0.05, 0.28, 0.09, 2.5);
+        break;
+      case 'select':
+        this.tone('triangle', 740, 740, 0.06, 0.18);
+        this.burst('bandpass', 2200, 1600, 0.03, 0.25, 0, 2);
+        break;
+      case 'attack':
+        // l'ennemi se jette en avant (souffle qui monte), puis l'encre s'écrase sur le canon
+        this.burst('bandpass', 350, 1900, 0.26, 0.5, 0, 1.6);
+        this.tone('sawtooth', 120, 260, 0.22, 0.08);
+        this.burst('lowpass', 1500, 140, 0.32, 0.9, 0.27);
+        this.tone('sine', 170, 48, 0.36, 0.75, 0.27);
+        this.tone('square', 196, 92, 0.18, 0.1, 0.33);
+        break;
+      case 'impact':
+        // le boulet frappe : choc sourd, éclaboussure d'encre, puis l'ennemi s'évapore
+        this.tone('sine', 240, 52, 0.26, 0.85);
+        this.burst('lowpass', 2400, 260, 0.2, 0.8);
+        this.burst('bandpass', 1500, 600, 0.22, 0.35, 0.05, 3);
+        this.burst('highpass', 5200, 1800, 0.45, 0.16, 0.22);
+        break;
+      case 'correct':
+        // deux notes claires : la correction est écrite
+        this.tone('triangle', 1319, 1319, 0.16, 0.2);
+        this.tone('triangle', 1976, 1976, 0.4, 0.2, 0.11);
+        this.tone('sine', 3951, 3951, 0.25, 0.05, 0.11);
+        break;
+      case 'victory':
+        for (const [f, d] of [
+          [523, 0],
+          [659, 0.1],
+          [784, 0.2],
+          [1047, 0.3],
+          [1319, 0.42],
+        ] as const)
+          this.tone('triangle', f, f, d === 0.42 ? 0.6 : 0.16, 0.2, d);
+        this.bell(0.42, 0.18);
+        break;
     }
   }
 }
@@ -258,7 +321,7 @@ export class Sfx {
     const src = this.ac.createBufferSource();
     src.buffer = buf;
     // légère variation de hauteur : deux frappes ne sonnent jamais exactement pareil
-    if (name === 'key' || name === 'hit' || name === 'kill') src.playbackRate.value = 0.94 + Math.random() * 0.12;
+    if (name === 'key' || name === 'hit' || name === 'kill' || name === 'scribble' || name === 'select') src.playbackRate.value = 0.94 + Math.random() * 0.12;
     src.connect(this.out);
     src.start();
   }

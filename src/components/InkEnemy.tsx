@@ -1,5 +1,5 @@
 /**
- * Les ennemis d'encre de « Chasse aux fautes » : sept dessins différents (le dernier est le « boss »).
+ * Les ennemis d'encre de « Chasse aux fautes » : huit dessins différents (le « boss » a une couronne).
  * Décor seulement (aria-hidden) : l'information importante est toujours écrite à côté.
  */
 
@@ -12,7 +12,8 @@ export const SPLASH_NAMES = ['Goutte', 'Giclée', 'Éclat', 'Perle', 'Postillon'
 export const PATE_NAMES = ['Gros Pâté', 'Grosse Flaque', 'Maxi Bavure'];
 export const BOSS_NAME = 'Le Grand Pâté';
 
-export type EnemyMood = 'idle' | 'angry' | 'attack' | 'dead';
+/** `write` : l'ennemi écrit sa phrase (il baisse les yeux vers la feuille). */
+export type EnemyMood = 'idle' | 'write' | 'angry' | 'attack' | 'dead';
 
 export type Role = 'splash' | 'tache' | 'pate' | 'boss';
 export const ROLE_LABEL: Record<Role, string> = { splash: 'Petit', tache: 'Moyen', pate: 'Costaud', boss: 'Boss' };

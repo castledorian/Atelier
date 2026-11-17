@@ -13,7 +13,7 @@ import type { PreviewGame } from './Preview';
 const STEP_MS = 5200;
 
 /** Sons joués à chaque étape de l'extrait d'orthographe (les autres jeux jouent leurs propres sons). */
-const SPELLING_SOUNDS: Array<SfxName | null> = [null, 'key', 'hit', 'kill'];
+const SPELLING_SOUNDS: Array<SfxName | null> = ['scribble', 'select', 'select', 'impact'];
 
 /**
  * Fenêtre d'extrait : s'ouvre par-dessus l'accueil comme un petit onglet. En haut, le jeu joué tout seul
@@ -153,48 +153,52 @@ export default function PreviewWindow({ game, grade, onClose, onPlay }: { game: 
 }
 
 /**
- * Extrait de « Chasse aux fautes » : un combat joué à la main par étapes (l'ennemi dit sa phrase, le mot fautif est montré
- * du doigt, puis la bonne écriture est choisie et l'ennemi s'efface). Décor seulement : rien n'est cliquable.
+ * Extrait de « Chasse aux fautes » : la créature écrit sa phrase, le mot fautif est entouré, la bonne écriture est choisie,
+ * puis le canon tire et la phrase est corrigée. Même dessin que le jeu ; décor seulement, rien n'est cliquable.
  */
 function SpellingScene({ step }: { step: number }) {
   const fixed = step >= 3;
   return (
-    <div className="sp-demo" aria-hidden="true">
-      <div className="sp-arena">
-        <div className="sp-battle" style={{ ['--dx' as string]: '150px', ['--ex' as string]: '-150px', ['--bx' as string]: '120px', ['--by' as string]: '-14px' }}>
-          <div className="sp-pen">
-            <div key={fixed ? 'd' : 'a'} className={`pen-wrap${fixed ? ' cannon-fire' : ''}`}>
-              {fixed && (
-                <>
-                  <span className="cball" aria-hidden="true" />
-                  <span className="cflash" aria-hidden="true" />
-                  <span className="csmoke" aria-hidden="true" />
-                </>
-              )}
-              <CannonIcon />
-            </div>
+    <div className="hx hx-demo" aria-hidden="true">
+      <div className="hx-stage hx-tache" style={{ ['--foe' as string]: '60%' }}>
+        <div className="hx-ground" />
+        <div className="hx-me">
+          <div key={fixed ? 'f' : 'a'} className={`hx-cannon${fixed ? ' fire' : ''}`}>
+            <CannonIcon />
+            {fixed && <span className="hx-flash" />}
           </div>
-          <div className="sp-foe">
-            <div className="foe-in" key={fixed ? 'd' : 'a'}>
-              <InkEnemy kind={0} mood={fixed ? 'dead' : 'idle'} name="Pâté" />
-            </div>
+          <span className="hx-tag">Toi</span>
+        </div>
+        <div className="hx-foe">
+          <span className="hx-tag hx-foe-tag">Gribouille</span>
+          <div className="hx-foe-in" key={step === 0 ? 'in' : 'stay'}>
+            <InkEnemy kind={0} mood={fixed ? 'dead' : step === 0 ? 'write' : step === 2 ? 'angry' : 'idle'} name="Gribouille" />
           </div>
         </div>
-        <div className="sp-bubble">
-          <div className="sp-sentence">
-            <span className="sp-plain">Les</span>
-            <span className="sp-plain">enfants</span>
-            {step === 0 && <span className="sp-demo-word">joue</span>}
-            {step === 1 && <span className="sp-demo-word sp-demo-point">joue</span>}
-            {step === 2 && <span className="sp-mark">joue</span>}
-            {fixed && <span className="sp-ok">jouent</span>}
-            <span className="sp-plain">dehors.</span>
-          </div>
+        {fixed && (
+          <span className="hx-ball">
+            <i />
+          </span>
+        )}
+      </div>
+      <div className="hx-sheet">
+        <div className="hx-line">
+          <span className="hx-w">Les</span>
+          <span className="hx-w">enfants</span>
+          {step < 2 && <span className={`hx-w${step === 1 ? ' hx-demo-point' : ''}`}>joue</span>}
+          {step === 2 && <span className="hx-w hx-found">joue</span>}
+          {fixed && (
+            <span className="hx-w hx-fixed on">
+              <span className="hx-was">joue</span>
+              <span className="hx-right">jouent</span>
+            </span>
+          )}
+          <span className="hx-w">dehors.</span>
         </div>
       </div>
-      <div className="sp-choices" style={{ visibility: step === 2 ? 'visible' : 'hidden' }}>
+      <div className="hx-choices" data-n="3" style={{ visibility: step === 2 ? 'visible' : 'hidden' }}>
         {['joue', 'jouent', 'joues'].map((c) => (
-          <span key={c} className="btn btn-ghost sp-choice">
+          <span key={c} className="hx-choice">
             {c}
           </span>
         ))}

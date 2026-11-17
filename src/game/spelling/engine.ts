@@ -5,7 +5,8 @@ import type { CourseDiff, Level } from '../course/questions';
 import { BANK } from './bank';
 import type { SpellGrade } from './bank';
 
-/** Moteur de « Chasse aux fautes » : choix des phrases, propositions, points. Aucune dépendance à l'interface. */
+/** Moteur de « Chasse aux fautes » : choix des phrases, propositions, points. Aucune dépendance à l'interface.
+ * Pas de bonus ni de seconde chance : chaque erreur coûte une vie, la partie compte 10 phrases. */
 
 export const ROUNDS = 10;
 /** Nombre de propositions de correction, selon la difficulté. */
@@ -16,28 +17,11 @@ export const HINT: Record<CourseDiff, 'free' | 'cost' | 'none'> = { apprenti: 'f
 
 /** Vies du joueur au début d'une partie, selon la difficulté : chaque erreur en coûte une. */
 export const HP: Record<CourseDiff, number> = { apprenti: 7, standard: 6, expert: 5 };
-/** Seconde chance : à zéro vie, l'élève revient une seule fois par partie avec ce nombre de vies. */
-export const REVIVE_HP = 2;
 /** Répétition espacée : jusqu'à RETRY_MAX phrases ratées reviennent dans la partie suivante, aux manches RETRY_SLOTS. */
 export const RETRY_MAX = 6;
 export const RETRY_SLOTS: readonly number[] = [2, 5, 7];
-/** Après combien d'ennemis vaincus on choisit un bonus (le dernier ennemi, le 10e, est le boss). */
-export const BOON_AFTER: readonly number[] = [2, 4, 6];
-/** Les derniers ennemis forment le boss : trois phrases à enchaîner (le total reste de 10 phrases). */
-export const BOSS_PHASES = 3;
-
-export type BoonId = 'vie' | 'bouclier' | 'loupe' | 'gomme';
-export interface Boon {
-  id: BoonId;
-  name: string;
-  text: string;
-}
-export const BOONS: readonly Boon[] = [
-  { id: 'vie', name: 'Goutte de vie', text: 'Tu récupères 2 vies.' },
-  { id: 'bouclier', name: 'Bouclier de buvard', text: 'Il absorbe ta prochaine erreur.' },
-  { id: 'gomme', name: 'Gomme', text: 'Efface une mauvaise proposition, 3 fois.' },
-  { id: 'loupe', name: 'Loupe', text: 'L’astuce s’affiche toute seule pendant 3 ennemis, sans retirer de points.' },
-];
+/** Le dernier ennemi de la partie est le « boss » : plus grand, il écrit la dernière phrase. */
+export const BOSS_AT = ROUNDS - 1;
 
 export type Rng = () => number;
 
@@ -154,7 +138,7 @@ const FAMILIES: readonly (readonly string[])[] = [
   ['c’est', 's’est', 'ces', 'ses', 'sais'],
   ['quel', 'quelle', 'qu’elle', 'quels'],
   ['n’ont', 'n’on', 'non', 'nom'],
-  ['a', 'à', 'as', 'ah'],
+  ['a', 'à', 'as'],
   ['et', 'est', 'es', 'ai'],
   ['on', 'ont', 'ons', 'un'],
   ['son', 'sont', 'sons', 'ont'],
@@ -285,9 +269,8 @@ export function duelItems(level: Level, rule: RuleId, count: number, r: Rng = Ma
 }
 
 /**
- * Rôle d'un ennemi, qui fixe son dessin et sa taille :
- * éclaboussure (phrase courte, petite et vive), tache (standard), pâté (phrase longue ou difficile, costaud : le vaincre sans
- * erreur redonne une vie), boss (le dernier).
+ * Rôle d'un ennemi, qui fixe son dessin et sa taille : éclaboussure (phrase courte), tache (standard), pâté (phrase longue
+ * ou difficile), boss (le dernier).
  */
 export type EnemyRole = 'splash' | 'tache' | 'pate' | 'boss';
 export const wordCount = (i: Item) => i.before.length + 1 + i.after.length;
@@ -296,14 +279,6 @@ export function roleOf(item: Item, boss: boolean): EnemyRole {
   const n = wordCount(item);
   if (n >= 9 || (n >= 7 && GRADE_RANK[item.grade] >= 3)) return 'pate';
   return n <= 5 ? 'splash' : 'tache';
-}
-
-/** Trois bonus différents à proposer (la Gomme n'a de sens qu'avec trois propositions : seulement en Standard). */
-export function offerBoons(r: Rng = Math.random, diff: CourseDiff = 'standard'): Boon[] {
-  const a = BOONS.filter((b) => b.id !== 'gomme' || diff === 'standard');
-  const out: Boon[] = [];
-  while (out.length < 3 && a.length) out.push(a.splice(Math.floor(r() * a.length), 1)[0]);
-  return out;
 }
 
 /** Réponse tapée au clavier (Expert) : on ignore les majuscules, les espaces autour et le type d'apostrophe. */
