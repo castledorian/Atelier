@@ -24,7 +24,7 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
-    version: '1.9.1',
+    version: '1.10',
     date: '17 novembre 2026',
     iso: '2026-11-17',
     title: 'Mémoire d’encre plus lisible sur grand écran',
