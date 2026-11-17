@@ -1,7 +1,6 @@
 import { beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { installFakeStorage, seeded } from './helpers';
-import { rulesOf } from '../src/game/encre/rules';
 import { ITEMS, ROUNDS, choicesFor, duelItems, isFault, isPerfect, itemsFor, nextItem, parseEntry, pointsFor, rulesFor } from '../src/game/spelling/engine';
 
 beforeEach(() => installFakeStorage());
