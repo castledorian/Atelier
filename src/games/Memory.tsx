@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { BackButton, useFitRows } from '../components/BackButton';
+import { useFit } from '../components/FitCard';
 import { GameProgress } from '../components/GameProgress';
 import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
 import { Sfx } from '../game/audio';
 import { addLog } from '../game/progress';
+import { feedBoss } from '../game/boss/state';
 import { MemoryGame } from '../game/memory/engine';
 import type { MemoryResult } from '../game/memory/engine';
 import { MEM_DIFFS, MODES, PAGES, memBoard } from '../game/memory/rounds';
@@ -144,7 +146,10 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
       const res = addMemoryScore(memBoard(result.mode, result.diff), { id, name, score: result.score, span: result.maxSpan, date: Date.now() });
       rank = res.rank;
     }
-    if (total > 0) addLog('memory', { t: Date.now(), ok: result.correct, err: result.wrong, score: result.score, board: memBoard(result.mode, result.diff), span: result.maxSpan });
+    if (total > 0) {
+      addLog('memory', { t: Date.now(), ok: result.correct, err: result.wrong, score: result.score, board: memBoard(result.mode, result.diff), span: result.maxSpan });
+      feedBoss(result.correct, result.wrong);
+    }
     if (acct && result.correct > 0) {
       setCloud('sending');
       sendRun(acct.token, payload)
@@ -481,6 +486,7 @@ interface MenuProps {
 }
 
 function MenuScreen({ view, setView, grade, mode, setMode, diff, setDiff, settings, account, onChange, onStart, startPage, setStartPage, onHome }: MenuProps) {
+  const fit = useFit<HTMLElement>(view);
   const [sMode, setSMode] = useState<Mode>(mode);
   const [sDiff, setSDiff] = useState<MemDiff>(diff);
   const sBoard = memBoard(sMode, sDiff);
@@ -585,7 +591,7 @@ function MenuScreen({ view, setView, grade, mode, setMode, diff, setDiff, settin
     }
     return (
       <div className="overlay">
-        <section className="card card-game w-full max-w-[600px]" aria-labelledby="sub-title">
+        <section ref={fit} className="card card-game w-full max-w-[600px]" aria-labelledby="sub-title">
           <div className="card-top">
             <BackButton label="Retour" onClick={() => setView('main')} autoFocus />
           </div>
@@ -601,7 +607,7 @@ function MenuScreen({ view, setView, grade, mode, setMode, diff, setDiff, settin
 
   return (
     <div className="overlay">
-      <section className="card card-game card-menu card-compact w-full max-w-[600px]" aria-labelledby="game-title">
+      <section ref={fit} className="card card-game card-menu card-compact w-full max-w-[600px]" aria-labelledby="game-title">
         <div className="menu-a">
           <div className="card-top">
             <BackButton onClick={onHome} />

@@ -24,6 +24,19 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.9',
+    date: '17 novembre 2026',
+    iso: '2026-11-17',
+    title: 'La grotte de fin d’année, et des écrans plus lisibles',
+    changes: [
+      { kind: 'new', text: 'La grotte : une créature d’encre grossit à chaque faute de l’année et faiblit à chaque règle retravaillée. En juin, toute la classe descend l’affronter — les prénoms frappent les uns après les autres, l’encre riposte… et la classe l’emporte. Le diplôme de victoire s’imprime.' },
+      { kind: 'new', text: 'Tableaux de l’espace enseignant et de l’administration : un clic sur un titre de colonne classe du meilleur au moins bon (puis l’inverse), au clavier comme à la souris.' },
+      { kind: 'better', text: 'Espace enseignant : tableau plus lisible (lignes alternées, colonnes raccourcies, réglages de classe repliés) — environ quatre fois plus d’élèves visibles d’un coup, et plus besoin de glisser le tableau sur le côté.' },
+      { kind: 'fix', text: 'Menus, « Comment jouer », « Scores » et « Mes progrès » : plus aucun défilement, sur ordinateur, tablette, téléphone et TBI, y compris en texte très grand — une carte trop pleine se réduit d’un cran au lieu de défiler.' },
+      { kind: 'fix', text: 'Bulles d’information (bouton « i ») : tout le contenu tient à l’écran, même sur petit téléphone ; en écran large et bas, l’extrait passe à gauche et le texte à droite.' },
+    ],
+  },
+  {
     version: '1.8',
     date: '17 novembre 2026',
     iso: '2026-11-17',

@@ -9,6 +9,7 @@ import { scoresFor } from '../game/storage';
 import type { Layout, ScoreEntry, Settings, TextSize } from '../game/storage';
 import type { StudentAccount } from '../server/types';
 import { BackButton, useFitRows } from './BackButton';
+import { useFit } from './FitCard';
 import { ScoresPanel } from './Extras';
 
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
@@ -339,6 +340,7 @@ export function Menu({ scores, settings, kbOn, install, onStart, onChange, onCle
   const list = scoresFor(scores, diff);
   const assist = diff === 'perso' ? settings.custom.autoTarget : DIFFICULTIES[diff].autoTarget;
   const [view, setView] = useState<MenuView>('main');
+  const fit = useFit<HTMLElement>(view);
   const rows = useFitRows(330, 31, 3, 10);
   const back = () => setView('main');
 
@@ -356,7 +358,7 @@ export function Menu({ scores, settings, kbOn, install, onStart, onChange, onCle
   }, [view]);
 
   const sub = (title: string, children: ReactNode) => (
-    <section className="card card-game w-full max-w-[600px]" aria-labelledby="sub-title">
+    <section ref={fit} className="card card-game w-full max-w-[600px]" aria-labelledby="sub-title">
       <div className="card-top">
         <BackButton onClick={back} label="Retour" autoFocus />
       </div>
@@ -415,7 +417,7 @@ export function Menu({ scores, settings, kbOn, install, onStart, onChange, onCle
 
   return (
     <div className="overlay">
-      <section className="card card-game card-menu card-compact w-full max-w-[600px]" aria-labelledby="game-title">
+      <section ref={fit} className="card card-game card-menu card-compact w-full max-w-[600px]" aria-labelledby="game-title">
         <div className="menu-a">
           <div className="card-top">
             <BackButton onClick={onHome} />

@@ -8,6 +8,8 @@ import { ApiError, explain } from '../server/api';
 import { GRADES } from '../game/grade';
 import * as T from '../server/teacher';
 import { Check } from '../components/Screens';
+import { SortTh, useSort, useSorted } from '../components/SortTable';
+import type { SortValue } from '../components/SortTable';
 import type { ClassRow, NewStudent, Overview, School } from '../server/types';
 
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -185,6 +187,32 @@ export default function Dashboard({ email, onHome, onSignOut, onAccountDeleted }
       <AccountPanel email={email} act={act} onDeleted={onAccountDeleted} />
     </Frame>
   );
+}
+
+/** Colonnes triables du tableau des élèves. */
+type OverKey = 'name' | 'games' | 'typing' | 'math' | 'memory' | 'wpm' | 'acc' | 'time' | 'last';
+
+function overValue(r: Overview, key: OverKey): SortValue {
+  switch (key) {
+    case 'name':
+      return r.name;
+    case 'games':
+      return r.games;
+    case 'typing':
+      return r.best_typing;
+    case 'math':
+      return r.best_math;
+    case 'memory':
+      return r.best_memory ?? null;
+    case 'wpm':
+      return r.avg_wpm;
+    case 'acc':
+      return r.avg_acc;
+    case 'time':
+      return r.seconds || null;
+    case 'last':
+      return r.last_played;
+  }
 }
 
 // ───────────────────────── Formulaires simples ─────────────────────────
@@ -380,6 +408,8 @@ function ClassPanel({
   onDeleted: () => void;
 }) {
   const [rows, setRows] = useState<Overview[] | null>(null);
+  const { sort, toggle } = useSort<OverKey>('name', 'asc');
+  const shown = useSorted(rows, sort, overValue);
   const [names, setNames] = useState('');
   const [fresh, setFresh] = useState<NewStudent[] | null>(null);
   const [msg, setMsg] = useState('');
@@ -482,53 +512,58 @@ function ClassPanel({
               </button>
             </div>
           </div>
-          {cls.grade !== undefined && (
-            <div className="mb-2">
-              <span className="subhead" id={`grade-${cls.id}`}>
-                Niveau de la classe
-              </span>
-              <div className="seg mt-1" role="radiogroup" aria-labelledby={`grade-${cls.id}`}>
-                {GRADES.map((g) => (
-                  <button
-                    key={g.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={grade === g.id}
-                    className="seg-b"
+          {(cls.grade !== undefined || cls.hide_board !== undefined) && (
+            <details className="fold fold-flat">
+              <summary>Réglages de la classe</summary>
+              <div className="fold-in">
+                {cls.grade !== undefined && (
+                  <div>
+                    <span className="subhead" id={`grade-${cls.id}`}>
+                      Niveau de la classe
+                    </span>
+                    <div className="seg mt-1" role="radiogroup" aria-labelledby={`grade-${cls.id}`}>
+                      {GRADES.map((g) => (
+                        <button
+                          key={g.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={grade === g.id}
+                          className="seg-b"
+                          onClick={async () => {
+                            const ok = await act(async () => {
+                              await T.setClassGrade(cls.id, g.id);
+                              return true;
+                            });
+                            if (ok) setGrade(g.id);
+                          }}
+                        >
+                          {g.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-1 text-[14px] leading-snug text-ink/75">
+                      Tes élèves ne voient que les jeux de leur niveau, sans rien avoir à choisir.
+                      {grade === null && ' Niveau non fixé : chaque élève choisit sa classe.'}
+                    </p>
+                  </div>
+                )}
+                {cls.hide_board !== undefined && (
+                  <Check
+                    on={boardHidden}
                     onClick={async () => {
+                      const next = !boardHidden;
                       const ok = await act(async () => {
-                        await T.setClassGrade(cls.id, g.id);
+                        await T.setBoardHidden(cls.id, next);
                         return true;
                       });
-                      if (ok) setGrade(g.id);
+                      if (ok) setBoardHidden(next);
                     }}
                   >
-                    {g.label}
-                  </button>
-                ))}
+                    Masquer les classements aux élèves
+                  </Check>
+                )}
               </div>
-              <p className="mt-1 text-[14px] leading-snug text-ink/75">
-                Tes élèves ne voient que les jeux de leur niveau, sans rien avoir à choisir.
-                {grade === null && ' Niveau non fixé : chaque élève choisit sa classe.'}
-              </p>
-            </div>
-          )}
-          {cls.hide_board !== undefined && (
-            <div className="mb-2">
-              <Check
-                on={boardHidden}
-                onClick={async () => {
-                  const next = !boardHidden;
-                  const ok = await act(async () => {
-                    await T.setBoardHidden(cls.id, next);
-                    return true;
-                  });
-                  if (ok) setBoardHidden(next);
-                }}
-              >
-                Masquer les classements aux élèves
-              </Check>
-            </div>
+            </details>
           )}
           {rows === null ? (
             <p className="text-[15px]">Chargement…</p>
@@ -542,42 +577,44 @@ function ClassPanel({
           ) : (
             <div className="tbl-wrap">
               <table className="scores tbl">
-                <caption className="sr-only">Résultats des élèves de la classe</caption>
+                <caption className="sr-only">Résultats des élèves de la classe : meilleur score par jeu, moyennes et dernière partie</caption>
                 <thead>
                   <tr>
-                    <th scope="col">Élève</th>
+                    <SortTh col="name" sort={sort} onSort={toggle}>
+                      Élève
+                    </SortTh>
                     <th scope="col">Code</th>
-                    <th scope="col" className="num c-mid">
+                    <SortTh col="games" sort={sort} onSort={toggle} numeric className="num c-mid">
                       Parties
-                    </th>
-                    <th scope="col" className="num">
-                      Record frappe
-                    </th>
-                    <th scope="col" className="num c-mid">
-                      Record calcul
-                    </th>
-                    <th scope="col" className="num c-mid">
-                      Record mémoire
-                    </th>
-                    <th scope="col" className="num c-sm">
+                    </SortTh>
+                    <SortTh col="typing" sort={sort} onSort={toggle} numeric className="num">
+                      <span className="sr-only">Record </span>Frappe
+                    </SortTh>
+                    <SortTh col="math" sort={sort} onSort={toggle} numeric className="num c-mid">
+                      <span className="sr-only">Record </span>Calcul
+                    </SortTh>
+                    <SortTh col="memory" sort={sort} onSort={toggle} numeric className="num c-mid">
+                      <span className="sr-only">Record </span>Mémoire
+                    </SortTh>
+                    <SortTh col="wpm" sort={sort} onSort={toggle} numeric className="num c-sm">
                       Mots/min
-                    </th>
-                    <th scope="col" className="num c-lo">
+                    </SortTh>
+                    <SortTh col="acc" sort={sort} onSort={toggle} numeric className="num c-lo">
                       Précision
-                    </th>
-                    <th scope="col" className="num c-lo">
+                    </SortTh>
+                    <SortTh col="time" sort={sort} onSort={toggle} numeric className="num c-lo">
                       Temps
-                    </th>
-                    <th scope="col" className="c-lo">
-                      Dernière partie
-                    </th>
+                    </SortTh>
+                    <SortTh col="last" sort={sort} onSort={toggle} numeric className="c-lo">
+                      Dernière<span className="sr-only"> partie</span>
+                    </SortTh>
                     <th scope="col">
                       <span className="sr-only">Actions</span>
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((r) => (
+                  {(shown ?? []).map((r) => (
                     <tr key={r.id}>
                       <td>{r.name}</td>
                       <td className="mono">{nice(r.access_code)}</td>
@@ -601,7 +638,8 @@ function ClassPanel({
                             }
                           }}
                         >
-                          Nouveau code
+                          <span aria-hidden="true">Nouveau</span>
+                          <span className="sr-only">Nouveau code pour {r.name}</span>
                         </button>
                         <button
                           type="button"
@@ -623,7 +661,8 @@ function ClassPanel({
                           }}
                           onBlur={() => setConfirm(null)}
                         >
-                          {confirm === r.id ? 'Confirmer' : 'Supprimer'}
+                          <span aria-hidden="true">{confirm === r.id ? 'Confirmer' : 'Retirer'}</span>
+                          <span className="sr-only">{confirm === r.id ? `Confirmer la suppression de ${r.name}` : `Supprimer ${r.name}`}</span>
                         </button>
                       </td>
                     </tr>
@@ -632,8 +671,9 @@ function ClassPanel({
               </table>
             </div>
           )}
-          <p className="mt-2 text-[14px] leading-snug text-ink/75">
-            Les parties « Perso » et les entraînements ne comptent pas dans les records. Toutes les colonnes sont dans l’export CSV.
+          <p className="sec-note">
+            « Frappe », « Calcul » et « Mémoire » : meilleur score de l’élève dans ce jeu. Clique sur un titre de colonne pour classer la liste.
+            Les parties « Perso » et les entraînements ne comptent pas dans les records ; l’export CSV contient toutes les colonnes.
           </p>
         </section>
       )}

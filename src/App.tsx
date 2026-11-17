@@ -9,6 +9,7 @@ import type { Difficulty } from './game/difficulty';
 import { effectiveGrade } from './game/grade';
 import { Game } from './game/engine';
 import { addLetters } from './game/progress';
+import { feedBoss } from './game/boss/state';
 import type { RunStats } from './game/engine';
 import { addRun, loadHistory, newRunId, renameRun } from './game/history';
 import { parseTyping } from './game/sessionConfig';
@@ -104,8 +105,11 @@ export default function App({ account, onHome, onSessionLost, install, session, 
   onGameOver.current = (stats) => {
     const { diff, settings: st } = live.current;
     const isDrill = live.current.drill !== null;
-    // lettres difficiles : cumul sur cet appareil seulement, hors séance de classe (alimente « Mes progrès »)
-    if (!sesRef.current.sess) addLetters(stats.letters);
+    // lettres difficiles et créature de la grotte : sur cet appareil seulement, hors séance de classe
+    if (!sesRef.current.sess) {
+      addLetters(stats.letters);
+      feedBoss(stats.correct, stats.errors);
+    }
     const ranked = !isDrill && diff !== 'perso' && !sesRef.current.sess;
     const acct = accountRef.current;
     const name = (acct ? acct.student.name.slice(0, 12).toUpperCase() : st.name) || 'ANONYME';

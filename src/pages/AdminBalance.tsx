@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { TARGET, TOLERANCE, diffName, gameName, itemsCsv, levelName, levelsCsv, mergeRows, picksText, rank, summaryText, verdictOf } from '../game/balanceView';
 import { downloadText } from '../game/history';
+import { SortTh, sortRows, useSort } from '../components/SortTable';
+import type { SortValue } from '../components/SortTable';
 import type { AdminItems, BalanceLevel } from '../server/admin';
 
 const ORDER = ['cp', 'ce1', 'ce2', 'cm1', 'cm2'];
@@ -24,10 +26,12 @@ export default function AdminBalance({ levels, stats }: { levels: BalanceLevel[]
   const families = useMemo(() => rank(mergeRows(stats.rules, { game, level, difficulty: diff }), 1).slice(0, 12), [stats.rules, game, level, diff]);
   const items = useMemo(() => rank(mergeRows(stats.items, { game, level, difficulty: diff }), 5).slice(0, 30), [stats.items, game, level, diff]);
 
-  const sorted = useMemo(
-    () => [...levels].sort((a, b) => a.game.localeCompare(b.game) || ORDER.indexOf(a.level) - ORDER.indexOf(b.level) || a.difficulty.localeCompare(b.difficulty) || a.version - b.version),
-    [levels],
-  );
+  const lv = useSort<LvKey>('place', 'asc');
+  const sorted = useMemo(() => sortRows(levels, lv.sort, lvValue), [levels, lv.sort]);
+  const fam = useSort<ItemKey>('err', 'desc');
+  const it = useSort<ItemKey>('err', 'desc');
+  const famRows = useMemo(() => sortRows(families, fam.sort, itemValue), [families, fam.sort]);
+  const itemRows = useMemo(() => sortRows(items, it.sort, itemValue), [items, it.sort]);
 
   const copy = async () => {
     const text = summaryText(levels, stats.rules, stats.items, today());
@@ -66,12 +70,24 @@ export default function AdminBalance({ levels, stats }: { levels: BalanceLevel[]
             <caption className="sr-only">Réussite par jeu, niveau et difficulté</caption>
             <thead>
               <tr>
-                <th scope="col">Jeu</th>
-                <th scope="col">Niveau</th>
-                <th scope="col">Parties · manches</th>
-                <th scope="col">Réussite</th>
-                <th scope="col">Verdict</th>
-                <th scope="col">Gagnées</th>
+                <SortTh col="place" sort={lv.sort} onSort={lv.toggle}>
+                  Jeu
+                </SortTh>
+                <SortTh col="level" sort={lv.sort} onSort={lv.toggle}>
+                  Niveau
+                </SortTh>
+                <SortTh col="runs" sort={lv.sort} onSort={lv.toggle} numeric>
+                  Parties · manches
+                </SortTh>
+                <SortTh col="success" sort={lv.sort} onSort={lv.toggle} numeric>
+                  Réussite
+                </SortTh>
+                <SortTh col="gap" sort={lv.sort} onSort={lv.toggle} numeric>
+                  Verdict
+                </SortTh>
+                <SortTh col="finished" sort={lv.sort} onSort={lv.toggle} numeric>
+                  Gagnées
+                </SortTh>
               </tr>
             </thead>
             <tbody>
@@ -159,14 +175,20 @@ export default function AdminBalance({ levels, stats }: { levels: BalanceLevel[]
               <caption className="sr-only">Familles les plus ratées</caption>
               <thead>
                 <tr>
-                  <th scope="col">Famille</th>
-                  <th scope="col">Posé</th>
-                  <th scope="col">Erreurs</th>
+                  <SortTh col="label" sort={fam.sort} onSort={fam.toggle}>
+                    Famille
+                  </SortTh>
+                  <SortTh col="shown" sort={fam.sort} onSort={fam.toggle} numeric>
+                    Posé
+                  </SortTh>
+                  <SortTh col="err" sort={fam.sort} onSort={fam.toggle} numeric>
+                    Erreurs
+                  </SortTh>
                   <th scope="col">Mauvaises réponses fréquentes</th>
                 </tr>
               </thead>
               <tbody>
-                {families.map((r) => (
+                {famRows.map((r) => (
                   <tr key={r.item}>
                     <td>{r.label}</td>
                     <td>{r.shown}</td>
@@ -189,15 +211,23 @@ export default function AdminBalance({ levels, stats }: { levels: BalanceLevel[]
                 <caption className="sr-only">Exercices les plus ratés</caption>
                 <thead>
                   <tr>
-                    <th scope="col">Exercice</th>
-                    <th scope="col">Niveau</th>
-                    <th scope="col">Posé</th>
-                    <th scope="col">Erreurs</th>
+                    <SortTh col="label" sort={it.sort} onSort={it.toggle}>
+                      Exercice
+                    </SortTh>
+                    <SortTh col="level" sort={it.sort} onSort={it.toggle}>
+                      Niveau
+                    </SortTh>
+                    <SortTh col="shown" sort={it.sort} onSort={it.toggle} numeric>
+                      Posé
+                    </SortTh>
+                    <SortTh col="err" sort={it.sort} onSort={it.toggle} numeric>
+                      Erreurs
+                    </SortTh>
                     <th scope="col">Mauvaises réponses choisies</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((r) => (
+                  {itemRows.map((r) => (
                     <tr key={`${r.level}-${r.item}`}>
                       <td>{r.label}</td>
                       <td>{levelName(r.level)}</td>
@@ -216,6 +246,44 @@ export default function AdminBalance({ levels, stats }: { levels: BalanceLevel[]
       )}
     </>
   );
+}
+
+/** Colonnes triables du tableau « Réussite par niveau ». */
+type LvKey = 'place' | 'level' | 'runs' | 'success' | 'gap' | 'finished';
+
+function lvValue(l: BalanceLevel, key: LvKey): SortValue {
+  switch (key) {
+    case 'place':
+      // ordre d'origine : par jeu, puis par niveau de classe, puis par difficulté
+      return `${gameName(l.game)} ${String(Math.max(0, ORDER.indexOf(l.level))).padStart(2, '0')} ${l.difficulty} ${l.version}`;
+    case 'level':
+      return `${String(Math.max(0, ORDER.indexOf(l.level))).padStart(2, '0')} ${l.difficulty}`;
+    case 'runs':
+      return l.runs;
+    case 'success':
+      return l.success_pct;
+    case 'gap':
+      // du plus mal réglé au mieux réglé : on trie sur l'écart à l'objectif
+      return verdictOf(l).gap ?? null;
+    case 'finished':
+      return l.finished_pct;
+  }
+}
+
+/** Colonnes triables des tableaux d'exercices. */
+type ItemKey = 'label' | 'level' | 'shown' | 'err';
+
+function itemValue(r: { label: string; level: string; shown: number; err_pct: number | null }, key: ItemKey): SortValue {
+  switch (key) {
+    case 'label':
+      return r.label;
+    case 'level':
+      return String(Math.max(0, ORDER.indexOf(r.level))).padStart(2, '0');
+    case 'shown':
+      return r.shown;
+    case 'err':
+      return r.err_pct;
+  }
 }
 
 /** Pourcentage d'erreurs : le chiffre est toujours écrit, la barre n'est qu'un repère. */

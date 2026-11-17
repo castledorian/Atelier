@@ -14,6 +14,7 @@ import { loadCourseStamps } from '../game/course/scores';
 import { GRADES, gradeLabel, isAvailable, loadClassGrade, loadGrade, saveClassGrade, saveGrade } from '../game/grade';
 import type { Grade } from '../game/grade';
 import { loadTypingStamps } from '../game/storage';
+import { bossName, inkLevel, loadBoss, phaseOf } from '../game/boss/state';
 import type { TeacherSession } from '../server/teacher';
 
 interface HomeProps {
@@ -25,12 +26,15 @@ interface HomeProps {
   onDashboard: () => void;
   /** présent seulement pour l'administrateur du site */
   onAdmin?: () => void;
+  onCave: () => void;
   onInfo: (v: InfoView) => void;
   onLogout: () => void;
   install: InstallInfo;
 }
 
-export default function Home({ student, teacher, onPlay, onSessions, onLogin, onDashboard, onAdmin, onInfo, onLogout, install }: HomeProps) {
+export default function Home({ student, teacher, onPlay, onSessions, onLogin, onDashboard, onAdmin, onCave, onInfo, onLogout, install }: HomeProps) {
+  const boss = loadBoss();
+  const bossPhase = phaseOf(boss);
   const online = serverEnabled();
   /** jeu dont l'extrait est ouvert (le « i » d'une carte) */
   const [preview, setPreview] = useState<PreviewGame | null>(null);
@@ -230,6 +234,30 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
           <span className="gcard-text">Conjugaison, géométrie… d’autres jeux arrivent.</span>
         </div>
       </div>}
+
+      {grade !== null && (
+        <button type="button" className="cave-door" onClick={onCave}>
+          <span className="cave-door-art" aria-hidden="true">
+            <span className="cave-door-drop" data-size={inkLevel(boss)} />
+          </span>
+          <span className="cave-door-txt">
+            <span className="cave-door-tag">Fin d’année</span>
+            <span className="cave-door-name">La grotte</span>
+            <span className="cave-door-text">
+              {bossPhase === 'won'
+                ? 'L’encre a été vaincue. Revoir l’exploit de la classe.'
+                : bossPhase === 'final'
+                  ? `${bossName(boss)} vous attend : le grand combat est ouvert.`
+                  : bossPhase === 'growing'
+                    ? `Quelque chose grossit au fond : on l’appelle déjà ${bossName(boss)}.`
+                    : 'Quelque chose dort au fond. Mieux vaut ne pas s’approcher… pour l’instant.'}
+            </span>
+          </span>
+          <span className="cave-door-go" aria-hidden="true">
+            →
+          </span>
+        </button>
+      )}
 
       {(install.mode === 'prompt' || install.mode === 'ios') && (
         <section className="sec" aria-label="Installer l’application">

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { BackButton } from '../components/BackButton';
+import { useFit } from '../components/FitCard';
 import { GameProgress } from '../components/GameProgress';
 import { InkEnemy } from '../components/InkEnemy';
 import { SettingsRow, StampTitle } from '../components/MenuParts';
@@ -67,6 +68,7 @@ interface Props {
 
 export function SpellingMenu({ view, setView, level, diff, setDiff, hint, settings, onChange, onStart, onTrain, onHome }: Props) {
   const [sDiff, setSDiff] = useState<CourseDiff>(diff);
+  const fit = useFit<HTMLElement>(view);
 
   if (view !== 'main') {
     const titles = { howto: 'Comment jouer', scores: 'Scores', progress: 'Mes progrès', settings: 'Réglages' } as const;
@@ -124,7 +126,7 @@ export function SpellingMenu({ view, setView, level, diff, setDiff, hint, settin
     }
     return (
       <div className="overlay">
-        <section className="card card-game w-full max-w-[600px]" aria-labelledby="sub-title">
+        <section ref={fit} className="card card-game w-full max-w-[600px]" aria-labelledby="sub-title">
           <div className="card-top">
             <BackButton label="Retour" onClick={() => setView('main')} autoFocus />
           </div>
@@ -141,7 +143,7 @@ export function SpellingMenu({ view, setView, level, diff, setDiff, hint, settin
   const best = loadSpellingScores(boardKey(level, diff))[0]?.score;
   return (
     <div className="overlay">
-      <section className="card card-game card-menu card-compact w-full max-w-[600px]" aria-labelledby="sp-title">
+      <section ref={fit} className="card card-game card-menu card-compact w-full max-w-[600px]" aria-labelledby="sp-title">
         <div className="menu-a">
           <div className="card-top">
             <BackButton onClick={onHome} />

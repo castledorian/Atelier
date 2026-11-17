@@ -14,6 +14,7 @@ import { DUEL_SIZE, activeRules, dayKey, loadStore, recordDuel, recordGame, save
 import { effectiveGrade, levelOf } from '../game/grade';
 import { Sfx } from '../game/audio';
 import { addLog } from '../game/progress';
+import { calmBoss, feedBoss } from '../game/boss/state';
 import { newRunId } from '../game/history';
 import { spellingOutcome, summarize } from '../game/itemstats';
 import type { ItemOutcome } from '../game/itemstats';
@@ -283,6 +284,8 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
         const won = s.okRounds >= 0; // un duel se rejoue jusqu'à la bonne réponse : il est toujours terminé
         const d = recordDuel(loadStore(), s.duel.rule, won, dayKey());
         saveStore(d.store);
+        // règle revue : la créature de la grotte perd un peu d'encre
+        if (won) calmBoss();
         encre = { top: null, promoted: [], duel: { rule: s.duel.rule, before: d.before, after: d.after, won } };
         setOver({ score: 0, okRounds: s.okRounds, total, bestStreak: 0, rank: -1, record: false, level: s.level, diff: s.diff, missed: [], dead: false, defeated: total, hpLeft: 0, maxHp: 0, ...encre });
         sfx.play('victory');
@@ -332,7 +335,10 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
             rounds_err: rounds - okCount,
           };
         }
-        if (rounds > 0) addLog('spelling', { t: Date.now(), ok: okCount, err: rounds - okCount, score: s.score, board });
+        if (rounds > 0) {
+          addLog('spelling', { t: Date.now(), ok: okCount, err: rounds - okCount, score: s.score, board });
+          feedBoss(okCount, rounds - okCount);
+        }
         if (acct && s.score > 0) {
           setCloud('sending');
           sendRun(acct.token, payload)

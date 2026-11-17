@@ -7,6 +7,7 @@ import Course from './games/Course';
 import Memory from './games/Memory';
 import Spelling from './games/Spelling';
 import Admin from './pages/Admin';
+import Cave from './pages/Cave';
 import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -21,7 +22,7 @@ import { loadTeacher, saveTeacher, signOut, takeAuthHash } from './server/teache
 import type { TeacherSession } from './server/teacher';
 import type { SessionInfo, StudentAccount } from './server/types';
 
-type View = 'home' | 'login' | 'dashboard' | 'admin' | InfoView | 'sessions' | 'typing' | 'math' | 'memory' | 'spelling';
+type View = 'home' | 'login' | 'dashboard' | 'admin' | 'cave' | InfoView | 'sessions' | 'typing' | 'math' | 'memory' | 'spelling';
 
 // Lien reçu par email (confirmation d'inscription / mot de passe oublié) : lu une seule fois, au chargement de la page.
 const ARRIVAL = serverEnabled() ? takeAuthHash() : null;
@@ -153,6 +154,8 @@ function Pages() {
     return <Admin email={teacher.email} onHome={home} onSignOut={teacherLost} />;
   }
 
+  if (view === 'cave') return <Cave onBack={home} studentName={student?.student.name ?? null} />;
+
   if (view === 'sessions' && student) {
     return (
       <Sessions
@@ -196,6 +199,7 @@ function Pages() {
       }}
       onDashboard={() => setView('dashboard')}
       onAdmin={admin ? () => setView('admin') : undefined}
+      onCave={() => setView('cave')}
       onInfo={setView}
       onLogout={logout}
       install={install}

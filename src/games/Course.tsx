@@ -3,11 +3,13 @@ import { RotateNotice, useShortLandscape } from '../components/RotateNotice';
 import type { ReactNode } from 'react';
 import { BackButton, useFitRows } from '../components/BackButton';
 import { DuelResult, ReviewNote } from '../components/EncreNotes';
+import { useFit } from '../components/FitCard';
 import { GameProgress } from '../components/GameProgress';
 import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
 import { Sfx } from '../game/audio';
 import { addLog } from '../game/progress';
+import { calmBoss, feedBoss } from '../game/boss/state';
 import { CourseGame } from '../game/course/engine';
 import type { CourseResult } from '../game/course/engine';
 import { ruleInfo, ruleOfCalc, rulesOf } from '../game/encre/rules';
@@ -180,7 +182,12 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
         pages: result.pages,
       };
     }
-    if (!result.drill && total > 0) addLog('math', { t: Date.now(), ok: result.correct, err: result.wrong, score: result.score, board: boardKey(result.level, result.diff) });
+    if (!result.drill && total > 0) {
+      addLog('math', { t: Date.now(), ok: result.correct, err: result.wrong, score: result.score, board: boardKey(result.level, result.diff) });
+      feedBoss(result.correct, result.wrong);
+    }
+    // entraînement ciblé réussi : la règle revue retire de l'encre à la créature de la grotte
+    if (result.drill && result.cleared) calmBoss();
     if (acct && result.correct > 0) {
       setCloud('sending');
       sendRun(acct.token, payload)
@@ -577,6 +584,7 @@ interface MenuProps {
 }
 
 function MenuScreen({ view, setView, level, diff, setDiff, settings, account, onChange, onStart, onTrain, onHome }: MenuProps) {
+  const fit = useFit<HTMLElement>(view);
   const [scores, setScores] = useState<CourseScore[]>(() => loadCourseScores(boardKey(level, diff)));
   useEffect(() => {
     setScores(loadCourseScores(boardKey(level, diff)));
@@ -638,7 +646,7 @@ function MenuScreen({ view, setView, level, diff, setDiff, settings, account, on
     }
     return (
       <div className="overlay">
-        <section className="card card-game w-full max-w-[600px]" aria-labelledby="sub-title">
+        <section ref={fit} className="card card-game w-full max-w-[600px]" aria-labelledby="sub-title">
           <div className="card-top">
             <BackButton label="Retour" onClick={() => setView('main')} autoFocus />
           </div>
@@ -654,7 +662,7 @@ function MenuScreen({ view, setView, level, diff, setDiff, settings, account, on
 
   return (
     <div className="overlay">
-      <section className="card card-game card-menu w-full max-w-[600px]" aria-labelledby="game-title">
+      <section ref={fit} className="card card-game card-menu card-compact w-full max-w-[600px]" aria-labelledby="game-title">
         <div className="menu-a">
           <div className="card-top">
             <BackButton onClick={onHome} />

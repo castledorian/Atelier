@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { CustomPanel } from '../components/Screens';
+import { SortTh, sortRows, useSort } from '../components/SortTable';
 import { COURSE_DIFFS, LEVELS } from '../game/course/questions';
 import type { CourseDiff, Level } from '../game/course/questions';
 import { DEFAULT_CUSTOM } from '../game/difficulty';
@@ -101,6 +102,7 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
   const [list, setList] = useState<ClassSession[] | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [view, setView] = useState<{ session: ClassSession; rows: SessionResultRow[] } | null>(null);
+  const resSort = useSort<'name' | 'attempts' | 'best'>('best', 'desc');
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -147,6 +149,7 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
 
   if (view) {
     const { session, rows } = view;
+    const shown = sortRows(rows, resSort.sort, (r, k) => (k === 'name' ? r.name : k === 'attempts' ? r.attempts : r.best_score));
     const done = rows.filter((r) => r.attempts > 0);
     const avg = done.length ? done.reduce((a, r) => a + (r.best_score ?? 0), 0) / done.length : 0;
     return (
@@ -169,18 +172,20 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
             <caption className="sr-only">Résultats de la séance</caption>
             <thead>
               <tr>
-                <th scope="col">Élève</th>
-                <th scope="col" className="num">
+                <SortTh col="name" sort={resSort.sort} onSort={resSort.toggle}>
+                  Élève
+                </SortTh>
+                <SortTh col="attempts" sort={resSort.sort} onSort={resSort.toggle} numeric className="num">
                   Essais
-                </th>
-                <th scope="col" className="num">
+                </SortTh>
+                <SortTh col="best" sort={resSort.sort} onSort={resSort.toggle} numeric className="num">
                   Meilleur score
-                </th>
+                </SortTh>
                 <th scope="col">Détail des essais</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {shown.map((r) => (
                 <tr key={r.id}>
                   <td>{r.name}</td>
                   <td className="num">

@@ -134,6 +134,11 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
           connexion.
         </p>
         <p>
+          Deux ajouts restent eux aussi <strong>sur l’appareil, et uniquement là</strong>&nbsp;: «&nbsp;Mes progrès&nbsp;» (le résultat des 30 dernières parties de chaque jeu, les règles
+          à revoir et les lettres les plus ratées) et «&nbsp;La grotte&nbsp;» (le total de fautes et de réussites de l’année, plus les prénoms que la classe écrit pour le combat de fin
+          d’année). Rien de tout cela n’est envoyé au serveur ni relié à un élève&nbsp;; chaque page a son bouton pour l’effacer.
+        </p>
+        <p>
           Sur un ordinateur partagé, l’élève utilise <strong>« Changer d’élève »</strong> en fin de séance. On peut tout effacer avec les réglages du navigateur (« effacer les données du
           site »).
         </p>

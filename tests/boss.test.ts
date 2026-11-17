@@ -1,0 +1,80 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { BOSS_NAMES, INK_STEPS, POWER_STEPS, fillOf, monthsToFinal, parseNames, phaseOf, saveNames, schoolYear, stepOf } from '../src/game/boss/state';
+import type { BossState } from '../src/game/boss/state';
+import { LOW, buildFight, stateAt } from '../src/game/boss/fight';
+
+const S = (o: Partial<BossState> = {}): BossState => ({ year: '2026-2027', ink: 0, power: 0, games: 0, wonAt: null, seen: true, ...o });
+
+test('année scolaire : elle bascule en août', () => {
+  assert.equal(schoolYear(new Date('2026-11-17T12:00:00')), '2026-2027');
+  assert.equal(schoolYear(new Date('2027-07-04T12:00:00')), '2026-2027', 'juillet est encore l’année d’avant');
+  assert.equal(schoolYear(new Date('2027-08-01T12:00:00')), '2027-2028', 'août : nouvelle année, tout repart à zéro');
+});
+
+test('taille de la créature : un palier par seuil franchi', () => {
+  assert.equal(stepOf(0, INK_STEPS), 0);
+  assert.equal(stepOf(24, INK_STEPS), 0);
+  assert.equal(stepOf(25, INK_STEPS), 1);
+  assert.equal(stepOf(10000, INK_STEPS), INK_STEPS.length - 1);
+  assert.equal(BOSS_NAMES.length, INK_STEPS.length, 'un nom par taille');
+  assert.equal(POWER_STEPS.length, INK_STEPS.length);
+});
+
+test('jauge : part du palier en cours, pleine au dernier', () => {
+  assert.equal(fillOf(0, INK_STEPS), 0);
+  assert.equal(fillOf(25, INK_STEPS), 0, 'début du palier suivant');
+  assert.ok(Math.abs(fillOf(47.5, INK_STEPS) - 0.5) < 0.01);
+  assert.equal(fillOf(5000, INK_STEPS), 1);
+});
+
+test('moments de l’année : la créature dort, grossit, puis le combat s’ouvre en juin', () => {
+  const d = (iso: string) => new Date(iso + 'T10:00:00');
+  assert.equal(phaseOf(S(), d('2026-11-17')), 'early');
+  assert.equal(phaseOf(S(), d('2027-01-20')), 'early');
+  assert.equal(phaseOf(S(), d('2027-03-05')), 'growing');
+  assert.equal(phaseOf(S(), d('2027-05-31')), 'growing');
+  assert.equal(phaseOf(S(), d('2027-06-01')), 'final');
+  assert.equal(phaseOf(S(), d('2027-07-02')), 'final');
+  assert.equal(phaseOf(S({ wonAt: 1 }), d('2027-03-05')), 'won', 'une fois vaincue, la créature le reste');
+  assert.equal(monthsToFinal(d('2026-11-17')), 7, 'de novembre à juin : 7 mois');
+  assert.equal(monthsToFinal(d('2027-06-10')), 0);
+  assert.equal(monthsToFinal(d('2026-09-02')), 9, 'de septembre à juin : 9 mois');
+});
+
+test('prénoms : nettoyés, sans doublon, limités', () => {
+  assert.deepEqual(parseNames('Léa\nTom , Sam;\n\nLéa'), ['Léa', 'Tom', 'Sam', 'Léa']);
+  const saved = saveNames(['  Léa ', 'léa', 'Tom', '', 'Jean   Pierre']);
+  assert.deepEqual(saved, ['Léa', 'Tom', 'Jean Pierre'], 'doublons (même à la casse près) et vides retirés');
+  assert.ok(saveNames(Array.from({ length: 80 }, (_, i) => 'Elève' + i)).length <= 36);
+});
+
+test('combat : la classe gagne toujours, après être passée tout près de la défaite', () => {
+  const f = buildFight(['Léa', 'Tom', 'Sam'], 5, 3);
+  const fin = stateAt(f, f.total);
+  assert.equal(fin.hp, 0, 'la créature finit à zéro');
+  assert.ok(fin.classHp > 0, 'la classe ne tombe jamais à zéro');
+  const bas = Math.min(...f.beats.filter((b) => b.classHp !== undefined).map((b) => b.classHp as number));
+  assert.equal(bas, LOW, 'il y a bien un moment où tout semble perdu');
+  const after = f.beats.filter((b) => b.classHp === LOW)[0];
+  assert.ok(f.beats.some((b) => b.at > after.at && (b.classHp ?? 0) > LOW), 'puis la classe se relève');
+});
+
+test('combat : chaque élève frappe, et la durée reste raisonnable même pour une grande classe', () => {
+  const noms = Array.from({ length: 30 }, (_, i) => 'E' + i);
+  const f = buildFight(noms, 6, 6);
+  const frappes = f.beats.filter((b) => b.strike !== undefined).map((b) => b.strike);
+  assert.deepEqual(frappes, noms.map((_, i) => i), 'tous les prénoms frappent, dans l’ordre');
+  assert.ok(f.total < 22000, `le combat dure ${Math.round(f.total / 1000)} s`);
+  assert.ok(buildFight([], 0, 0).beats.length > 0, 'sans prénom, le combat existe quand même');
+});
+
+test('combat : la vie ne remonte jamais pour la créature', () => {
+  const f = buildFight(['A', 'B', 'C', 'D'], 4, 2);
+  let hp = 100;
+  for (const b of f.beats) {
+    if (b.hp === undefined) continue;
+    assert.ok(b.hp <= hp, `la créature ne se soigne pas (${b.hp} après ${hp})`);
+    hp = b.hp;
+  }
+});

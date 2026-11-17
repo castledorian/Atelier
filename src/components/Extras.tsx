@@ -7,6 +7,7 @@ import type { ScoreEntry } from '../game/storage';
 import { explain } from '../server/api';
 import { fetchBoard } from '../server/student';
 import type { BoardRow, Scope, StudentAccount } from '../server/types';
+import { useFit } from './FitCard';
 import { BackButton } from './BackButton';
 import { ScoreTable } from './Screens';
 
@@ -210,6 +211,7 @@ const avg = (a: number[]) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length
 
 export function Progress({ runs, loading, currentName, onBack, onDrill }: { runs: RunRecord[]; loading?: boolean; currentName: string; onBack: () => void; onDrill?: (letters: string) => void }) {
   const [letters, setLetters] = useState(() => hardLetters(loadLetters()));
+  const fit = useFit<HTMLElement>(null);
   const real = useMemo(() => runs.filter((r) => r.kind === 'game' && r.correct >= 10), [runs]);
   const names = useMemo(() => [...new Set(real.map((r) => r.name || 'ANONYME'))], [real]);
   const [who, setWho] = useState(() => (names.includes(currentName || 'ANONYME') ? currentName || 'ANONYME' : (names[0] ?? '')));
@@ -223,7 +225,7 @@ export function Progress({ runs, loading, currentName, onBack, onDrill }: { runs
 
   return (
     <div className="overlay">
-      <section className="card card-game card-progress w-full" role="dialog" aria-modal="true" aria-labelledby="prog-title">
+      <section ref={fit} className="card card-game card-progress w-full" role="dialog" aria-modal="true" aria-labelledby="prog-title">
         <div className="card-top">
           <BackButton onClick={onBack} label="Retour" autoFocus />
         </div>
