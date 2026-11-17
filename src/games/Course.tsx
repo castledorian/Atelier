@@ -3,9 +3,11 @@ import { RotateNotice, useShortLandscape } from '../components/RotateNotice';
 import type { ReactNode } from 'react';
 import { BackButton, useFitRows } from '../components/BackButton';
 import { DuelResult, ReviewNote } from '../components/EncreNotes';
+import { GameProgress } from '../components/GameProgress';
 import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
 import { Sfx } from '../game/audio';
+import { addLog } from '../game/progress';
 import { CourseGame } from '../game/course/engine';
 import type { CourseResult } from '../game/course/engine';
 import { ruleInfo, ruleOfCalc, rulesOf } from '../game/encre/rules';
@@ -41,7 +43,7 @@ import type { BoardRow, RunPayload, Scope, SessionInfo, StudentAccount } from '.
  */
 
 type Phase = 'menu' | 'play' | 'pause' | 'over';
-type MenuView = 'main' | 'howto' | 'scores' | 'settings';
+type MenuView = 'main' | 'howto' | 'scores' | 'progress' | 'settings';
 type Cloud = 'off' | 'sending' | 'sent' | 'queued';
 
 const TEXT_LABEL: Record<TextSize, string> = { normal: 'normal', large: 'grand', xlarge: 'très grand' };
@@ -178,6 +180,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
         pages: result.pages,
       };
     }
+    if (!result.drill && total > 0) addLog('math', { t: Date.now(), ok: result.correct, err: result.wrong, score: result.score, board: boardKey(result.level, result.diff) });
     if (acct && result.correct > 0) {
       setCloud('sending');
       sendRun(acct.token, payload)
@@ -462,6 +465,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
             account={account}
             onChange={change}
             onStart={begin}
+            onTrain={(rule) => begin(level, questionsMatching(level, (t) => ruleOfCalc(t) === rule, DUEL_SIZE).map((q) => ({ ...q, count: 1 })), rule)}
             onHome={onHome}
           />
         )}
@@ -568,17 +572,18 @@ interface MenuProps {
   account: StudentAccount | null;
   onChange: (p: Partial<Settings>) => void;
   onStart: (l: Level) => void;
+  onTrain: (rule: RuleId) => void;
   onHome: () => void;
 }
 
-function MenuScreen({ view, setView, level, diff, setDiff, settings, account, onChange, onStart, onHome }: MenuProps) {
+function MenuScreen({ view, setView, level, diff, setDiff, settings, account, onChange, onStart, onTrain, onHome }: MenuProps) {
   const [scores, setScores] = useState<CourseScore[]>(() => loadCourseScores(boardKey(level, diff)));
   useEffect(() => {
     setScores(loadCourseScores(boardKey(level, diff)));
   }, [level, diff, view]);
 
   if (view !== 'main') {
-    const titles = { howto: 'Comment jouer', scores: 'Scores', settings: 'Réglages' } as const;
+    const titles = { howto: 'Comment jouer', scores: 'Scores', progress: 'Mes progrès', settings: 'Réglages' } as const;
     let body: ReactNode = null;
     if (view === 'howto') {
       body = (
@@ -626,6 +631,8 @@ function MenuScreen({ view, setView, level, diff, setDiff, settings, account, on
           )}
         </>
       );
+    } else if (view === 'progress') {
+      body = <GameProgress game="math" onTrain={onTrain} />;
     } else {
       body = <SettingsRow settings={settings} onChange={onChange} />;
     }
@@ -674,12 +681,15 @@ function MenuScreen({ view, setView, level, diff, setDiff, settings, account, on
           </h1>
           <div className="rule" aria-hidden="true" />
           <p className="tagline">Choisis la bonne réponse avant qu’elle ne tombe, et fais reculer l’encre&nbsp;!</p>
-          <div className="tools" data-n="3" role="group" aria-label="Plus d’options">
+          <div className="tools" data-n="4" role="group" aria-label="Plus d’options">
             <button type="button" className="tool" onClick={() => setView('howto')}>
               <span aria-hidden="true">?</span> Comment jouer
             </button>
             <button type="button" className="tool" onClick={() => setView('scores')}>
               <span aria-hidden="true">★</span> Scores
+            </button>
+            <button type="button" className="tool" onClick={() => setView('progress')}>
+              <span aria-hidden="true">↗</span> Mes progrès
             </button>
             <button type="button" className="tool" onClick={() => setView('settings')}>
               <span aria-hidden="true">⚙</span> Réglages

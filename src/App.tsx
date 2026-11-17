@@ -8,6 +8,7 @@ import { Sfx } from './game/audio';
 import type { Difficulty } from './game/difficulty';
 import { effectiveGrade } from './game/grade';
 import { Game } from './game/engine';
+import { addLetters } from './game/progress';
 import type { RunStats } from './game/engine';
 import { addRun, loadHistory, newRunId, renameRun } from './game/history';
 import { parseTyping } from './game/sessionConfig';
@@ -103,6 +104,8 @@ export default function App({ account, onHome, onSessionLost, install, session, 
   onGameOver.current = (stats) => {
     const { diff, settings: st } = live.current;
     const isDrill = live.current.drill !== null;
+    // lettres difficiles : cumul sur cet appareil seulement, hors séance de classe (alimente « Mes progrès »)
+    if (!sesRef.current.sess) addLetters(stats.letters);
     const ranked = !isDrill && diff !== 'perso' && !sesRef.current.sess;
     const acct = accountRef.current;
     const name = (acct ? acct.student.name.slice(0, 12).toUpperCase() : st.name) || 'ANONYME';
@@ -495,6 +498,7 @@ export default function App({ account, onHome, onSessionLost, install, session, 
             loading={!!account && serverRuns === null}
             currentName={accName ?? settings.name}
             onBack={() => setScreen('menu')}
+            onDrill={(letters) => begin(letters)}
           />
         )}
         {screen === 'pause' && (

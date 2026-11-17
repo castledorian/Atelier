@@ -5,15 +5,15 @@ import { DuelResult, ReviewNote } from '../components/EncreNotes';
 import type { DuelInfo } from '../components/EncreNotes';
 import { BOSS_NAME, CannonIcon, ENEMY_KINDS, ENEMY_NAMES, InkEnemy, PATE_NAMES, SPLASH_NAMES, kindFor } from '../components/InkEnemy';
 import type { EnemyMood } from '../components/InkEnemy';
-import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
-import { COURSE_DIFFS, boardKey } from '../game/course/questions';
+import { boardKey } from '../game/course/questions';
 import type { CourseDiff, Level } from '../game/course/questions';
 import { ruleInfo, rulesOf } from '../game/encre/rules';
 import type { RuleId } from '../game/encre/rules';
 import { DUEL_SIZE, activeRules, dayKey, loadStore, recordDuel, recordGame, saveStore, stateOf } from '../game/encre/tracker';
-import { effectiveGrade, gradeLabel, levelOf } from '../game/grade';
+import { effectiveGrade, levelOf } from '../game/grade';
 import { Sfx } from '../game/audio';
+import { addLog } from '../game/progress';
 import { newRunId } from '../game/history';
 import { spellingOutcome, summarize } from '../game/itemstats';
 import type { ItemOutcome } from '../game/itemstats';
@@ -27,6 +27,8 @@ import { enqueue, flush } from '../server/outbox';
 import { sendItemStats, sendRun } from '../server/student';
 import type { RunPayload, SessionInfo, StudentAccount } from '../server/types';
 import { Frame } from '../pages/Frame';
+import { MenuScene, SpellingMenu } from './SpellingMenu';
+import type { SpellingView } from './SpellingMenu';
 
 /**
  * « Chasse aux fautes » — jeu d'orthographe (CE1 → CM2).
@@ -188,6 +190,7 @@ const T = {
 
 export default function Spelling({ account, onHome, onSessionLost, session, onSessions }: Props) {
   const [phase, setPhase] = useState<Phase>('menu');
+  const [view, setView] = useState<SpellingView>('main');
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const prefs = useRef(loadSpellingPrefs());
   const [level] = useState<Level>(() => (session ? parseSpelling(session.config).level : levelOf(effectiveGrade(account?.student.id ?? null))));
@@ -329,6 +332,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
             rounds_err: rounds - okCount,
           };
         }
+        if (rounds > 0) addLog('spelling', { t: Date.now(), ok: okCount, err: rounds - okCount, score: s.score, board });
         if (acct && s.score > 0) {
           setCloud('sending');
           sendRun(acct.token, payload)
@@ -500,12 +504,42 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
   };
 
   const toMenu = () => {
+    setView('main');
     setPhase('menu');
     upd(null);
     if (lost.current) onSessionLost();
   };
 
   const inSession = !!ses.sess;
+
+  // Le menu a la même mise en page que les autres jeux : fond vivant, titre tamponné, quatre rubriques.
+  if (phase === 'menu' && !inSession) {
+    return (
+      <div className="desk">
+        <main className="sheet">
+          <div className="stage">
+            <MenuScene />
+            <SpellingMenu
+              view={view}
+              setView={setView}
+              level={level}
+              diff={diff}
+              setDiff={setDiff}
+              hint={hintText(diff, level)}
+              settings={settings}
+              onChange={(p) => {
+                if (p.sound) sfx.unlock();
+                setSettings((s) => ({ ...s, ...p }));
+              }}
+              onStart={() => begin()}
+              onTrain={(rule) => begin(rule)}
+              onHome={onHome}
+            />
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <Frame wide fill>
@@ -514,51 +548,6 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
           <div className="card-top">
             <BackButton onClick={phase === 'menu' ? (onSessions ?? onHome) : toMenu} label={phase === 'menu' ? (inSession ? 'Mes séances' : 'Accueil') : 'Menu'} />
           </div>
-        )}
-
-        {phase === 'menu' && !inSession && (
-          <section aria-labelledby="sp-title">
-            <p className="eyebrow">Orthographe · {gradeLabel(level)}</p>
-            <h1 id="sp-title" className="title title-wrap">
-              Chasse aux fautes
-            </h1>
-            <div className="rule" aria-hidden="true" />
-            <ol className="mt-3 list-decimal space-y-1 pl-6 text-[16px] leading-snug">
-              <li>Les créatures d’encre ont semé des fautes dans les phrases. Chacune vient écrire la sienne.</li>
-              <li>Touche le mot mal écrit, puis choisis la bonne écriture : ton canon tire et la phrase est corrigée.</li>
-              <li>Une erreur, et la créature t’attaque : tu perds une vie. Dix phrases, la dernière écrite par le Grand Pâté.</li>
-              <li>Chaque phrase te laisse une astuce pour retenir la règle.</li>
-            </ol>
-            <h2 className="subhead mt-[var(--sp)]">Ta difficulté</h2>
-            <div className="seg mt-1" role="radiogroup" aria-label="Difficulté">
-              {COURSE_DIFFS.map((d) => (
-                <button key={d.id} type="button" role="radio" aria-checked={diff === d.id} className="seg-b" onClick={() => setDiff(d.id)}>
-                  {d.label}
-                </button>
-              ))}
-            </div>
-            <p className="mt-1 text-[14px] leading-snug text-ink/75">{hintText(diff, level)}</p>
-            <div className="mt-[var(--sp)] flex flex-wrap gap-2">
-              <Check on={settings.comfort} onClick={() => setSettings((s) => ({ ...s, comfort: !s.comfort }))}>
-                Lecture confortable
-              </Check>
-              <Check
-                on={settings.sound}
-                onClick={() => {
-                  sfx.unlock();
-                  setSettings((s) => ({ ...s, sound: !s.sound }));
-                }}
-              >
-                Sons
-              </Check>
-            </div>
-            <div className="mt-[var(--sp)]">
-              <button type="button" className="btn btn-primary" autoFocus onClick={() => begin()}>
-                Commencer
-              </button>
-            </div>
-            <BestScores level={level} diff={diff} />
-          </section>
         )}
 
         {phase === 'menu' && inSession && ses.sess && <SessionIntro session={ses.sess} left={ses.left} onStart={() => begin()} onBack={() => (onSessions ?? onHome)()} />}
@@ -1057,25 +1046,6 @@ function speak(text: string) {
   } catch {
     /* pas de voix disponible */
   }
-}
-
-function BestScores({ level, diff }: { level: Level; diff: CourseDiff }) {
-  const list = loadSpellingScores(boardKey(level, diff));
-  if (list.length === 0) return null;
-  return (
-    <section className="mt-[var(--sp)]" aria-labelledby="sp-best">
-      <h2 id="sp-best" className="subhead">
-        Mes meilleurs scores
-      </h2>
-      <ol className="mt-1 list-decimal pl-6 text-[15px]">
-        {list.map((x) => (
-          <li key={x.id} className="num">
-            {fmt(x.score)} points
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
 }
 
 function OverPanel({ over, cloud, account, onRestart, onDuel, onMenu }: { over: Over; cloud: Cloud; account: boolean; onRestart: () => void; onDuel: (r: RuleId) => void; onMenu: () => void }) {

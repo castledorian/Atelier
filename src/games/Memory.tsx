@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { BackButton, useFitRows } from '../components/BackButton';
+import { GameProgress } from '../components/GameProgress';
 import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
 import { Sfx } from '../game/audio';
+import { addLog } from '../game/progress';
 import { MemoryGame } from '../game/memory/engine';
 import type { MemoryResult } from '../game/memory/engine';
 import { MEM_DIFFS, MODES, PAGES, memBoard } from '../game/memory/rounds';
@@ -27,7 +29,7 @@ import type { BoardRow, RunPayload, Scope, SessionInfo, StudentAccount } from '.
  */
 
 type Phase = 'menu' | 'play' | 'pause' | 'over';
-type MenuView = 'main' | 'howto' | 'scores' | 'settings';
+type MenuView = 'main' | 'howto' | 'scores' | 'progress' | 'settings';
 type Cloud = 'off' | 'sending' | 'sent' | 'queued';
 
 const TEXT_LABEL: Record<TextSize, string> = { normal: 'normal', large: 'grand', xlarge: 'très grand' };
@@ -142,6 +144,7 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
       const res = addMemoryScore(memBoard(result.mode, result.diff), { id, name, score: result.score, span: result.maxSpan, date: Date.now() });
       rank = res.rank;
     }
+    if (total > 0) addLog('memory', { t: Date.now(), ok: result.correct, err: result.wrong, score: result.score, board: memBoard(result.mode, result.diff), span: result.maxSpan });
     if (acct && result.correct > 0) {
       setCloud('sending');
       sendRun(acct.token, payload)
@@ -488,7 +491,7 @@ function MenuScreen({ view, setView, grade, mode, setMode, diff, setDiff, settin
   const board = memBoard(mode, diff);
 
   if (view !== 'main') {
-    const titles = { howto: 'Comment jouer', scores: 'Scores', settings: 'Réglages' } as const;
+    const titles = { howto: 'Comment jouer', scores: 'Scores', progress: 'Mes progrès', settings: 'Réglages' } as const;
     let body: ReactNode = null;
     if (view === 'howto') {
       body = (
@@ -545,6 +548,38 @@ function MenuScreen({ view, setView, grade, mode, setMode, diff, setDiff, settin
           )}
         </>
       );
+    } else if (view === 'progress') {
+      body = (
+        <GameProgress
+          game="memory"
+          extra={
+            <section aria-labelledby="prog-pages" className="prog-rules">
+              <h3 id="prog-pages" className="subhead">
+                Tes pages du cahier ({MEM_DIFFS.find((d) => d.id === diff)?.label})
+              </h3>
+              <ul className="prog-list">
+                {MODES.map((m) => {
+                  const pr = loadProgress(memBoard(m.id, diff));
+                  return (
+                    <li key={m.id} className="prog-rule" data-status={pr.stamps >= PAGES ? 'acquise' : 'progres'}>
+                      <div className="prog-rule-head">
+                        <strong>{m.label}</strong>
+                        <span className="prog-badge" role="img" aria-label={`Tampons : ${pr.stamps} sur ${PAGES}`}>
+                          {Array.from({ length: PAGES }, (_, k) => (k < pr.stamps ? '●' : '○')).join(' ')}
+                        </span>
+                      </div>
+                      <p className="prog-parade">
+                        {pr.lastSpan > 0 ? `Dernière partie : ${pr.lastSpan} ${m.id === 'suite' ? 'taches de suite' : 'cases retenues'}. ` : 'Pas encore joué. '}
+                        <em>{pr.stamps >= PAGES ? 'Cahier complet : essaie un niveau plus dur !' : 'Chaque page sans erreur te donne un tampon.'}</em>
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          }
+        />
+      );
     } else {
       body = <SettingsRow settings={settings} onChange={onChange} />;
     }
@@ -566,7 +601,7 @@ function MenuScreen({ view, setView, grade, mode, setMode, diff, setDiff, settin
 
   return (
     <div className="overlay">
-      <section className="card card-game card-menu w-full max-w-[600px]" aria-labelledby="game-title">
+      <section className="card card-game card-menu card-compact w-full max-w-[600px]" aria-labelledby="game-title">
         <div className="menu-a">
           <div className="card-top">
             <BackButton onClick={onHome} />
@@ -592,13 +627,16 @@ function MenuScreen({ view, setView, grade, mode, setMode, diff, setDiff, settin
             </span>
           </h1>
           <div className="rule" aria-hidden="true" />
-          <p className="tagline">Retiens ce que l’encre te montre, puis refais-le sans te tromper&nbsp;!</p>
-          <div className="tools" data-n="3" role="group" aria-label="Plus d’options">
+          <p className="tagline menu-opt">Retiens ce que l’encre te montre, puis refais-le sans te tromper&nbsp;!</p>
+          <div className="tools" data-n="4" role="group" aria-label="Plus d’options">
             <button type="button" className="tool" onClick={() => setView('howto')}>
               <span aria-hidden="true">?</span> Comment jouer
             </button>
             <button type="button" className="tool" onClick={() => setView('scores')}>
               <span aria-hidden="true">★</span> Scores
+            </button>
+            <button type="button" className="tool" onClick={() => setView('progress')}>
+              <span aria-hidden="true">↗</span> Mes progrès
             </button>
             <button type="button" className="tool" onClick={() => setView('settings')}>
               <span aria-hidden="true">⚙</span> Réglages
@@ -645,7 +683,7 @@ function MenuScreen({ view, setView, grade, mode, setMode, diff, setDiff, settin
               </button>
             ))}
           </div>
-          <p className="mt-1 text-[14px] leading-snug text-ink/75">{MEM_DIFFS.find((d) => d.id === diff)?.hint}</p>
+          <p className="menu-hint mt-1 text-[14px] leading-snug text-ink/75">{MEM_DIFFS.find((d) => d.id === diff)?.hint}</p>
           <h2 className="subhead mt-[var(--sp)]">Choisis ton jeu</h2>
           <div className="games games-levels" data-n="2">
             {MODES.map((m) => {
@@ -662,7 +700,7 @@ function MenuScreen({ view, setView, grade, mode, setMode, diff, setDiff, settin
                 >
                   <span className="gcard-name">{m.label}</span>
                   <span className="gcard-text">{m.hint}</span>
-                  <span className="gcard-stamps tip-opt" role="img" aria-label={`Tampons : ${stamps} sur ${PAGES}`}>
+                  <span className="gcard-stamps menu-opt" role="img" aria-label={`Tampons : ${stamps} sur ${PAGES}`}>
                     {Array.from({ length: PAGES }, (_, k) => (k < stamps ? '●' : '○')).join(' ')}
                   </span>
                   <span className="gcard-go">{best ? `Record : ${fmt(best)}` : 'Jouer →'}</span>
@@ -671,7 +709,7 @@ function MenuScreen({ view, setView, grade, mode, setMode, diff, setDiff, settin
             })}
           </div>
           {loadProgress(board).stamps > 0 && (
-            <div className="tip-opt mt-2 flex flex-wrap items-center gap-2" role="group" aria-label="Page de départ">
+            <div className="menu-opt mt-2 flex flex-wrap items-center gap-2" role="group" aria-label="Page de départ">
               <span className="subhead">Départ</span>
               <div className="seg">
                 {Array.from({ length: Math.min(PAGES, loadProgress(board).stamps + 1) }, (_, k) => (

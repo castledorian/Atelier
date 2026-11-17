@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { DIFFICULTIES } from '../game/difficulty';
 import type { Difficulty } from '../game/difficulty';
 import type { RunRecord } from '../game/history';
+import { clearLetters, hardLetters, loadLetters } from '../game/progress';
 import type { ScoreEntry } from '../game/storage';
 import { explain } from '../server/api';
 import { fetchBoard } from '../server/student';
@@ -207,7 +208,8 @@ function LineChart({
 
 const avg = (a: number[]) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0);
 
-export function Progress({ runs, loading, currentName, onBack }: { runs: RunRecord[]; loading?: boolean; currentName: string; onBack: () => void }) {
+export function Progress({ runs, loading, currentName, onBack, onDrill }: { runs: RunRecord[]; loading?: boolean; currentName: string; onBack: () => void; onDrill?: (letters: string) => void }) {
+  const [letters, setLetters] = useState(() => hardLetters(loadLetters()));
   const real = useMemo(() => runs.filter((r) => r.kind === 'game' && r.correct >= 10), [runs]);
   const names = useMemo(() => [...new Set(real.map((r) => r.name || 'ANONYME'))], [real]);
   const [who, setWho] = useState(() => (names.includes(currentName || 'ANONYME') ? currentName || 'ANONYME' : (names[0] ?? '')));
@@ -289,6 +291,44 @@ export function Progress({ runs, loading, currentName, onBack }: { runs: RunReco
           </>
         )}
 
+        <section aria-labelledby="prog-letters" className="prog-rules mt-[var(--sp)]">
+          <h3 id="prog-letters" className="subhead">
+            Lettres à travailler
+          </h3>
+          {letters.length === 0 ? (
+            <p className="mt-1 text-[15px] leading-snug">Aucune lettre ne te résiste pour l’instant. Après quelques parties, les touches où tu te trompes le plus apparaîtront ici.</p>
+          ) : (
+            <>
+              <ul className="prog-letters">
+                {letters.map((l) => (
+                  <li key={l.letter}>
+                    <span className="prog-key" aria-hidden="true">
+                      {l.letter}
+                    </span>
+                    <span className="sr-only">Lettre {l.letter} : </span>
+                    <span className="prog-letter-rate">{l.rate}&nbsp;% d’erreurs</span>
+                  </li>
+                ))}
+              </ul>
+              {onDrill && (
+                <button type="button" className="btn btn-primary prog-train" onClick={() => onDrill(letters.slice(0, 4).map((l) => l.letter).join(''))}>
+                  S’entraîner sur ces lettres
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn btn-ghost prog-train ml-2"
+                onClick={() => {
+                  if (!window.confirm('Effacer le suivi de tes lettres sur cet appareil ?')) return;
+                  clearLetters();
+                  setLetters([]);
+                }}
+              >
+                Effacer
+              </button>
+            </>
+          )}
+        </section>
       </section>
     </div>
   );

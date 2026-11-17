@@ -1,23 +1,19 @@
 import { CannonIcon, InkEnemy } from './InkEnemy';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Sfx } from '../game/audio';
-import type { SfxName } from '../game/audio';
 import { Game } from '../game/engine';
 import { CourseGame } from '../game/course/engine';
 import { MemoryGame } from '../game/memory/engine';
 import { levelOf } from '../game/grade';
 import type { Grade } from '../game/grade';
 import { PREVIEWS } from './Preview';
-import type { PreviewGame } from './Preview';
-
-const STEP_MS = 5200;
-
-/** Sons joués à chaque étape de l'extrait d'orthographe (les autres jeux jouent leurs propres sons). */
-const SPELLING_SOUNDS: Array<SfxName | null> = ['scribble', 'select', 'select', 'impact'];
+import type { PreviewGame, PreviewStep } from './Preview';
 
 /**
  * Fenêtre d'extrait : s'ouvre par-dessus l'accueil comme un petit onglet. En haut, le jeu joué tout seul
  * (avec le son, coupable d'un clic) ; en dessous, le texte qui explique, étape par étape, sans jamais le recouvrir.
+ * Les étapes ne défilent JAMAIS toutes seules : l'élève passe à la suivante quand il a fini de lire (bouton ou flèches).
+ * La zone de texte a toujours la hauteur de l'étape la plus longue : la fenêtre ne change pas de taille d'une étape à l'autre.
  */
 export default function PreviewWindow({ game, grade, onClose, onPlay }: { game: PreviewGame; grade: Grade | null; onClose: () => void; onPlay: () => void }) {
   const info = PREVIEWS[game];
@@ -27,6 +23,8 @@ export default function PreviewWindow({ game, grade, onClose, onPlay }: { game: 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const lastRef = useRef(info.steps.length - 1);
+  lastRef.current = info.steps.length - 1;
 
   useEffect(() => {
     sfx.enabled = sound;
@@ -57,17 +55,13 @@ export default function PreviewWindow({ game, grade, onClose, onPlay }: { game: 
     }
   }, [game, grade, sfx]);
 
-  // Les étapes défilent toutes seules ; un clic sur un point reprend le compte
-  useEffect(() => {
-    const id = window.setTimeout(() => setStep((k) => (k + 1) % info.steps.length), STEP_MS);
-    return () => window.clearTimeout(id);
-  }, [step, info.steps.length]);
+  const last = info.steps.length - 1;
+  const goTo = (k: number) => setStep(Math.max(0, Math.min(last, k)));
 
+  // Chaque étape a son petit son (coupé si l'élève a mis le muet)
   useEffect(() => {
-    if (game !== 'spelling') return;
-    const name = SPELLING_SOUNDS[step];
-    if (name) sfx.play(name);
-  }, [game, step, sfx]);
+    sfx.play(info.steps[step].sound);
+  }, [info, step, sfx]);
 
   // Clavier : Échap ferme, Tab reste dans la fenêtre ; le focus revient au « i » à la fermeture
   useEffect(() => {
@@ -77,6 +71,11 @@ export default function PreviewWindow({ game, grade, onClose, onPlay }: { game: 
       if (e.key === 'Escape') {
         e.preventDefault();
         onClose();
+        return;
+      }
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setStep((k) => Math.max(0, Math.min(lastRef.current, k + (e.key === 'ArrowRight' ? 1 : -1))));
         return;
       }
       if (e.key !== 'Tab' || !dialogRef.current) return;
@@ -127,28 +126,60 @@ export default function PreviewWindow({ game, grade, onClose, onPlay }: { game: 
 
         <div className="pw-body">
           <p className="pw-goal">{info.goal}</p>
-          <div className="pw-step" role="status" aria-live="polite">
-            <p className="pw-step-title">
-              <span className="pw-step-n">{step + 1}</span> {cur.title}
-            </p>
-            <p className="pw-step-text">{cur.text}</p>
+          <div className="pw-steps">
+            <div key={step} className="pw-step" role="status" aria-live="polite">
+              <StepText n={step + 1} step={cur} />
+            </div>
+            {/* les autres étapes, invisibles : elles donnent à la zone la hauteur de la plus longue */}
+            {info.steps.map((s, k) => (
+              <div key={s.title} className="pw-step pw-sizer" aria-hidden="true">
+                <StepText n={k + 1} step={s} />
+              </div>
+            ))}
+          </div>
+          <div className="pw-dots" role="group" aria-label="Étapes de l’extrait">
+            {info.steps.map((s, k) => (
+              <button key={s.title} type="button" className={k === step ? 'on' : ''} aria-label={`Étape ${k + 1} : ${s.title}`} aria-current={k === step} onClick={() => goTo(k)} />
+            ))}
           </div>
           <div className="pw-foot">
-            <div className="pw-dots" role="group" aria-label="Étapes de l’extrait">
-              {info.steps.map((s, k) => (
-                <button key={s.title} type="button" className={k === step ? 'on' : ''} aria-label={`Étape ${k + 1} : ${s.title}`} aria-current={k === step} onClick={() => setStep(k)} />
-              ))}
+            <div className="pw-nav">
+              <button type="button" className="btn btn-ghost" disabled={step === 0} onClick={() => goTo(step - 1)}>
+                <span aria-hidden="true">←</span> Précédent
+              </button>
+              <span className="pw-count" aria-hidden="true">
+                {step + 1} / {info.steps.length}
+              </span>
+              <button type="button" className="btn btn-ghost" disabled={step === last} onClick={() => goTo(step + 1)}>
+                Suivant <span aria-hidden="true">→</span>
+              </button>
             </div>
-            <button ref={closeRef} type="button" className="btn btn-ghost" onClick={onClose}>
-              Fermer
-            </button>
-            <button type="button" className="btn btn-primary" onClick={onPlay}>
-              Jouer
-            </button>
+            <div className="pw-actions">
+              <button ref={closeRef} type="button" className="btn btn-ghost" onClick={onClose}>
+                Fermer
+              </button>
+              <button type="button" className="btn btn-primary" onClick={onPlay}>
+                Jouer
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function StepText({ n, step }: { n: number; step: PreviewStep }) {
+  return (
+    <>
+      <p className="pw-step-title">
+        <span className="pw-step-n">{n}</span> {step.title}
+      </p>
+      <p className="pw-step-text">{step.text}</p>
+      <p className="pw-ex">
+        <span className="pw-ex-label">Exemple</span> {step.example}
+      </p>
+    </>
   );
 }
 

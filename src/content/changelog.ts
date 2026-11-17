@@ -24,6 +24,19 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.8',
+    date: '17 novembre 2026',
+    iso: '2026-11-17',
+    title: 'Menus harmonisés, « Mes progrès » partout et aide plus lisible',
+    changes: [
+      { kind: 'fix', text: 'Mémoire d’encre : le menu s’affiche en entier, sans défilement, sur ordinateur comme sur téléphone.' },
+      { kind: 'better', text: 'Chasse aux fautes : même menu que les autres jeux, avec le fond animé, le titre tamponné lettre par lettre et les rubriques « Comment jouer », « Scores », « Mes progrès » et « Réglages ».' },
+      { kind: 'new', text: '« Mes progrès » dans tous les jeux : ta réussite sur les dernières parties, les règles à revoir avec leur astuce et un entraînement de 3 questions (calcul, orthographe), la longueur de tes suites et tes tampons (Mémoire), tes lettres les plus difficiles avec un entraînement ciblé (Frappe !). Tout reste sur ton appareil, et tu peux l’effacer.' },
+      { kind: 'better', text: 'Bulles d’aide (bouton « i ») : plus de défilement automatique, tu passes à l’étape suivante quand tu as fini de lire (boutons Précédent / Suivant ou flèches du clavier).' },
+      { kind: 'better', text: 'Bulles d’aide : la fenêtre garde toujours la même taille, quelle que soit la longueur du texte ; chaque étape a un exemple concret et un petit son.' },
+    ],
+  },
+  {
     version: '1.7',
     date: '17 novembre 2026',
     iso: '2026-11-17',

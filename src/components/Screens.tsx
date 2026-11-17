@@ -415,7 +415,7 @@ export function Menu({ scores, settings, kbOn, install, onStart, onChange, onCle
 
   return (
     <div className="overlay">
-      <section className="card card-game card-menu w-full max-w-[600px]" aria-labelledby="game-title">
+      <section className="card card-game card-menu card-compact w-full max-w-[600px]" aria-labelledby="game-title">
         <div className="menu-a">
           <div className="card-top">
             <BackButton onClick={onHome} />
@@ -432,9 +432,9 @@ export function Menu({ scores, settings, kbOn, install, onStart, onChange, onCle
             </span>
           </h1>
           <div className="rule" aria-hidden="true" />
-          <p className="tagline">Tape les mots pour faire éclater les taches d’encre avant qu’elles n’atteignent la marge.</p>
+          <p className="tagline menu-opt">Tape les mots pour faire éclater les taches d’encre avant qu’elles n’atteignent la marge.</p>
 
-          <div className="tools" role="group" aria-label="Plus d’options">
+          <div className="tools" data-n="4" role="group" aria-label="Plus d’options">
             <button type="button" className="tool" onClick={() => setView('howto')}>
               <span aria-hidden="true">?</span> Comment jouer
             </button>
