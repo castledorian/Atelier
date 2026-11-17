@@ -24,6 +24,16 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.9.1',
+    date: '17 novembre 2026',
+    iso: '2026-11-17',
+    title: 'Mémoire d’encre plus lisible sur grand écran',
+    changes: [
+      { kind: 'fix', text: 'Mémoire d’encre : sur un écran d’ordinateur Full HD, le menu s’affichait trop petit ; il a désormais la même taille que les autres jeux.' },
+      { kind: 'fix', text: 'Le titre « MÉMOIRE D’ENCRE » pouvait rester invisible (première lettre absente) : l’animation des lettres est rendue plus fiable.' },
+    ],
+  },
+  {
     version: '1.9',
     date: '17 novembre 2026',
     iso: '2026-11-17',

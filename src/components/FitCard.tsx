@@ -5,7 +5,9 @@ import type { ReactNode } from 'react';
  * Une carte (menu de jeu, « Comment jouer », « Scores »…) qui tient toujours dans l'écran.
  * Si le contenu dépasse, la carte est réduite d'un cran (zoom) jusqu'à rentrer, au lieu de faire défiler :
  * en classe, un écran qui défile fait perdre des élèves, et le bas de la carte (les boutons) passe inaperçu.
- * Réduction limitée à 65 % pour que le texte reste lisible ; en dessous, la carte défile comme avant.
+ * Réduction limitée à 65 % du zoom de départ pour que le texte reste lisible ; en dessous, la carte défile comme avant.
+ * Le zoom de départ est celui de la feuille de style (grand écran / TBI : 1,3 ; texte agrandi : 1,08 ou 1,16) :
+ * on réduit À PARTIR de lui, jamais depuis 1 — sinon la carte rétrécirait bien plus que les autres écrans.
  * Navigateurs anciens sans `zoom` : rien ne change, la carte défile (comportement d'origine).
  */
 
@@ -21,12 +23,14 @@ export function useFit<T extends HTMLElement>(key?: unknown) {
 
     const apply = () => {
       el.style.zoom = '';
+      const base = Number(getComputedStyle(el).zoom) || 1;
+      const floor = MIN * base;
       // plusieurs passes : après réduction, le texte se replie autrement et libère parfois assez de place
       for (let i = 0; i < 4; i++) {
         const over = el.scrollHeight - el.clientHeight;
         if (over <= 1) break;
-        const cur = Number(el.style.zoom) || 1;
-        const next = Math.max(MIN, Math.floor(cur * (el.clientHeight / el.scrollHeight) * 100) / 100);
+        const cur = Number(el.style.zoom) || base;
+        const next = Math.max(floor, Math.floor(cur * (el.clientHeight / el.scrollHeight) * 100) / 100);
         if (next >= cur) break;
         el.style.zoom = String(next);
       }
