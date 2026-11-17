@@ -261,6 +261,21 @@ Reconnectez-vous sur le site : un bouton **Administration** apparaît sur l'accu
 
 **Garde-fous** : réservé aux comptes de `public.site_admins` (vérifié par le serveur, pas par le site) ; **lecture seule** ; les codes d'accès des élèves ne sont **jamais** renvoyés ; chaque consultation est notée dans `private.admin_audit` (effacée après 1 an). La page « Confidentialité » du site en informe les familles et enseignants. Si vous donnez ce rôle à une autre personne, tenez-en compte dans votre registre des traitements.
 
+## Suivi des exercices et onglet « Équilibrage » (régler la difficulté avec de vraies données)
+
+**À faire une fois** : dans Supabase → SQL Editor, collez et exécutez `serveur/mise-a-jour-exercices.sql` (sans danger si répété ; à exécuter **après** `mise-a-jour-admin.sql`). Une installation neuve avec `schema.sql` est déjà à jour. Tant qu'elle n'est pas faite, le site fonctionne normalement : les compteurs ne sont simplement pas enregistrés, et l'onglet « Équilibrage » l'indique.
+
+**Ce que ça enregistre** : à la fin d'une partie libre d'un élève connecté (Course à l'encre, Chasse aux fautes), des **compteurs anonymes** : pour chaque famille de calcul, règle d'orthographe, calcul précis ou phrase, « posé N fois, raté E fois, avec telles mauvaises réponses ». Rien n'indique quel élève, quelle classe ou quelle école. Ne sont pas comptés : séances de classe, entraînements, réglages personnalisés, et tout texte tapé par l'élève (Expert). La table `public.item_stats` est illisible depuis le navigateur ; seule la lecture réservée à l'administrateur y accède (et chaque consultation est notée dans `private.admin_audit`).
+
+**Où le lire** : site → Administration → onglet **Équilibrage** :
+- *Réussite par niveau* : le taux de manches réussies du premier coup, comparé à l'objectif (Apprenti ≈ 95 %, Standard ≈ 85 %, Expert ≈ 65 %, tolérance ± 5 points), avec un verdict écrit (« Trop facile », « Bien réglé », « Trop difficile »). Un niveau n'est jugé qu'à partir de 150 manches ; le tableau signale aussi les niveaux dont presque toutes les parties sont gagnées ou perdues.
+- *Ce qui fait échouer* : par jeu, niveau et difficulté, les familles de calculs (tables, × et ÷ par 10, fractions…) ou les règles d'orthographe, puis les calculs et phrases les plus ratés, avec les mauvaises réponses les plus choisies. Les exercices posés moins de 5 fois sont masqués.
+- *Exports* : « Exporter en CSV » (niveaux, ou tous les exercices) et « Copier le bilan complet (texte) », à coller dans une conversation pour régler les niveaux.
+
+**Quand les exercices changent** : augmentez `ITEM_STATS_VERSION` dans `src/game/itemstats.ts` pour que les nouveaux compteurs ne se mélangent pas aux anciens. Pour tout remettre à zéro : `truncate public.item_stats;`.
+
+**Garde-fous** : l'envoi exige un élève connecté qui vient de jouer une partie libre du même jeu (30 minutes), est limité à 60 envois par heure et par élève, 120 entrées et 12 000 caractères par envoi, et 3 000 exercices précis par jeu et niveau. Les entrées mal formées sont ignorées une à une.
+
 ## Niveaux de classe et difficultés (CP → CM2) : comment c'est réglé
 
 - **Les 3 difficultés (Apprenti, Standard, Expert) existent maintenant dans les 4 jeux.** Apprenti = initiation (beaucoup de temps ou de vies, erreurs peu coûteuses), Standard = référence de la classe, Expert = les plus rapides ou les plus sûrs d'eux.

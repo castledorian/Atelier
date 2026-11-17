@@ -2409,6 +2409,92 @@ html[data-comfort='on'] .title-sm {
   text-align: left;
 }
 
+/* Onglet « Équilibrage » de l'administration */
+.adm-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin: 6px 0;
+}
+.adm-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.adm-filters .field {
+  min-width: 150px;
+  font-weight: 400;
+}
+.adm-copied {
+  margin-left: 8px;
+  font-size: 14px;
+}
+.adm-verdict {
+  display: inline-block;
+  padding: 1px 8px;
+  font-weight: 700;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+}
+/* le sens se lit dans le texte ; la forme du cadre le souligne sans reposer sur la couleur */
+.adm-verdict.v-ok {
+  border-style: solid;
+}
+.adm-verdict.v-easy {
+  border-style: dashed;
+}
+.adm-verdict.v-hard {
+  border-style: double;
+  border-width: 4px;
+}
+.adm-verdict.v-few,
+.adm-verdict.v-none {
+  border-style: dotted;
+  font-weight: 400;
+}
+.adm-gap {
+  font-size: 13px;
+  color: rgba(27, 25, 21, 0.78);
+}
+.adm-block {
+  display: block;
+  margin-top: 2px;
+}
+.adm-nowrap {
+  white-space: nowrap;
+}
+.adm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 18px;
+}
+@media (max-width: 640px) {
+  .adm-table td.adm-game {
+    white-space: nowrap;
+  }
+}
+.adm-meter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.adm-meter-bar {
+  display: inline-block;
+  width: 90px;
+  height: 10px;
+  border: 2px solid var(--color-ink);
+  background: #fff;
+}
+.adm-meter-bar i {
+  display: block;
+  height: 100%;
+  background: var(--color-ink);
+}
+
 /* ───── Téléphone en paysage : message « tourne ton téléphone » ───── */
 .rotate-notice {
   position: fixed;

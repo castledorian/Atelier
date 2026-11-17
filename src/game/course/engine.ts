@@ -1,5 +1,7 @@
 import type { Sfx } from '../audio';
 import { ruleOfCalc } from '../encre/rules';
+import { mathOutcome } from '../itemstats';
+import type { ItemOutcome } from '../itemstats';
 import type { RuleId } from '../encre/rules';
 import { shouldSummon } from '../encre/tracker';
 import { COURSE_TUNING, LEVEL_TUNING, PAGES, PAGE_TITLES, PER_PAGE, TOTAL, fmtNum, fromMissed, makeChoices, makeQuestion, questionsMatching, stageOf, travelTime } from './questions';
@@ -24,6 +26,8 @@ export interface CourseResult {
   /** secondes réellement jouées */
   time: number;
   missed: Missed[];
+  /** résultat de chaque calcul de la partie (jamais en entraînement), pour le suivi anonyme des exercices */
+  outcomes: ItemOutcome[];
   /** entraînement ciblé terminé sans être rattrapé */
   cleared: boolean;
   drill: boolean;
@@ -194,6 +198,7 @@ export class CourseGame {
   private focus: RuleId[] = [];
   private lastOk: boolean[] = [];
   private missed = new Map<string, Missed>();
+  private outcomes: ItemOutcome[] = [];
   private hitStop = 0;
   private over = false;
   private overT = 0;
@@ -363,6 +368,7 @@ export class CourseGame {
     this.recent = [];
     this.lastOk = [];
     this.missed = new Map();
+    this.outcomes = [];
     this.hitStop = 0;
     this.over = false;
     this.overT = 0;
@@ -634,7 +640,10 @@ export class CourseGame {
     const y = this.penY - 24 * this.u;
     if (!demo) this.asked++;
     if (!demo && !this.drillQueue) this.pageA[Math.min(PAGES - 1, stageOf(this.asked - 1))]++;
-    if (!demo && !this.drillQueue) this.lastOk.push(ok);
+    if (!demo && !this.drillQueue) {
+      this.lastOk.push(ok);
+      this.outcomes.push(mathOutcome(g.q.text, ok, g.choices[g.picked] ?? null));
+    }
     if (ok) {
       if (demo) {
         this.burst(x, y, 8, 2, 120);
@@ -736,6 +745,7 @@ export class CourseGame {
       bestStreak: this.best,
       time: Math.round(this.t),
       missed: [...this.missed.values()].sort((a, b) => b.count - a.count),
+      outcomes: this.outcomes,
       cleared,
       drill: this.drillTotal > 0,
       won: this.won,

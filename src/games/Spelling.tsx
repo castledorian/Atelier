@@ -15,6 +15,8 @@ import { DUEL_SIZE, activeRules, dayKey, loadStore, recordDuel, recordGame, save
 import { effectiveGrade, gradeLabel, levelOf } from '../game/grade';
 import { Sfx } from '../game/audio';
 import { newRunId } from '../game/history';
+import { spellingOutcome, summarize } from '../game/itemstats';
+import type { ItemOutcome } from '../game/itemstats';
 import { parseSpelling } from '../game/sessionConfig';
 import { loadSettings, saveSettings } from '../game/storage';
 import type { Settings } from '../game/storage';
@@ -22,7 +24,7 @@ import { BOSS_AT, HINT, RETRY_MAX, ROUNDS, choicesFor, duelItems, hpFor, isFault
 import type { EnemyRole, Item, RoundOutcome } from '../game/spelling/engine';
 import { addSpellingScore, loadSpellingPrefs, loadSpellingScores, saveSpellingPrefs } from '../game/spelling/scores';
 import { enqueue, flush } from '../server/outbox';
-import { sendRun } from '../server/student';
+import { sendItemStats, sendRun } from '../server/student';
 import type { RunPayload, SessionInfo, StudentAccount } from '../server/types';
 import { Frame } from '../pages/Frame';
 
@@ -60,6 +62,8 @@ interface GameState {
   faults: Partial<Record<RuleId, number>>;
   /** phrases ratées, pour le récapitulatif */
   missed: Item[];
+  /** résultat de chaque phrase jouée, pour le suivi anonyme des exercices */
+  outcomes: ItemOutcome[];
   /** phrases des parties précédentes */
   avoid: Set<string>;
   /** phrases ratées dans les parties précédentes, à revoir */
@@ -283,7 +287,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
         return;
       }
       const secs = Math.min(7200, Math.max(0, Math.round((Date.now() - s.t0) / 1000)));
-      const payload: Omit<RunPayload, 'sessionId' | 'balance'> = {
+      const payload: RunPayload = {
         clientId: id,
         game: 'spelling',
         mode: boardKey(s.level, s.diff),
@@ -309,6 +313,22 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
         record = s.score > 0 && (before.length === 0 || s.score > before[0].score);
         rank = s.score > 0 ? addSpellingScore(board, { id, score: s.score, streak: s.best, date: Date.now() }) : -1;
         const acct = account;
+        // résumé anonyme pour régler la difficulté (jamais lié à l'élève) : seulement les parties libres
+        const rounds = s.outcomes.length;
+        const okCount = s.outcomes.filter((o) => o.ok).length;
+        if (rounds > 0) {
+          payload.balance = {
+            game: 'spelling',
+            level: s.level,
+            difficulty: s.diff,
+            version: 1,
+            outcome: dead ? 'lost' : 'finished',
+            score: s.score,
+            duration: secs,
+            rounds_ok: okCount,
+            rounds_err: rounds - okCount,
+          };
+        }
         if (acct && s.score > 0) {
           setCloud('sending');
           sendRun(acct.token, payload)
@@ -317,6 +337,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
                 enqueue(acct.student.id, payload);
                 lost.current = true;
               }
+              if (r === 'ok' && payload.balance) void sendItemStats(acct.token, 'spelling', s.level, s.diff, summarize(s.outcomes));
               setCloud(r === 'ok' ? 'sent' : 'queued');
             })
             .catch(() => {
@@ -360,6 +381,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
         streak: 0,
         best: 0,
         okRounds: 0,
+        outcomes: [],
         faults: {},
         missed: [],
         avoid: new Set(loadSeen()),
@@ -386,6 +408,10 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
     [level, diff, openRound, sfx],
   );
 
+  /** Résultat d'une phrase pour le suivi anonyme (rien n'est gardé pour un duel de l'Encre). */
+  const outcomeOf = (s: GameState, r: Round, ok: boolean): ItemOutcome =>
+    spellingOutcome(r.item.rule, ruleInfo(r.item.rule).name, r.item.id, r.item.fixed, ok, r.wrongPicks, isTyped(s.diff, s.level));
+
   /** Une erreur : la créature attaque et prend une vie (pas de vie en duel). Renvoie la manche à jour. */
   const hurt = (r: Round, why: string): Round => {
     const s = g.current as GameState;
@@ -397,6 +423,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
     // plus de vie : la créature gagne cette partie
     s.faults[r.item.rule] = (s.faults[r.item.rule] ?? 0) + 1;
     s.missed.push(r.item);
+    s.outcomes.push(outcomeOf(s, r, false));
     s.lastOk.push(false);
     s.streak = 0;
     return { ...nr, step: 'done', lost: true, revealed: true, gained: 0, msg: '' };
@@ -439,6 +466,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
       s.faults[r.item.rule] = (s.faults[r.item.rule] ?? 0) + 1;
       s.missed.push(r.item);
     } else s.okRounds++;
+    s.outcomes.push(outcomeOf(s, r, !isFault(out)));
     s.lastOk.push(!isFault(out));
     return { ...r, step: 'done', gained, revealed: tries === 3, msg: '' };
   };

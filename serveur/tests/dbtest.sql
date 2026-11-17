@@ -268,6 +268,51 @@ select public.delete_class_session((select v::uuid from ctx where k='sess'));
 select pg_temp.as_admin();
 select pg_temp.eq('essais de la séance supprimés avec elle', (select count(*) from public.runs where session_id is not null), 0::bigint);
 
+
+-- ───────────────────────── Suivi des exercices (mise-a-jour-exercices.sql) ─────────────────────────
+select pg_temp.as_anon();
+-- sans partie récente du jeu, l'envoi est refusé
+select pg_temp.eq('envoi sans partie récente : refusé', public.submit_item_stats((select v from ctx where k='tok_lea'),'math','cm1','standard',1,'[{"k":"rule","i":"tables","l":"Tables","n":1,"e":0}]'::jsonb)->>'error', 'invalid_data');
+select public.submit_run((select v from ctx where k='tok_lea'),'runmath001','math','cm1','game',300,5,0,70,20,120,null,
+  '{"game":"math","level":"cm1","difficulty":"standard","version":1,"outcome":"finished","score":300,"duration":120,"rounds_ok":35,"rounds_err":13}'::jsonb);
+select public.submit_run((select v from ctx where k='tok_tom'),'runmath002','math','cm1','game',200,4,0,60,12,100,null,
+  '{"game":"math","level":"cm1","difficulty":"standard","version":1,"outcome":"lost","score":200,"duration":100,"rounds_ok":15,"rounds_err":15}'::jsonb);
+select pg_temp.eq('envoi des compteurs : accepté', public.submit_item_stats((select v from ctx where k='tok_lea'),'math','cm1','standard',1,
+  '[{"k":"rule","i":"tables","l":"Tables de multiplication","n":4,"e":2,"p":{"54":1,"56":1}},
+    {"k":"item","i":"7 × 8","l":"7 × 8","n":1,"e":1,"p":{"54":1}},
+    {"k":"item","i":"9 × 6","l":"9 × 6","n":1,"e":0},
+    {"k":"item","i":"trop","l":"invalide : plus d erreurs que de questions","n":1,"e":3},
+    {"k":"item","i":"six","l":"invalide : un exercice précis posé 6 fois","n":6,"e":0},
+    {"k":"rule","i":"grande-famille","l":"Une famille posée 48 fois","n":48,"e":6}]'::jsonb)->>'stored', '4');
+select public.submit_item_stats((select v from ctx where k='tok_tom'),'math','cm1','standard',1,
+  '[{"k":"rule","i":"tables","l":"Tables de multiplication","n":4,"e":3,"p":{"54":2,"63":1}},{"k":"item","i":"7 × 8","l":"7 × 8","n":1,"e":1,"p":{"56":1}}]'::jsonb);
+select public.submit_item_stats((select v from ctx where k='tok_lea'),'math','cm1','standard',1,'[{"k":"item","i":"7 × 8","l":"7 × 8","n":1,"e":0}]'::jsonb);
+select pg_temp.eq('jeton inconnu : refusé', public.submit_item_stats('x','math','cm1','standard',1,'[]'::jsonb)->>'error', 'invalid_session');
+select pg_temp.eq('réglages personnalisés : refusés', public.submit_item_stats((select v from ctx where k='tok_lea'),'math','cm1','perso',1,'[]'::jsonb)->>'error', 'invalid_data');
+select pg_temp.eq('jeu non joué récemment : refusé', public.submit_item_stats((select v from ctx where k='tok_tom'),'spelling','cm1','standard',1,'[]'::jsonb)->>'error', 'invalid_data');
+select pg_temp.eq('contenu qui n''est pas une liste : refusé', public.submit_item_stats((select v from ctx where k='tok_lea'),'math','cm1','standard',1,'{"a":1}'::jsonb)->>'error', 'invalid_data');
+select pg_temp.fails($$select * from public.item_stats$$, 'permission denied');
+select pg_temp.fails($$select public.admin_item_stats()$$, 'permission denied');
+select pg_temp.fails($$select public.admin_balance()$$, 'permission denied');
+select pg_temp.fails($$select private.store_items('math','cm1','standard',1,'[]'::jsonb)$$, 'permission denied');
+
+-- un enseignant ordinaire n'a pas accès
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select pg_temp.fails($$select public.admin_item_stats()$$, 'forbidden');
+select pg_temp.fails($$select public.admin_balance()$$, 'forbidden');
+select pg_temp.fails($$select * from public.item_stats$$, 'permission denied');
+
+-- limite : 60 envois par heure et par élève
+select pg_temp.as_anon();
+do $$ declare i int; r jsonb; begin
+  for i in 1..70 loop
+    r := public.submit_item_stats((select v from ctx where k='tok_tom'),'math','cm1','standard',1,'[{"k":"rule","i":"tables","l":"Tables de multiplication","n":1,"e":0}]'::jsonb);
+    if r->>'error' = 'rate_limited' then raise notice 'ok  limite atteinte après % envois', i - 1; return; end if;
+  end loop;
+  raise exception 'ÉCHEC DU TEST [limite d''envois] : jamais refusé';
+end $$;
+
+
 -- ═══ Suppression de l'école A ═══
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 select public.delete_school((select v::uuid from ctx where k='schoolA'));
@@ -347,5 +392,22 @@ select pg_temp.eq('limite bornée', jsonb_array_length(public.admin_logs(-5)->'r
 select pg_temp.as_admin();
 select pg_temp.eq('chaque consultation est journalisée', (select count(*) >= 3 from private.admin_audit where admin_id = 'cccccccc-0000-0000-0000-000000000003'), true);
 select pg_temp.eq('la consultation d''une école est tracée avec sa cible', (select count(*) >= 1 from private.admin_audit where action = 'school' and target is not null), true);
+
+
+-- l'administrateur lit les compteurs
+select pg_temp.as_user('cccccccc-0000-0000-0000-000000000003');
+select pg_temp.eq('famille : posé 8 fois (4+4+1+1+... hors limite)', (select (x->>'shown')::int from jsonb_array_elements(public.admin_item_stats('math','cm1')->'rules') x where x->>'item'='tables' limit 1) >= 8, true);
+select pg_temp.eq('famille : 5 erreurs additionnées', (select (x->>'wrong')::int from jsonb_array_elements(public.admin_item_stats('math','cm1')->'rules') x where x->>'item'='tables' limit 1), 5);
+select pg_temp.eq('calcul 7 × 8 : posé 3 fois, raté 2', (select x->>'shown' || '/' || (x->>'wrong') from jsonb_array_elements(public.admin_item_stats('math','cm1')->'items') x where x->>'item'='7 × 8'), '3/2');
+select pg_temp.eq('mauvaises réponses fusionnées (54 et 56, une fois chacune)', (select (x->'picks'->>'54') || '/' || (x->'picks'->>'56') from jsonb_array_elements(public.admin_item_stats('math','cm1')->'items') x where x->>'item'='7 × 8'), '1/1');
+select pg_temp.eq('familles : réponses fusionnées (54 choisi 3 fois)', (select (x->'picks'->>'54')::int from jsonb_array_elements(public.admin_item_stats('math','cm1')->'rules') x where x->>'item'='tables'), 3);
+select pg_temp.eq('entrée invalide ignorée', (select count(*)::int from jsonb_array_elements(public.admin_item_stats('math','cm1')->'items') x where x->>'item'='trop'), 0);
+select pg_temp.eq('les calculs vus moins de 3 fois sont masqués', (select count(*)::int from jsonb_array_elements(public.admin_item_stats('math','cm1')->'items') x where x->>'item'='9 × 6'), 0);
+select pg_temp.eq('filtre par jeu', jsonb_array_length(public.admin_item_stats('spelling', null)->'rules'), 0);
+select pg_temp.eq('aucun élève dans les compteurs', (public.admin_item_stats()::text ~* '(léa|tom|nina|student)'), false);
+select pg_temp.eq('bilan d''équilibrage : 50 réussites, 28 erreurs', (select x->>'ok' || '/' || (x->>'err') from jsonb_array_elements(public.admin_balance()->'levels') x where x->>'game'='math' and x->>'level'='cm1' and x->>'difficulty'='standard'), '50/28');
+select pg_temp.as_admin();
+select pg_temp.eq('les consultations des compteurs sont tracées', (select count(*) >= 2 from private.admin_audit where action in ('item_stats','balance')), true);
+
 
 \echo TOUS LES TESTS SQL PASSENT

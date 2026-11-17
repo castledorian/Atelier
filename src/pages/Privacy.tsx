@@ -91,6 +91,11 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
           contient <strong>aucun identifiant</strong> (ni élève, ni classe, ni école) et ne permet pas de retrouver la personne. Il sert uniquement à rendre les jeux plus justes pour
           tous. Les parties de séance et les réglages personnalisés n’y figurent pas.
         </p>
+        <p>
+          De la même façon, des <strong>compteurs par exercice</strong> sont tenus à part&nbsp;: «&nbsp;ce calcul a été posé tant de fois et raté tant de fois, avec telles mauvaises réponses&nbsp;». Ils servent à repérer les
+          calculs et les phrases trop difficiles. Ils ne contiennent <strong>aucun identifiant</strong>, ne retiennent jamais ce qu’un élève écrit lui-même (les corrections tapées au clavier ne sont pas gardées)
+          et ne sont lisibles que par l’administrateur du site.
+        </p>
         <h3 className="font-bold">Enseignant</h3>
         <ul className={ul}>
           <li>L’adresse e-mail et le mot de passe du compte (le mot de passe est protégé par le service d’identification et n’est lisible par personne).</li>

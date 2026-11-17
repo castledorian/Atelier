@@ -1,5 +1,7 @@
 import { isGrade } from '../game/grade';
 import type { Grade } from '../game/grade';
+import { ITEM_STATS_VERSION } from '../game/itemstats';
+import type { ItemEntry } from '../game/itemstats';
 import { ApiError, rpc } from './api';
 import type { BoardRow, ClassWeek, GameId, RunPayload, Scope, ServerRun, SessionInfo, StudentAccount } from './types';
 
@@ -40,6 +42,20 @@ export type SendStatus = 'ok' | 'invalid_session' | 'invalid_data' | 'no_attempt
 
 /** Évènement émis quand le serveur refuse une partie impossible : l'écran affiche alors le message « félicitations ». */
 export const CHEAT_EVENT = 'atelier:cheat';
+
+/**
+ * Envoie les compteurs anonymes de la partie (quels calculs ou phrases ont été ratés), pour régler la difficulté.
+ * À appeler seulement après l'envoi réussi d'une partie libre. Facultatif : toute erreur est ignorée
+ * (réseau coupé, mise à jour SQL « exercices » pas encore faite…).
+ */
+export async function sendItemStats(token: string, game: 'math' | 'spelling', level: string, difficulty: string, items: ItemEntry[]): Promise<void> {
+  if (items.length === 0) return;
+  try {
+    await rpc('submit_item_stats', { p_token: token, p_game: game, p_level: level, p_difficulty: difficulty, p_version: ITEM_STATS_VERSION, p_items: items });
+  } catch {
+    /* le suivi est un bonus : il ne doit jamais gêner la partie */
+  }
+}
 
 /** Envoie une partie (libre ou de séance). Lève en cas de réseau ; renvoie l'état d'essais pour une séance. */
 export async function submitRun(token: string, r: RunPayload): Promise<{ status: SendStatus; attemptsUsed?: number }> {

@@ -26,12 +26,13 @@ import {
 import type { CourseScore } from '../game/course/scores';
 import { effectiveGrade, levelOf } from '../game/grade';
 import { newRunId } from '../game/history';
+import { summarize } from '../game/itemstats';
 import { parseMath } from '../game/sessionConfig';
 import { loadSettings, saveSettings } from '../game/storage';
 import type { Settings, TextSize } from '../game/storage';
 import { explain } from '../server/api';
 import { enqueue, flush } from '../server/outbox';
-import { fetchBoard, sendRun } from '../server/student';
+import { fetchBoard, sendItemStats, sendRun } from '../server/student';
 import type { BoardRow, RunPayload, Scope, SessionInfo, StudentAccount } from '../server/types';
 
 /**
@@ -185,6 +186,8 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
             enqueue(acct.student.id, payload);
             lost.current = true;
           }
+          // suivi anonyme des calculs ratés (parties libres seulement : payload.balance n'existe ni en séance ni en entraînement)
+          if (r === 'ok' && payload.balance) void sendItemStats(acct.token, 'math', result.level, result.diff, summarize(result.outcomes));
           if (id === live.current.recId) setCloud(r === 'ok' ? 'sent' : 'queued');
         })
         .catch(() => {

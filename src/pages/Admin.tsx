@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { BackButton } from '../components/BackButton';
 import { downloadText, toCsv } from '../game/history';
 import { ApiError, explain } from '../server/api';
-import { GAME_NAME, adminLogs, adminOverview, adminSchool } from '../server/admin';
-import type { AdminLogs, AdminOverview, AdminRun, AdminSchool } from '../server/admin';
+import { GAME_NAME, adminBalance, adminItemStats, adminLogs, adminOverview, adminSchool } from '../server/admin';
+import type { AdminBalance as AdminBalanceData, AdminItems, AdminLogs, AdminOverview, AdminRun, AdminSchool } from '../server/admin';
+import AdminBalance from './AdminBalance';
 import { Frame, Notice } from './Frame';
 
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -12,7 +13,7 @@ const when = (ms: number | null | undefined) =>
 const dur = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)} h ${Math.round((s % 3600) / 60)} min` : s >= 60 ? `${Math.round(s / 60)} min` : `${s} s`);
 const game = (g: string | null) => (g ? (GAME_NAME[g] ?? g) : '—');
 
-type Tab = 'overview' | 'school' | 'logs';
+type Tab = 'overview' | 'school' | 'balance' | 'logs';
 
 interface Props {
   email: string;
@@ -26,19 +27,20 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
   const [ov, setOv] = useState<AdminOverview | null>(null);
   const [sch, setSch] = useState<AdminSchool | null>(null);
   const [logs, setLogs] = useState<AdminLogs | null>(null);
+  const [bal, setBal] = useState<{ levels: AdminBalanceData['levels']; stats: AdminItems } | null>(null);
   const [q, setQ] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
   const act = useCallback(
-    async <R,>(f: () => Promise<R>): Promise<R | undefined> => {
+    async <R,>(f: () => Promise<R>, missing?: string): Promise<R | undefined> => {
       setErr('');
       setBusy(true);
       try {
         return await f();
       } catch (e) {
         if (e instanceof ApiError && e.code === 'not_authenticated') onSignOut();
-        else if (e instanceof ApiError && e.status === 404) setErr('La mise à jour « administrateur » n’a pas encore été exécutée sur le serveur (voir le guide).');
+        else if (e instanceof ApiError && e.status === 404) setErr(missing ?? 'La mise à jour « administrateur » n’a pas encore été exécutée sur le serveur (voir le guide).');
         else setErr(explain(e));
         return undefined;
       } finally {
@@ -56,6 +58,16 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
     const d = await act(() => adminLogs(200));
     if (d) setLogs(d);
   }, [act]);
+  const loadBalance = useCallback(async () => {
+    const d = await act(
+      async () => {
+        const [b, s] = await Promise.all([adminBalance(), adminItemStats()]);
+        return { levels: b.levels, stats: s };
+      },
+      'La mise à jour « exercices » n’a pas encore été exécutée sur le serveur : collez serveur/mise-a-jour-exercices.sql dans Supabase (voir le guide).',
+    );
+    if (d) setBal(d);
+  }, [act]);
   const openSchool = useCallback(
     async (id: string) => {
       setTab('school');
@@ -72,6 +84,9 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
   useEffect(() => {
     if (tab === 'logs' && !logs) void loadLogs();
   }, [tab, logs, loadLogs]);
+  useEffect(() => {
+    if (tab === 'balance' && !bal) void loadBalance();
+  }, [tab, bal, loadBalance]);
 
   const schools = (ov?.schools ?? []).filter((s) => {
     const t = q.trim().toLowerCase();
@@ -102,7 +117,7 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
         <div className="dash-who">
           <span className="text-[14px] text-ink/70">{email}</span>
           <div className="who-actions">
-            <button type="button" className="link" onClick={() => (tab === 'logs' ? void loadLogs() : tab === 'school' && sch ? void openSchool(sch.school.id) : void loadOverview())} disabled={busy}>
+            <button type="button" className="link" onClick={() => (tab === 'logs' ? void loadLogs() : tab === 'balance' ? void loadBalance() : tab === 'school' && sch ? void openSchool(sch.school.id) : void loadOverview())} disabled={busy}>
               Actualiser
             </button>
           </div>
@@ -115,6 +130,7 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
           [
             ['overview', 'Vue d’ensemble'],
             ['school', 'École'],
+            ['balance', 'Équilibrage'],
             ['logs', 'Journal'],
           ] as [Tab, string][]
         ).map(([id, label]) => (
@@ -277,6 +293,8 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
             <RunsTable runs={sch.recent} showSchool={false} />
           </>
         ))}
+
+      {tab === 'balance' && (!bal ? <p className="mt-4 text-[15px]">{busy ? 'Chargement…' : ''}</p> : <AdminBalance levels={bal.levels} stats={bal.stats} />)}
 
       {tab === 'logs' &&
         (!logs ? (

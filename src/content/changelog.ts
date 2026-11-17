@@ -24,6 +24,17 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.7',
+    date: '17 novembre 2026',
+    iso: '2026-11-17',
+    title: 'Suivi des exercices pour mieux régler les niveaux',
+    changes: [
+      { kind: 'new', text: 'Course à l’encre et Chasse aux fautes comptent, de façon anonyme, quels calculs et quelles phrases sont les plus ratés (aucun nom d’élève, de classe ou d’école, et rien de ce qui est tapé au clavier).' },
+      { kind: 'new', text: 'Espace administrateur : nouvel onglet « Équilibrage » avec la réussite de chaque niveau comparée à l’objectif (Apprenti ≈ 95 %, Standard ≈ 85 %, Expert ≈ 65 %), les familles de calculs et les phrases les plus ratées, et un export CSV.' },
+      { kind: 'better', text: 'Chasse aux fautes envoie maintenant, comme les autres jeux, son résumé anonyme de partie pour régler la difficulté.' },
+    ],
+  },
+  {
     version: '1.6',
     date: '17 novembre 2026',
     iso: '2026-11-17',

@@ -72,6 +72,42 @@ export interface AdminLogs {
   audit: { at: number; admin: string | null; action: string; target: string | null }[];
 }
 
+/** Réussite d'un jeu pour un niveau et une difficulté, d'après les parties libres (résumés anonymes). */
+export interface BalanceLevel {
+  game: string;
+  level: string;
+  difficulty: string;
+  version: number;
+  runs: number;
+  ok: number;
+  err: number;
+  success_pct: number | null;
+  finished_pct: number | null;
+  avg_score: number | null;
+  avg_duration: number | null;
+}
+export interface AdminBalance {
+  levels: BalanceLevel[];
+}
+/** Compteurs anonymes d'une famille de calculs, d'une règle, d'un calcul ou d'une phrase. */
+export interface ItemStatRow {
+  game: string;
+  level: string;
+  difficulty: string;
+  version: number;
+  item: string;
+  label: string;
+  shown: number;
+  wrong: number;
+  err_pct: number | null;
+  /** mauvaises réponses choisies : { réponse: nombre de fois } */
+  picks: Record<string, number>;
+}
+export interface AdminItems {
+  rules: ItemStatRow[];
+  items: ItemStatRow[];
+}
+
 const authed = async <T>(f: (token: string) => Promise<T>): Promise<T> => f(await freshToken());
 
 /** Vrai si ce compte est administrateur du site (faux aussi si la mise à jour SQL n'est pas encore faite). */
@@ -85,6 +121,8 @@ export async function isAdmin(): Promise<boolean> {
 
 export const adminOverview = () => authed((t) => rpc<AdminOverview>('admin_overview', {}, t));
 export const adminSchool = (id: string) => authed((t) => rpc<AdminSchool>('admin_school', { p_school: id }, t));
+export const adminBalance = () => authed((t) => rpc<AdminBalance>('admin_balance', {}, t));
+export const adminItemStats = () => authed((t) => rpc<AdminItems>('admin_item_stats', {}, t));
 export const adminLogs = (limit = 200) => authed((t) => rpc<AdminLogs>('admin_logs', { p_limit: limit }, t));
 
 export const GAME_NAME: Record<string, string> = {
