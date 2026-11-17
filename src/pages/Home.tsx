@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Frame } from './Frame';
+import { SiteFooter } from './Info';
+import type { InfoView } from './Info';
 import { InfoButton } from '../components/Preview';
 import type { PreviewGame } from '../components/Preview';
 import PreviewWindow from '../components/PreviewWindow';
@@ -22,12 +24,12 @@ interface HomeProps {
   onDashboard: () => void;
   /** présent seulement pour l'administrateur du site */
   onAdmin?: () => void;
-  onPrivacy: () => void;
+  onInfo: (v: InfoView) => void;
   onLogout: () => void;
   install: InstallInfo;
 }
 
-export default function Home({ student, teacher, onPlay, onSessions, onLogin, onDashboard, onAdmin, onPrivacy, onLogout, install }: HomeProps) {
+export default function Home({ student, teacher, onPlay, onSessions, onLogin, onDashboard, onAdmin, onInfo, onLogout, install }: HomeProps) {
   const online = serverEnabled();
   /** jeu dont l'extrait est ouvert (le « i » d'une carte) */
   const [preview, setPreview] = useState<PreviewGame | null>(null);
@@ -224,12 +226,7 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
           <p className="mt-2 text-[14px] leading-snug text-ink/75">Les jeux s’ouvrent ensuite comme une application, même sans connexion internet.</p>
         </section>
       )}
-      <p className="mt-4 text-[14px] text-ink/75">
-        Pas de pub, pas de cookie.{' '}
-        <button type="button" className="link" onClick={onPrivacy}>
-          Confidentialité et données
-        </button>
-      </p>
+      <SiteFooter onNav={onInfo} />
       {preview && (
         <PreviewWindow
           game={preview}

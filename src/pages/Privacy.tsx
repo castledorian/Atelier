@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { BackButton } from '../components/BackButton';
 import { LEGAL } from '../legal';
 import { Frame } from './Frame';
+import { SiteFooter } from './Info';
+import type { InfoView } from './Info';
 
 /** À compléter par l'éditeur : affiché en évidence tant que l'information manque (voir src/legal.ts). */
 function Todo({ value, what }: { value: string; what: string }) {
@@ -23,7 +25,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
 const ul = 'list-disc space-y-1 pl-5';
 
 /** Page de confidentialité : ce que le site enregistre, où, pendant combien de temps, et les droits de chacun. */
-export default function Privacy({ onBack }: { onBack: () => void }) {
+export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: (v: InfoView) => void }) {
   return (
     <Frame wide>
       <div className="card-top no-print">
@@ -183,6 +185,8 @@ export default function Privacy({ onBack }: { onBack: () => void }) {
           </button>
         </p>
       </Section>
+
+      <SiteFooter current="privacy" onNav={onNav} />
     </Frame>
   );
 }

@@ -269,3 +269,13 @@ Reconnectez-vous sur le site : un bouton **Administration** apparaît sur l'accu
 - **Course à l'encre** : temps, montée de l'encre et pénalité d'erreur recalibrés pour que chaque classe ait la même courbe (Apprenti ≈ 9 élèves sur 10 finissent le cahier, Standard ≈ 2 sur 3 des élèves moyens, Expert = les plus rapides).
 - Ces réglages viennent de **simulations d'élèves fragiles / moyens / à l'aise** (hypothèses, pas de mesures). Après quelques semaines d'usage, comparez avec les vraies parties anonymes : `serveur/stats-equilibrage.sql`.
 
+
+## Publier une nouveauté (page « Nouveautés » et numéro de version)
+
+À chaque mise en ligne qui change quelque chose pour les enseignants ou les élèves :
+
+1. Ouvrir `src/content/changelog.ts` et ajouter une entrée **en tête** de `RELEASES` (version, date, titre, changements « Nouveau / Amélioré / Corrigé »).
+2. Le numéro de cette première entrée s'affiche tout seul en bas de chaque page, et un repère « nouveau » apparaît à l'accueil jusqu'à ce que la page soit lue sur l'appareil.
+3. Augmenter aussi le numéro du cache dans `public/sw.js` (`atelier-vNN`) pour que les appareils récupèrent la nouvelle version.
+
+Les adresses de contact et le nom de l'éditeur affichés dans les pages Contact, Crédits et Confidentialité viennent de `src/legal.ts`. Les bibliothèques citées dans « Crédits et licences » sont listées dans `src/content/credits.ts` : à mettre à jour quand une dépendance est ajoutée.

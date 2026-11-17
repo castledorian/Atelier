@@ -11,6 +11,8 @@ import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Sessions from './pages/Sessions';
+import { About, Accessibility, Contact, Credits, News, isInfoView } from './pages/Info';
+import type { InfoView } from './pages/Info';
 import Privacy from './pages/Privacy';
 import { isAdmin } from './server/admin';
 import { serverEnabled } from './server/api';
@@ -19,7 +21,7 @@ import { loadTeacher, saveTeacher, signOut, takeAuthHash } from './server/teache
 import type { TeacherSession } from './server/teacher';
 import type { SessionInfo, StudentAccount } from './server/types';
 
-type View = 'home' | 'login' | 'dashboard' | 'admin' | 'privacy' | 'sessions' | 'typing' | 'math' | 'memory' | 'spelling';
+type View = 'home' | 'login' | 'dashboard' | 'admin' | InfoView | 'sessions' | 'typing' | 'math' | 'memory' | 'spelling';
 
 // Lien reçu par email (confirmation d'inscription / mot de passe oublié) : lu une seule fois, au chargement de la page.
 const ARRIVAL = serverEnabled() ? takeAuthHash() : null;
@@ -95,7 +97,15 @@ function Pages() {
     setView('login');
   }, []);
 
-  if (view === 'privacy') return <Privacy onBack={home} />;
+  if (view === 'privacy') return <Privacy onBack={home} onNav={setView} />;
+  if (isInfoView(view)) {
+    const page = { onBack: home, onNav: setView };
+    if (view === 'news') return <News {...page} />;
+    if (view === 'about') return <About {...page} />;
+    if (view === 'a11y') return <Accessibility {...page} />;
+    if (view === 'credits') return <Credits {...page} />;
+    if (view === 'contact') return <Contact {...page} />;
+  }
 
   if (view === 'login') {
     return (
@@ -186,7 +196,7 @@ function Pages() {
       }}
       onDashboard={() => setView('dashboard')}
       onAdmin={admin ? () => setView('admin') : undefined}
-      onPrivacy={() => setView('privacy')}
+      onInfo={setView}
       onLogout={logout}
       install={install}
     />
