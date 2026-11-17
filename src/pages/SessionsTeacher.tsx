@@ -205,6 +205,7 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
   if (draft) {
     const set = (p: Partial<Draft>) => setDraft((d) => (d ? { ...d, ...p } : d));
     const settings = { layout: 'azerty', custom: draft.custom } as unknown as Settings;
+    const pane = (g: GameKind) => `cfg-pane${draft.game === g ? '' : ' cfg-off'}`;
     const locked = !!draft.id && (list?.find((x) => x.id === draft.id)?.done ?? 0) > 0;
     return (
       <section className="sec" aria-labelledby="sform-h">
@@ -228,28 +229,22 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
             <Seg label="Jeu" value={draft.game} options={GAMES.map((g) => [g, GAME_NAMES[g]] as [GameKind, string])} onChange={(game) => !locked && set({ game })} />
             {locked && <p className="text-[14px] text-ink/70">Des élèves ont déjà joué : le jeu ne peut plus changer (les résultats resteraient incomparables).</p>}
 
-            {draft.game === 'typing' && (
-              <>
+            <div className="cfg-stack">
+              <div className={pane('typing')}>
                 <Seg label="Difficulté" value={draft.typingDiff} options={TYPING_DIFFS} onChange={(typingDiff) => set({ typingDiff })} />
-                {draft.typingDiff === 'perso' && <CustomPanel settings={settings} onChange={(p) => p.custom && set({ custom: p.custom })} />}
-              </>
-            )}
-            {draft.game === 'math' && (
-              <>
+                {draft.game === 'typing' && draft.typingDiff === 'perso' && <CustomPanel settings={settings} onChange={(p) => p.custom && set({ custom: p.custom })} />}
+              </div>
+              <div className={pane('math')}>
                 <Seg label="Niveau" value={draft.level} options={LEVELS.map((l) => [l.id, l.label] as [Level, string])} onChange={(level) => set({ level })} />
                 <Seg label="Difficulté" value={draft.courseDiff} options={COURSE_DIFFS.map((d) => [d.id, d.label] as [CourseDiff, string])} onChange={(courseDiff) => set({ courseDiff })} />
                 <p className="text-[14px] leading-snug text-ink/70">Les calculs suivent le programme du niveau ; la difficulté règle le temps et l’indulgence.</p>
-              </>
-            )}
-            {draft.game === 'spelling' && (
-              <>
+              </div>
+              <div className={pane('spelling')}>
                 <Seg label="Niveau" value={draft.level} options={LEVELS.filter((l) => AVAILABLE.spelling.includes(l.id)).map((l) => [l.id, l.label] as [Level, string])} onChange={(level) => set({ level })} />
                 <Seg label="Difficulté" value={draft.courseDiff} options={COURSE_DIFFS.map((d) => [d.id, d.label] as [CourseDiff, string])} onChange={(courseDiff) => set({ courseDiff })} />
                 <p className="text-[14px] leading-snug text-ink/70">Dix phrases par essai. La difficulté règle le nombre de propositions et la présence de l’indice.</p>
-              </>
-            )}
-            {draft.game === 'memory' && (
-              <>
+              </div>
+              <div className={pane('memory')}>
                 <Seg label="Mode" value={draft.mode} options={MODES.map((m) => [m.id, m.label] as [Mode, string])} onChange={(mode) => set({ mode })} />
                 <Seg label="Difficulté" value={draft.memDiff} options={MEM_DIFFS.map((d) => [d.id, d.label] as [MemDiff, string])} onChange={(memDiff) => set({ memDiff })} />
                 <div className="cfg-row">
@@ -264,8 +259,8 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
                     ))}
                   </select>
                 </div>
-              </>
-            )}
+              </div>
+            </div>
 
             <Seg label="Essais par élève" value={draft.maxAttempts} options={[1, 2, 3].map((n) => [n, String(n)] as [number, string])} onChange={(maxAttempts) => set({ maxAttempts })} />
             {draft.id && (

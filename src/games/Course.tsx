@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { RotateNotice, useShortLandscape } from '../components/RotateNotice';
 import type { ReactNode } from 'react';
 import { BackButton, useFitRows } from '../components/BackButton';
 import { DuelResult, ReviewNote } from '../components/EncreNotes';
@@ -327,6 +328,12 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
     return () => window.removeEventListener('keydown', onKey);
   }, [pause, resume, begin]);
 
+  // Téléphone en paysage : trop peu de hauteur pour ce jeu, on met en pause et on demande de tourner l'appareil
+  const shortLandscape = useShortLandscape();
+  useEffect(() => {
+    if (shortLandscape) pause();
+  }, [shortLandscape, pause]);
+
   // Pause automatique quand la fenêtre perd le focus
   useEffect(() => {
     const onHide = () => {
@@ -395,6 +402,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
 
   return (
     <div className="desk">
+      {shortLandscape && <RotateNotice game="La Course à l’encre" />}
       <main className="sheet">
         <div className="stage">
           <canvas
