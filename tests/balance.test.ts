@@ -117,14 +117,9 @@ test('Chasse aux fautes : les rôles d’ennemis sont tous représentés et le b
 import { itemsFor } from '../src/game/spelling/engine';
 
 test('Chasse aux fautes : la banque est assez grande et chaque phrase est valide', () => {
-  const rules = ['doublon', 'jumeaux', 'accordeur'] as const;
-  for (const r of rules) {
-    const l1 = ITEMS.filter((i) => i.rule === r && i.level === 1).length;
-    const all = ITEMS.filter((i) => i.rule === r).length;
-    assert.ok(l1 >= 35, `${r} : ${l1} phrases de niveau 1`);
-    assert.ok(all >= 55, `${r} : ${all} phrases`);
-  }
-  assert.ok(ITEMS.length >= 190);
+  const rules = ['doublon', 'jumeaux', 'accordeur', 'terminaisons'] as const;
+  for (const r of rules) assert.ok(ITEMS.filter((i) => i.rule === r).length >= (r === 'terminaisons' ? 40 : 60), r);
+  assert.ok(ITEMS.length >= 280);
   const fixed = new Set<string>();
   for (const i of ITEMS) {
     assert.notEqual(i.wrong, i.right, i.fixed);
@@ -134,14 +129,14 @@ test('Chasse aux fautes : la banque est assez grande et chaque phrase est valide
     assert.ok(!fixed.has(i.fixed), `phrase en double : ${i.fixed}`);
     fixed.add(i.fixed);
   }
-  // le CM1 n'a que le niveau 1 : il en reste assez pour jouer longtemps
-  assert.ok(itemsFor('cm1').length >= 120);
+  // chaque classe a de quoi jouer longtemps sans revoir les mêmes phrases
+  for (const l of ['ce1', 'ce2', 'cm1', 'cm2'] as const) assert.ok(itemsFor(l).length >= 55, l);
 });
 
 import { RETRY_SLOTS, pickRetry } from '../src/game/spelling/engine';
 
 test('Chasse aux fautes : les phrases ratées reviennent aux manches prévues, une seule fois', () => {
-  const id = ITEMS.find((i) => i.level === 1)!.id;
+  const id = ITEMS.find((i) => i.grade === 'cm1')!.id;
   const used = new Set<string>();
   assert.equal(pickRetry('cm1', 0, used, [id]), null);
   assert.equal(pickRetry('cm1', RETRY_SLOTS[0], used, [id])?.id, id);
@@ -165,16 +160,19 @@ test('Chasse aux fautes : assez de propositions pour chaque difficulté, sans do
       assert.equal(new Set(c.map((x) => x.toLowerCase())).size, c.length, i.fixed);
     }
   }
+  // pas de proposition fabriquée invraisemblable : quand il n'existe que deux erreurs plausibles, il n'y en a que deux
+  const three = ITEMS.filter((i) => choicesFor(i, 'standard').length === CHOICES.standard).length;
+  assert.ok(three / ITEMS.length >= 0.9, `Standard : 3 propositions pour ${three}/${ITEMS.length} phrases`);
+  for (const i of ITEMS) assert.ok(choicesFor(i, 'standard').length >= 2 && choicesFor(i, 'expert').length >= choicesFor(i, 'standard').length, i.fixed);
   const four = ITEMS.filter((i) => choicesFor(i, 'expert').length === CHOICES.expert).length;
-  assert.ok(four / ITEMS.length >= 0.4, `Expert : 4 propositions pour ${four}/${ITEMS.length} phrases`);
-  for (const i of ITEMS) assert.ok(choicesFor(i, 'standard').length === CHOICES.standard, `Standard : 3 propositions : ${i.fixed}`);
+  assert.ok(four / ITEMS.length >= 0.15, `Expert : 4 propositions pour ${four}/${ITEMS.length} phrases`);
 });
 
 test('Chasse aux fautes : le retour d\'erreur ne donne pas la réponse et reste court', () => {
   for (const i of ITEMS) for (const p of [i.wrong, ...i.others]) {
     const m = pickFeedback(i, p);
     assert.ok(m.length <= 36, `${m} (${m.length})`);
-    if (i.rule !== 'jumeaux') assert.ok(!m.toLowerCase().includes(i.right.toLowerCase()), m);
+    if (i.rule !== 'jumeaux') assert.ok(!new RegExp(`(^|[^\\p{L}])${i.right.toLowerCase()}($|[^\\p{L}])`, 'u').test(m.toLowerCase()), m);
   }
 });
 

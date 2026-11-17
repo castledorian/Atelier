@@ -2,7 +2,7 @@ import { beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { installFakeStorage, seeded } from './helpers';
 import { rulesOf } from '../src/game/encre/rules';
-import { ITEMS, ROUNDS, choicesFor, duelItems, isFault, isPerfect, itemsFor, nextItem, parseEntry, pointsFor } from '../src/game/spelling/engine';
+import { ITEMS, ROUNDS, choicesFor, duelItems, isFault, isPerfect, itemsFor, nextItem, parseEntry, pointsFor, rulesFor } from '../src/game/spelling/engine';
 
 beforeEach(() => installFakeStorage());
 
@@ -11,29 +11,70 @@ test('banque : chaque phrase est bien formée', () => {
     assert.ok(i.wrong !== i.right, i.id);
     assert.ok(i.others.length >= 1, `${i.id} : au moins une autre proposition`);
     assert.ok(!i.others.includes(i.right) && !i.others.includes(i.wrong), i.id);
-    assert.ok(i.before.length + i.after.length >= 3, i.id);
+    assert.ok(i.before.length + i.after.length >= 2, i.id); // au CE1, une phrase peut n'avoir que trois mots
     assert.ok(!/[[\]|]/.test(i.fixed), i.id);
     assert.ok(i.tip.length > 5, i.id);
   }
   assert.equal(new Set(ITEMS.map((i) => i.id)).size, ITEMS.length);
 });
 
-test('banque : de quoi jouer un duel et une partie, au CM1 comme au CM2', () => {
-  for (const level of ['cm1', 'cm2'] as const) {
-    assert.ok(itemsFor(level).length >= ROUNDS);
-    for (const rule of rulesOf('orthographe')) assert.ok(itemsFor(level, [rule]).length >= 3, `${level} ${rule}`);
+test('banque : de quoi jouer une partie et un duel, à chaque classe et pour chaque règle', () => {
+  for (const level of ['ce1', 'ce2', 'cm1', 'cm2'] as const) {
+    assert.ok(itemsFor(level).length >= 4 * ROUNDS, `${level} : ${itemsFor(level).length} phrases`);
+    for (const rule of rulesFor(level)) assert.ok(itemsFor(level, [rule]).length >= 12, `${level} ${rule}`);
   }
-  assert.ok(itemsFor('cm2').length > itemsFor('cm1').length);
+  // les finales en [é] commencent au CE2 (passé composé et infinitif), les autres règles dès le CE1
+  assert.deepEqual(rulesFor('ce1').sort(), ['accordeur', 'doublon', 'jumeaux']);
+  for (const level of ['ce2', 'cm1', 'cm2'] as const) assert.equal(rulesFor(level).length, 4);
+});
+
+test('classes : chaque classe a ses phrases, plus celles de la classe précédente en révision', () => {
+  const grades = (level: 'ce1' | 'ce2' | 'cm1' | 'cm2') => [...new Set(itemsFor(level).map((i) => i.grade))].sort();
+  assert.deepEqual(grades('ce1'), ['ce1']);
+  assert.deepEqual(grades('ce2'), ['ce1', 'ce2']);
+  assert.deepEqual(grades('cm1'), ['ce2', 'cm1']);
+  assert.deepEqual(grades('cm2'), ['cm1', 'cm2']);
+});
+
+test('programmes : les notions arrivent dans la bonne classe', () => {
+  const at = (re: RegExp) => [...new Set(ITEMS.filter((i) => re.test(i.right) || re.test(i.wrong)).map((i) => i.grade))];
+  // participe passé avec « avoir » accordé au COD placé avant : CM2 seulement
+  assert.ok(ITEMS.some((i) => i.grade === 'cm2' && /que j’ai|les ai/.test(i.fixed)));
+  assert.ok(!ITEMS.some((i) => i.grade !== 'cm2' && /que j’ai|les ai|qu’il a mangés/.test(i.fixed)));
+  // leur/leurs, c’est/s’est : CM2 ; ces/ses : à partir du CM1
+  assert.deepEqual(at(/^leurs?$/), ['cm2']);
+  assert.ok(at(/^(ces|ses)$/).every((g) => g === 'cm1' || g === 'cm2'));
+  // au CE1, des phrases très courtes
+  for (const i of ITEMS.filter((x) => x.grade === 'ce1')) assert.ok(i.before.length + 1 + i.after.length <= 6, i.fixed);
+  for (const i of ITEMS.filter((x) => x.grade === 'ce2')) assert.ok(i.before.length + 1 + i.after.length <= 8, i.fixed);
+});
+
+test('propositions vraisemblables : ni lettre triplée, ni double en début ou en fin de mot', () => {
+  for (const i of ITEMS) {
+    for (const d of ['standard', 'expert'] as const)
+      for (const c of choicesFor(i, d)) {
+        assert.ok(!/(.)\1\1/.test(c), `${c} (${i.fixed})`);
+        assert.ok(!/^(.)\1/.test(c.replace(/^[a-z]’/i, '')), `${c} (${i.fixed})`);
+      }
+  }
+});
+
+test('identifiants : liés au texte de la phrase, pas à sa place dans la banque', () => {
+  const a = parseEntry('jumeaux', 'cm1', 'Il [à|a|as] faim.');
+  const b = parseEntry('jumeaux', 'cm2', 'Il [à|a|as] faim.');
+  assert.equal(a.id, b.id);
+  assert.match(a.id, /^jumeaux-[0-9a-z]+$/);
+  assert.notEqual(a.id, parseEntry('jumeaux', 'cm1', 'Elle [à|a|as] faim.').id);
 });
 
 test('analyse : ponctuation collée au mot faux', () => {
-  const i = parseEntry('accordeur', 1, 'Les filles sont [parti|parties|partie].', 'x');
+  const i = parseEntry('accordeur', 'cm1', 'Les filles sont [parti|parties|partie].', 'x');
   assert.equal(i.suffix, '.');
   assert.deepEqual(i.after, []);
   assert.equal(i.fixed, 'Les filles sont parties.');
-  const j = parseEntry('jumeaux', 2, '[Où|Ou|Ous] habites-tu ?');
+  const j = parseEntry('jumeaux', 'cm2', '[Où|Ou|Ous] habites-tu ?');
   assert.deepEqual([j.before, j.after, j.suffix], [[], ['habites-tu', '?'], '']);
-  assert.throws(() => parseEntry('jumeaux', 1, 'pas de faute ici'));
+  assert.throws(() => parseEntry('jumeaux', 'cm1', 'pas de faute ici'));
 });
 
 test('propositions : la bonne, jamais le mot faux, bon nombre selon la difficulté', () => {
@@ -49,8 +90,8 @@ test('propositions : la bonne, jamais le mot faux, bon nombre selon la difficult
   }
 });
 
-test('une partie : 10 phrases distinctes, toutes les règles travaillées', () => {
-  for (const level of ['cm1', 'cm2'] as const) {
+test('une partie : 10 phrases distinctes, toutes les règles de la classe travaillées', () => {
+  for (const level of ['ce1', 'ce2', 'cm1', 'cm2'] as const) {
     const r = seeded(11);
     const used = new Set<string>();
     const ok: boolean[] = [];
@@ -61,8 +102,22 @@ test('une partie : 10 phrases distinctes, toutes les règles travaillées', () =
       ok.push(true);
     }
     const rules = new Set([...used].map((id) => id.split('-')[0]));
-    assert.equal(rules.size, 3, level);
+    assert.equal(rules.size, rulesFor(level).length, level);
   }
+});
+
+test('pondération : les lettres doubles reviennent moins souvent que les accords', () => {
+  const count: Record<string, number> = {};
+  for (let g = 0; g < 300; g++) {
+    const used = new Set<string>();
+    for (let n = 0; n < ROUNDS; n++) {
+      const { item } = nextItem('cm1', n, [], [], used);
+      used.add(item.id);
+      count[item.rule] = (count[item.rule] ?? 0) + 1;
+    }
+  }
+  assert.ok(count.doublon < count.accordeur && count.doublon < count.jumeaux, JSON.stringify(count));
+  assert.ok(count.doublon >= 300, 'au moins une phrase de lettres doubles par partie');
 });
 
 test('une Rature revient aux rangs 3 et 9 seulement, et jamais si l’élève peine', () => {
@@ -85,14 +140,13 @@ test('une Rature revient aux rangs 3 et 9 seulement, et jamais si l’élève pe
 });
 
 test('duel : trois phrases distinctes de la règle', () => {
-  for (const rule of rulesOf('orthographe')) {
+  for (const rule of rulesFor('cm1')) {
     const d = duelItems('cm1', rule, 3, seeded(4));
     assert.equal(d.length, 3);
     assert.equal(new Set(d.map((i) => i.id)).size, 3);
-    assert.ok(d.every((i) => i.rule === rule && i.level === 1));
+    assert.ok(d.every((i) => i.rule === rule && (i.grade === 'cm1' || i.grade === 'ce2')));
   }
 });
-
 test('points : parfait 15 + bonus de série ; erreur sans pénalité négative', () => {
   const perfect = { tapFirst: true, fixTries: 1, hint: false };
   assert.equal(isPerfect(perfect), true);
@@ -106,17 +160,8 @@ test('points : parfait 15 + bonus de série ; erreur sans pénalité négative',
   assert.equal(isFault({ tapFirst: true, fixTries: 2, hint: false }), true);
 });
 
-import { MAX_WORDS, hpFor, isTyped, wordCount } from '../src/game/spelling/engine';
+import { hpFor, isTyped } from '../src/game/spelling/engine';
 
-test('CE1 et CE2 : phrases courtes et simples, de toutes les règles, en nombre suffisant', () => {
-  for (const [lv, min] of [['ce1', 60], ['ce2', 100]] as const) {
-    const items = itemsFor(lv);
-    assert.ok(items.length >= min, `${lv} : ${items.length} phrases`);
-    assert.ok(items.every((i) => i.level === 1 && wordCount(i) <= (MAX_WORDS[lv] as number)), `${lv} : phrase trop longue ou de niveau 2`);
-    for (const rule of ['doublon', 'jumeaux', 'accordeur'] as const) assert.ok(items.some((i) => i.rule === rule), `${lv} : pas de règle ${rule}`);
-  }
-  assert.ok(itemsFor('ce1').length < itemsFor('ce2').length && itemsFor('ce2').length < itemsFor('cm1').length);
-});
 
 test('CE1 à CM2 : une partie de dix phrases se compose sans répétition', () => {
   for (const lv of ['ce1', 'ce2', 'cm1', 'cm2'] as const) {

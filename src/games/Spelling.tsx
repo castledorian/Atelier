@@ -126,7 +126,7 @@ interface Over {
   fresh?: number[];
 }
 
-const SEEN_KEY = 'atelier.spelling.seen.v1';
+const SEEN_KEY = 'atelier.spelling.seen.v2';
 const loadSeen = (): string[] => {
   try {
     const v = JSON.parse(localStorage.getItem(SEEN_KEY) ?? '[]');
@@ -144,7 +144,7 @@ const rememberSeen = (ids: string[]) => {
   }
 };
 
-const RETRY_KEY = 'atelier.spelling.retry.v1';
+const RETRY_KEY = 'atelier.spelling.retry.v2';
 const loadRetry = (): string[] => {
   try {
     const v = JSON.parse(localStorage.getItem(RETRY_KEY) ?? '[]');
@@ -193,7 +193,7 @@ const saveBestiary = (kinds: ReadonlyMap<number, number>): Record<string, number
   }
   return b;
 };
-const RULE_SHORT: Record<string, string> = { doublon: 'Le Doublon', jumeaux: 'Les Jumeaux', accordeur: 'L’Accordeur' };
+const RULE_SHORT: Record<string, string> = { doublon: 'Le Doublon', jumeaux: 'Les Jumeaux', accordeur: 'L’Accordeur', terminaisons: 'Le Caméléon' };
 
 const isWord = (w: string) => /[\p{L}\p{N}]/u.test(w);
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');

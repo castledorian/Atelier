@@ -3,7 +3,7 @@
  * à la retenir. Le suivi reste sur l'appareil de l'élève.
  */
 
-export type RuleId = 'retenue' | 'table-fantome' | 'zero-voleur' | 'doublon' | 'jumeaux' | 'accordeur';
+export type RuleId = 'retenue' | 'table-fantome' | 'zero-voleur' | 'doublon' | 'jumeaux' | 'accordeur' | 'terminaisons';
 export type Family = 'calcul' | 'orthographe';
 
 export interface RuleInfo {
@@ -60,6 +60,13 @@ export const RULES: RuleInfo[] = [
     fault: 'Un accord oublié (nombre, genre, verbe).',
     parade: 'Qui fait l’action ? Accorde avec lui.',
   },
+  {
+    id: 'terminaisons',
+    name: 'Les fins de verbe en [é]',
+    family: 'orthographe',
+    fault: 'Une fin de verbe qui se prononce pareil et que l’on confond (-é, -er, -ez, -ait…).',
+    parade: 'Remplace par « vendre » ou « vendu » : tu entendras laquelle va.',
+  },
 ];
 
 export const ruleInfo = (id: RuleId): RuleInfo => RULES.find((c) => c.id === id) as RuleInfo;
@@ -77,7 +84,7 @@ const norm = (s: string) => s.replace(/[\s  ]/g, '');
 export function ruleOfCalc(text: string): RuleId | null {
   const t = norm(text);
   // décalage des chiffres : × 10, × 100, × 1 000, ÷ 10, ÷ 100, × dizaines, × 0,1, × 0,5, n/10, n/100
-  if (/×(10|100|1000)=\?$/.test(t) || /÷(10|100)=\?$/.test(t)) return 'zero-voleur';
+  if (/×(10|100|1000)=\?$/.test(t) || /÷(10|100|1000)=\?$/.test(t)) return 'zero-voleur';
   if (/^\d+×[2-9]0=\?$/.test(t)) return 'zero-voleur';
   if (/^0,[15]×\d+=\?$/.test(t)) return 'zero-voleur';
   if (/^\d+\/(10|100)=\?$/.test(t)) return 'zero-voleur';

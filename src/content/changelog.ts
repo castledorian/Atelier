@@ -24,6 +24,20 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.5',
+    date: '17 novembre 2026',
+    iso: '2026-11-17',
+    title: 'Des exercices calés sur les programmes de chaque classe',
+    changes: [
+      { kind: 'better', text: 'Course à l’encre : les calculs de chaque classe suivent les nouveaux programmes (2024 pour le CP au CE2, 2025 pour le CM1 et le CM2). Au CE1, toutes les tables et les nombres jusqu’à 1 000 ; au CM1, les décimaux seulement × 10 et ÷ 10 ; au CM2, moitiés des impairs, décimaux × 5 et × 50, divisions par 4 et 8.' },
+      { kind: 'better', text: 'Course à l’encre : les pourcentages et les multiples de 25, qui relèvent désormais de la 6e, sont retirés du cours moyen.' },
+      { kind: 'better', text: 'Course à l’encre : environ un calcul sur quatre reprend une page précédente (révision espacée), et les fausses réponses proposées sont les erreurs que font vraiment les élèves.' },
+      { kind: 'new', text: 'Chasse aux fautes : près de 300 phrases rangées par classe, du CE1 au CM2, chaque classe reprenant aussi en révision quelques phrases de l’année précédente.' },
+      { kind: 'new', text: 'Chasse aux fautes : nouvelle règle « Le Caméléon » à partir du CE2, pour les fins de verbe qui se prononcent pareil (-é, -er, -ez, -ait).' },
+      { kind: 'better', text: 'Chasse aux fautes : au CM1 et au CM2, accords avec un sujet éloigné ou inversé et participe passé, les fautes les plus fréquentes en fin d’école ; les lettres doubles reviennent un peu moins souvent et les propositions invraisemblables ont disparu.' },
+    ],
+  },
+  {
     version: '1.4',
     date: '17 novembre 2026',
     iso: '2026-11-17',

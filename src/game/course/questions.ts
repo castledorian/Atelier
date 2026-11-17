@@ -1,21 +1,38 @@
 import type { Grade } from '../grade';
 
 /**
- * Calculs de « Course à l'encre ». Le contenu suit les repères annuels de progression de mathématiques du cycle 3
- * (Éduscol) pour le CALCUL MENTAL :
- *  CM1 — tables de multiplication et divisions associées, doubles et moitiés, compléments à 100 et à 1 000,
- *        ajouter/soustraire 9, 19…, multiplier par 10, 100, 1 000 et par les dizaines, quatre premiers multiples
- *        de 25 et de 50, quotient et reste d'une division, fractions décimales et nombres décimaux (×10, ÷10).
- *  CM2 — calcul astucieux (×9, ×11, ×19, ×21, ×5, ×50 par distributivité), multiplier/diviser les décimaux par
- *        10, 100, 1 000, compléments au nombre entier supérieur, additions/soustractions de décimaux,
- *        fractions simples d'une quantité, pourcentages 10 %, 25 %, 50 %, 75 %, ×0,1 et ×0,5.
- *  Cycle 2 (programme 2024, calcul mental) :
- *  CP  — ajouter 1, compléments à 10, doubles, additions et soustractions jusqu'à 20 puis 60, dizaines entières.
- *  CE1 — tables d'addition, tables de 2, 3, 4, 5 et 10, ajouter/retrancher 10, compléments à 100 (dizaines).
- *  CE2 — toutes les tables et premières divisions, doubles et moitiés, compléments à 100 et à 1 000, ×10 et ×100.
+ * Calculs de « Course à l'encre ».
+ *
+ * CONTENU — chaque page suit les objectifs « Calcul mental » des programmes en vigueur :
+ *  - cycle 2 : programme de mathématiques du BOENJS du 31 octobre 2024 (CP, CE1, CE2, en vigueur depuis la rentrée 2025) ;
+ *  - cycle 3 : programme du BO n° 16 du 17 avril 2025 (CM1 depuis la rentrée 2025, CM2 depuis la rentrée 2026).
+ *  Les trois volets du programme sont représentés : faits numériques à mémoriser, calculs appuyés sur la numération,
+ *  procédures de calcul mental.
+ *  CP  — nombres jusqu'à 100 : tables d'addition, doubles, ajouter ou soustraire 1, 2, 10 et des dizaines entières,
+ *        complément à la dizaine supérieure, ajouter 9, ajouter deux nombres inférieurs à 100, dizaine entière − unités.
+ *  CE1 — nombres jusqu'à 1 000 : tables d'addition et de multiplication « dans les deux sens » (a × ? = p), ajouter ou
+ *        soustraire des dizaines et des centaines entières, ajouter 9, 19, 29, soustraire 9 ou un nombre < 9,
+ *        produit d'un nombre de 11 à 19 par un nombre < 10 (distributivité).
+ *  CE2 — nombres jusqu'à 10 000 : toutes les tables dans les deux sens, × 10 et × 100, ajouter 8, 9, 18, 19… 39,
+ *        soustraire 9, 19, 29, 39, × 4 et × 8, chiffre × dizaines, 11–99 × un chiffre (distributivité).
+ *  CM1 — × 10, × 100, × 1 000 d'un entier ; décimal × 10 et ÷ 10 (pas encore × 100) ; ajouter ou soustraire des unités,
+ *        dizaines, dixièmes ou centièmes à un décimal sans retenue ; ± 8, 9, 18… 39 ; chiffre × dizaines ou centaines ;
+ *        × 4, × 8, × 5 ; écriture décimale et relations des fractions usuelles. Pas de pourcentages (programme 2025).
+ *  CM2 — moitié des nombres impairs jusqu'à 15 ; décimaux × et ÷ 10, 100, 1 000 ; entier + décimal avec ou sans retenue ;
+ *        somme de deux décimaux < 10 à un chiffre après la virgule ; ± 8, 9… 98, 99 ; dizaines × centaines ;
+ *        double et moitié d'un décimal simple ; entier ÷ 4 et ÷ 8 ; décimal × 5 et × 50 ; fraction d'un entier.
+ *        Les pourcentages, les multiples de 25 et × 0,1 (anciens repères) ont été retirés : ils relèvent de la 6e.
  *  Au CP et au CE1, les calculs ne s'écrivent qu'avec des chiffres et des signes : aucune lecture n'est nécessaire.
- * Pour chaque calcul, deux fausses réponses PLAUSIBLES (les erreurs que font vraiment les élèves).
- * Une partie = 6 « pages » de 8 calculs : un thème par page, de plus en plus difficile.
+ *
+ * SCIENCES DE L'APPRENTISSAGE —
+ *  - Choix multiples « compétitifs » : chaque fausse réponse est une ERREUR RÉELLE et documentée (compensation à
+ *    l'envers pour + 9, zéro « ajouté » à un décimal, virgule mal placée, « 3,6 + 2,7 = 5,13 », 1/4 lu « 1,4 »…).
+ *    Des distracteurs plausibles obligent à retrouver la bonne réponse et à écarter les autres, ce qui rend le QCM
+ *    aussi profitable qu'une réponse libre (Little, Bjork, Bjork & Angello, 2012 ; Little & Bjork, 2015).
+ *  - Révision espacée et entrelacée : à partir de la 2e page, environ un calcul sur quatre reprend une page
+ *    précédente, et la dernière page mélange tout (pratique entrelacée : Rohrer, Dedrick, Hartwig & Cheung, 2020).
+ *  - Une page = un thème, du plus simple au plus fin (« les cas les plus canoniques d'abord »).
+ * Une partie = 6 « pages » de 8 calculs.
  */
 
 /** Le niveau de contenu est la classe : CP, CE1, CE2, CM1, CM2. */
@@ -43,13 +60,15 @@ export interface Missed {
 export const PAGES = 6;
 export const PER_PAGE = 8;
 export const TOTAL = PAGES * PER_PAGE;
+/** Part des calculs d'une page (de la 2e à la 5e) qui reprennent une page précédente : révision espacée. */
+export const SPIRAL = 0.25;
 
 const r3 = (v: number) => Math.round(v * 1000) / 1000;
 
 /** Écriture française : virgule décimale, espace insécable entre les milliers. */
 export function fmtNum(n: number): string {
   const [i, d] = String(r3(n)).split('.');
-  const g = i.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  const g = i.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   return d ? `${g},${d}` : g;
 }
 const N = fmtNum;
@@ -65,11 +84,14 @@ function swapLast2(n: number): number {
   return Number(s.slice(0, -2) + s[s.length - 1] + s[s.length - 2]);
 }
 
+/**
+ * Un calcul et ses erreurs plausibles. `strict` : on n'utilise que les erreurs fournies (les erreurs réelles propres au
+ * calcul) tant qu'il y en a au moins deux ; sinon on complète avec des écarts génériques.
+ */
 const q = (text: string, answer: number, extra: number[] = [], strict = false): Question => {
   answer = r3(answer);
   const isInt = Number.isInteger(answer);
   if (strict) {
-    // erreurs « de décalage » (virgule ou zéro oubliés…) : on n'utilise que celles-là
     const ex = [...new Set(extra.map(r3))].filter((v) => Number.isFinite(v) && v > 0 && v !== answer);
     if (ex.length >= 2) return { text, answer, near: ex };
   }
@@ -87,15 +109,26 @@ const q = (text: string, answer: number, extra: number[] = [], strict = false): 
 type Gen = (r: Rng) => Question;
 
 const T_ALL = range(2, 9);
+const NEAR_8_39 = [8, 9, 18, 19, 28, 29, 38, 39] as const;
+const NEAR_8_99 = [8, 9, 18, 19, 28, 29, 38, 39, 48, 49, 58, 59, 68, 69, 78, 79, 88, 89, 98, 99] as const;
 
-/** Table de multiplication : a × b, dans un sens ou dans l'autre. */
+/** Table de multiplication : a × b, dans un sens ou dans l'autre. Erreurs : le produit voisin dans la table. */
 const mulT =
   (tables: readonly number[], bmin = 2, bmax = 10): Gen =>
   (r) => {
     const a = pick(r, tables);
     const b = ri(r, bmin, bmax);
     const [x, y] = r() < 0.5 ? [a, b] : [b, a];
-    return q(`${x} × ${y} = ?`, a * b, [(a + 1) * b, (a - 1) * b, a * (b + 1), a * (b - 1)]);
+    return q(`${x} × ${y} = ?`, a * b, [(a + 1) * b, (a - 1) * b, a * (b + 1), a * (b - 1)], true);
+  };
+
+/** Table « dans l'autre sens » : 6 × ? = 42 (facteur manquant). */
+const mulMiss =
+  (tables: readonly number[], bmin = 2, bmax = 10): Gen =>
+  (r) => {
+    const a = pick(r, tables);
+    const b = ri(r, bmin, bmax);
+    return q(`${a} × ? = ${a * b}`, b, [b + 1, b - 1, a !== b ? a : b + 2], true);
   };
 
 /** Division exacte (réciproque d'une table). */
@@ -104,60 +137,57 @@ const divT =
   (r) => {
     const d = pick(r, tables);
     const k = ri(r, qmin, qmax);
-    return q(`${d * k} ÷ ${d} = ?`, k, [k + 2, k - 2, d, k * 10]);
+    return q(`${d * k} ÷ ${d} = ?`, k, [k + 1, k - 1, d !== k ? d : k + 2], true);
   };
 
 const dbl =
   (max: number): Gen =>
   (r) => {
     const n = ri(r, 6, max);
-    return q(`Double de ${N(n)} = ?`, 2 * n, [n + 2, 2 * n + 20, 2 * n - 20]);
+    return q(`Double de ${N(n)} = ?`, 2 * n, [n + 2, 2 * n + 10, 2 * n - 10], true);
   };
 
 const half =
   (max: number): Gen =>
   (r) => {
     const n = 2 * ri(r, 4, Math.floor(max / 2));
-    return q(`Moitié de ${N(n)} = ?`, n / 2, [n / 2 + 5, n / 2 - 5, n / 4]);
+    return q(`Moitié de ${N(n)} = ?`, n / 2, [n / 2 + 5, n / 2 - 5, n / 4, n - 2], true);
   };
 
-const add =
-  (xmin: number, xmax: number, ymin: number, ymax: number): Gen =>
-  (r) => {
-    const x = ri(r, xmin, xmax);
-    const y = ri(r, ymin, ymax);
-    return q(`${N(x)} + ${N(y)} = ?`, x + y, [x + y + 100, x + y - 100]);
-  };
-
-/** Complément : « 64 + ? = 100 ». */
+/** Complément : « 64 + ? = 100 ». Erreur fréquente : compléter chaque chiffre à 10 (64 → 46). */
 const comp =
   (target: number, step: number): Gen =>
   (r) => {
     const x = ri(r, 1, target / step - 1) * step;
     const a = target - x;
-    return q(`${N(x)} + ? = ${N(target)}`, a, [a + 100, a - 100, x]);
+    const digitWise = target === 100 && x % 10 ? (10 - Math.floor(x / 10)) * 10 + (10 - (x % 10)) : a + 10;
+    return q(`${N(x)} + ? = ${N(target)}`, a, [digitWise, a + 10, a - 10, a + 100], true);
   };
 
-/** Ajouter 8, 9, 18, 19… (on ajoute la dizaine et on enlève 1 ou 2). */
-const plus9 =
-  (xmin: number, xmax: number): Gen =>
+/**
+ * Ajouter 8, 9, 18, 19… : on ajoute la dizaine supérieure puis on corrige. Erreurs : oublier de corriger (x + 20 pour
+ * x + 19) ou corriger dans le mauvais sens (x + 21).
+ */
+const addNear =
+  (list: readonly number[], xmin: number, xmax: number): Gen =>
   (r) => {
-    const y = pick(r, [8, 9, 18, 19, 28, 29]);
+    const y = pick(r, list);
     const x = ri(r, xmin, xmax);
     const t = Math.ceil(y / 10) * 10;
-    return q(`${N(x)} + ${y} = ?`, x + y, [x + t, x + t + 1, x + y + 10, x + y - 10]);
+    return q(`${N(x)} + ${y} = ?`, x + y, [x + t, x + t + (t - y), x + y + 10, x + y - 10], true);
   };
 
-const minus9 =
-  (xmin: number, xmax: number): Gen =>
+/** Soustraire 8, 9, 19… : erreurs symétriques (x − 20 pour x − 19, ou x − 21). */
+const subNear =
+  (list: readonly number[], xmin: number, xmax: number): Gen =>
   (r) => {
-    const y = pick(r, [9, 19, 29, 39]);
-    const x = ri(r, xmin, xmax);
+    const y = pick(r, list);
+    const x = ri(r, Math.max(xmin, y + 25), Math.max(xmax, y + 25));
     const t = Math.ceil(y / 10) * 10;
-    return q(`${N(x)} − ${y} = ?`, x - y, [x - t, x - t - 1, x - y + 10, x - y - 10]);
+    return q(`${N(x)} − ${y} = ?`, x - y, [x - t, x - t - (t - y), x - y + 10, x - y - 10], true);
   };
 
-/** × 10, × 100, × 1 000 sur des entiers. */
+/** × 10, × 100, × 1 000 sur des entiers : erreurs de zéros. */
 const mulPow =
   (maxPow: 100 | 1000, amax: number): Gen =>
   (r) => {
@@ -166,58 +196,60 @@ const mulPow =
     return q(`${N(a)} × ${N(f)} = ?`, a * f, [a * f * 10, (a * f) / 10, a * f + a], true);
   };
 
-/** × dizaines : 4 × 30. */
+/** Un chiffre × des dizaines entières : 4 × 30. */
 const mulTens: Gen = (r) => {
   const a = ri(r, 2, 9);
   const t = ri(r, 2, 9) * 10;
   return q(`${a} × ${t} = ?`, a * t, [a * t * 10, (a * t) / 10, (a + 1) * t], true);
 };
 
-/** Quatre premiers multiples de 25 et de 50 (puis davantage en CM2). */
-const mul25 =
-  (kmax: number): Gen =>
+/** Un chiffre × des centaines entières : 7 × 300. */
+const mulHund: Gen = (r) => {
+  const a = ri(r, 2, 9);
+  const h = ri(r, 2, 9) * 100;
+  return q(`${a} × ${N(h)} = ?`, a * h, [a * h * 10, (a * h) / 10, (a + 1) * h], true);
+};
+
+/** Dizaines ou centaines entières entre elles : 30 × 200. */
+const tensMul: Gen = (r) => {
+  const a = ri(r, 2, 9);
+  const b = ri(r, 2, 9);
+  const p = pick(r, [10, 100]);
+  const s = pick(r, [10, 100]);
+  const v = a * p * b * s;
+  return q(`${N(a * p)} × ${N(b * s)} = ?`, v, [v * 10, v / 10, a * b * (p + s)], true);
+};
+
+/** × 4 (double du double) et × 8 (trois fois le double). Erreur : s'arrêter en route. */
+const mul48 =
+  (f: 4 | 8, amin: number, amax: number): Gen =>
   (r) => {
-    const b = pick(r, [25, 50]);
-    const k = ri(r, 2, kmax);
-    return q(`${k} × ${b} = ?`, k * b, [(k + 1) * b - 25, (k - 1) * b + 25, k * b * 2]);
+    const a = ri(r, amin, amax);
+    return q(`${a} × ${f} = ?`, a * f, [(a * f) / 2, a * f + 10, a * f - 10, a * (f + 1)], true);
   };
 
-/** Division euclidienne : quotient. */
+/** × 5 (la moitié de × 10). Erreur : oublier de prendre la moitié. */
+const mul5 =
+  (amin: number, amax: number): Gen =>
+  (r) => {
+    const a = ri(r, amin, amax);
+    return q(`${a} × 5 = ?`, a * 5, [a * 10, a * 5 + 5, a * 5 - 5, a * 4], true);
+  };
+
+/** Division euclidienne : quotient (la division posée à un chiffre est au programme du CM1). */
 const quotient =
   (dmax: number, kmin: number, kmax: number): Gen =>
   (r) => {
     const d = ri(r, 2, dmax);
     const k = ri(r, kmin, kmax);
     const rem = ri(r, 1, d - 1);
-    return q(`Quotient de ${N(d * k + rem)} ÷ ${d} = ?`, k, [k + 1, k - 1, rem + (d - rem)]);
+    return q(`Quotient de ${N(d * k + rem)} ÷ ${d} = ?`, k, [k + 1, k - 1, rem !== k ? rem : k + 2], true);
   };
 
-/** Division euclidienne : reste. */
-const reste =
-  (dmax: number, kmin: number, kmax: number): Gen =>
-  (r) => {
-    const d = ri(r, 3, dmax);
-    const k = ri(r, kmin, kmax);
-    const rem = ri(r, 1, d - 1);
-    return q(`Reste de ${N(d * k + rem)} ÷ ${d} = ?`, rem, [k, d - rem, rem + 1, rem - 1]);
-  };
-
-/** Fractions décimales (et simples) écrites avec une virgule. */
+/** Fractions décimales écrites avec une virgule : 7/10, 35/100. Erreurs de position. */
 const fracDec =
-  (kind: 'dixiemes' | 'centiemes' | 'simples'): Gen =>
+  (kind: 'dixiemes' | 'centiemes'): Gen =>
   (r) => {
-    if (kind === 'simples') {
-      const [n, d] = pick(r, [
-        [1, 2],
-        [1, 4],
-        [3, 4],
-        [1, 5],
-        [2, 5],
-        [3, 5],
-        [4, 5],
-      ] as const);
-      return q(`${n}/${d} = ?`, n / d, [n / d + 0.5, n / (d * 10), n / 10, n / d / 2], true);
-    }
     if (kind === 'dixiemes') {
       const n = ri(r, 1, 9);
       return q(`${n}/10 = ?`, n / 10, [n / 100, n, n / 10 + 0.1], true);
@@ -226,59 +258,37 @@ const fracDec =
     return q(`${n}/100 = ?`, n / 100, [n / 10, n / 1000, n / 100 + 0.1, n / 100 + 0.01], true);
   };
 
-/** Décimal × 10, × 100. */
-const decMul =
-  (places: 1 | 2): Gen =>
+/**
+ * Écriture décimale des fractions usuelles : 1/2 = 0,5 ; 3/4 = 0,75… Erreur classique : lire la fraction comme un
+ * nombre à virgule (1/4 → 1,4 ou 0,14).
+ */
+const fracUsual =
+  (level: 'cm1' | 'cm2'): Gen =>
   (r) => {
-    const v = places === 1 ? ri(r, 11, 99) / 10 : ri(r, 101, 999) / 100;
-    const f = pick(r, [10, 100]);
-    return q(`${N(v)} × ${f} = ?`, v * f, [v * f * 10, (v * f) / 10, v + f / 10], true);
+    const pairs: ReadonlyArray<readonly [number, number]> =
+      level === 'cm1'
+        ? [[1, 2], [1, 4], [3, 4], [1, 2], [3, 2], [5, 2]]
+        : [[1, 2], [1, 4], [3, 4], [1, 5], [2, 5], [3, 5], [1, 8], [5, 4], [3, 2], [7, 4]];
+    const [n, d] = pick(r, pairs);
+    const read = Number(`${n}.${d}`);
+    const read0 = Number(`0.${n}${d}`);
+    return q(`${n}/${d} = ?`, n / d, [read, read0, n / d + 0.5, (n / d) * 10], true);
   };
 
-/** Nombre (entier ou décimal) ÷ 10, ÷ 100. */
-const decDiv =
-  (decimal: boolean): Gen =>
+/** Relations entre fractions usuelles : 1/2 = ?/10. Erreur : reporter le numérateur ou ajouter au lieu de multiplier. */
+const fracRel =
+  (level: 'cm1' | 'cm2'): Gen =>
   (r) => {
-    const f = pick(r, [10, 100]);
-    const v = decimal ? ri(r, 11, 99) / 10 : ri(r, 12, 999);
-    return q(`${N(v)} ÷ ${f} = ?`, v / f, [(v / f) * 10, v / f / 10, v / 10], true);
+    const triples: ReadonlyArray<readonly [number, number, number]> =
+      level === 'cm1'
+        ? [[1, 2, 4], [1, 2, 10], [1, 4, 8], [3, 4, 8], [1, 5, 10], [1, 2, 6], [3, 2, 4], [1, 10, 100]]
+        : [[1, 3, 6], [2, 3, 12], [3, 5, 10], [1, 4, 12], [3, 4, 12], [2, 5, 20], [1, 10, 100], [7, 10, 100], [5, 4, 8]];
+    const [n, d, D] = pick(r, triples);
+    const a = (n * D) / d;
+    return q(`${n}/${d} = ?/${D}`, a, [n, n + (D - d), a + 1, a - 1], true);
   };
 
-/** Décimal × 1 000. */
-const mul1000: Gen = (r) => {
-  const v = pick(r, [ri(r, 11, 99) / 10, ri(r, 101, 999) / 100]);
-  return q(`${N(v)} × 1 000 = ?`, v * 1000, [v * 100, v * 10000, v * 10], true);
-};
-
-/** Complément au nombre entier supérieur : 7,4 + ? = 8. */
-const compDec: Gen = (r) => {
-  const w = ri(r, 2, 9);
-  const places = r() < 0.65 ? 1 : 2;
-  const fr = places === 1 ? ri(r, 1, 9) / 10 : ri(r, 1, 99) / 100;
-  const x = w - 1 + fr;
-  return q(`${N(x)} + ? = ${w}`, 1 - fr, [fr, 1 - fr + 0.1, 1 - fr - 0.1, 1 + fr], true);
-};
-
-const addDec: Gen = (r) => {
-  const a = ri(r, 11, 99) / 10;
-  const b = ri(r, 11, 99) / 10;
-  return q(`${N(a)} + ${N(b)} = ?`, a + b, [a + b + 1, a + b - 1, Math.round(a) + Math.round(b)]);
-};
-
-const subDec: Gen = (r) => {
-  const a = ri(r, 31, 99) / 10;
-  const b = ri(r, 11, Math.floor(a * 10) - 6) / 10;
-  return q(`${N(a)} − ${N(b)} = ?`, a - b, [a - b + 1, a - b - 1, a + b]);
-};
-
-/** Pourcentages simples : 10 %, 25 %, 50 %, 75 %. */
-const pct: Gen = (r) => {
-  const p = pick(r, [10, 25, 50, 75]);
-  const base = p === 10 ? ri(r, 2, 50) * 10 : p === 50 ? ri(r, 5, 100) * 2 : ri(r, 2, 50) * 4;
-  return q(`${p} % de ${N(base)} = ?`, (base * p) / 100, [base / 2, base / 4, base / 10, base - (base * p) / 100], true);
-};
-
-/** Fraction d'une quantité : 3/4 de 60. */
+/** Fraction d'une quantité : 3/4 de 20 (multiplier un entier par une fraction, CM2). */
 const fracOf: Gen = (r) => {
   const [n, d] = pick(r, [
     [1, 2],
@@ -287,46 +297,155 @@ const fracOf: Gen = (r) => {
     [1, 3],
     [2, 3],
     [1, 5],
+    [2, 5],
     [1, 10],
+    [3, 10],
   ] as const);
   const k = ri(r, 2, 12);
-  return q(`${n}/${d} de ${d * k} = ?`, n * k, [d * k - n * k, k * (n + 1), k + n, k * d / 2], true);
+  return q(`${n}/${d} de ${d * k} = ?`, n * k, [d * k - n * k, k, n * d * k, n * k + n], true);
 };
 
-/** × 0,1 et × 0,5. */
-const mulSmall: Gen = (r) => {
-  const n = ri(r, 12, 99);
-  if (r() < 0.5) return q(`0,5 × ${n} = ?`, n / 2, [n * 5, n / 10, n / 4], true);
-  return q(`0,1 × ${n} = ?`, n / 10, [n * 10, n / 100, n / 2], true);
+/** Décimal × 10, 100, 1 000. Erreurs : un rang de trop ou de moins, ou « ajouter un zéro » (3,4 × 10 → 3,40 = 3,4). */
+const decMul =
+  (factors: readonly number[], places: 1 | 2 | 'mix'): Gen =>
+  (r) => {
+    const p = places === 'mix' ? pick(r, [1, 2]) : places;
+    const v = p === 1 ? ri(r, 11, 99) / 10 : ri(r, 101, 999) / 100;
+    const f = pick(r, factors);
+    return q(`${N(v)} × ${N(f)} = ?`, v * f, [v * f * 10, (v * f) / 10, v, v * f * 100], true);
+  };
+
+/** Nombre ÷ 10, 100, 1 000. Erreurs : un rang de trop ou de moins. */
+const decDiv =
+  (factors: readonly number[], decimal: boolean): Gen =>
+  (r) => {
+    const f = pick(r, factors);
+    const v = decimal ? ri(r, 11, 99) / 10 : ri(r, 12, 999);
+    return q(`${N(v)} ÷ ${N(f)} = ?`, v / f, [(v / f) * 10, v / f / 10, (v / f) * 100], true);
+  };
+
+/**
+ * CM1 : ajouter ou soustraire des unités, des dixièmes ou des centièmes à un décimal, sans retenue.
+ * Erreur : ajouter au mauvais rang (3,4 + 0,2 → 5,4 ; 3,4 + 2 → 3,6).
+ */
+const decPart: Gen = (r) => {
+  const kind = pick(r, ['unite', 'dixieme', 'centieme'] as const);
+  let a = ri(r, 2, 30);
+  if (a % 10 === 9) a -= 1; // aucune retenue sur les unités
+  const sub = r() < 0.4 && a % 10 >= 1;
+  const t = ri(r, 1, 8);
+  const c = ri(r, 1, 8);
+  const v = kind === 'centieme' ? a + t / 10 + c / 100 : a + t / 10;
+  const units = a % 10;
+  if (kind === 'unite') {
+    const k = sub ? ri(r, 1, Math.max(1, units)) : ri(r, 1, Math.max(1, 9 - units));
+    const ans = sub ? v - k : v + k;
+    if (ans <= 0) return q(`${N(v)} + 1 = ?`, v + 1, [v + 0.1, v + 0.01], true);
+    return q(`${N(v)} ${sub ? '−' : '+'} ${k} = ?`, ans, [sub ? v - k / 10 : v + k / 10, sub ? v - k / 100 : v + k / 100], true);
+  }
+  if (kind === 'dixieme') {
+    const k = sub ? ri(r, 1, t) : ri(r, 1, 9 - t);
+    const s = k / 10;
+    const ans = sub ? v - s : v + s;
+    return q(`${N(v)} ${sub ? '−' : '+'} ${N(s)} = ?`, ans, [sub ? v - k : v + k, sub ? v - k / 100 : v + k / 100], true);
+  }
+  const k = sub ? ri(r, 1, c) : ri(r, 1, 9 - c);
+  const s = k / 100;
+  const ans = sub ? v - s : v + s;
+  return q(`${N(v)} ${sub ? '−' : '+'} ${N(s)} = ?`, ans, [sub ? v - k / 10 : v + k / 10, sub ? v - k : v + k], true);
 };
 
-/** × 9, × 11, × 19, × 21 (distributivité). */
+/**
+ * CM2 : entier + décimal, avec ou sans retenue (47,3 + 8). Erreurs : oublier la retenue (45,3), ajouter l'entier aux
+ * dixièmes (47,11 lu comme 47 + 0,11).
+ */
+const intDec =
+  (carry: boolean): Gen =>
+  (r) => {
+    let a = ri(r, 11, 88);
+    if (carry && a % 10 === 0) a += 5; // il faut des unités pour qu'il y ait une retenue
+    if (!carry && a % 10 === 9) a -= 1; // et aucune quand il n'en faut pas
+    const t = ri(r, 1, 9);
+    const v = a + t / 10;
+    const u = a % 10;
+    const sub = !carry && r() < 0.35 && u >= 2;
+    const k = carry ? ri(r, Math.max(1, 10 - u), 9) : sub ? ri(r, 1, u) : ri(r, 1, Math.max(1, 9 - u));
+    if (sub) return q(`${N(v)} − ${k} = ?`, v - k, [v - k / 10, v - k + 10, v - k - 1], true);
+    const ans = v + k;
+    return q(`${N(v)} + ${k} = ?`, ans, carry ? [ans - 10, t + k >= 10 ? a + (t + k) / 100 : v + k / 10, ans + 1] : [v + k / 10, ans + 10, ans + 1], true);
+  };
+
+/**
+ * Somme de deux décimaux inférieurs à 10, à un chiffre après la virgule (CM2).
+ * Erreur classique : additionner séparément les entiers et les dixièmes (3,6 + 2,7 → 5,13).
+ */
+const addDec: Gen = (r) => {
+  const a = ri(r, 11, 89) / 10;
+  const b = ri(r, 11, 89) / 10;
+  const ia = Math.floor(a);
+  const ib = Math.floor(b);
+  const tenths = Math.round((a - ia) * 10) + Math.round((b - ib) * 10);
+  const wrongConcat = tenths >= 10 ? ia + ib + tenths / 100 : ia + ib + 1 + tenths / 10;
+  return q(`${N(a)} + ${N(b)} = ?`, a + b, [wrongConcat, a + b + 1, a + b - 1, ia + ib], true);
+};
+
+/** CM2 : moitié des nombres impairs jusqu'à 15 (13 → 6,5). */
+const halfOdd: Gen = (r) => {
+  const n = pick(r, [3, 5, 7, 9, 11, 13, 15]);
+  return q(`Moitié de ${n} = ?`, n / 2, [(n - 1) / 2, (n + 1) / 2, n / 2 + 1, n * 2], true);
+};
+
+/** CM2 : double d'un décimal simple (3,4 → 6,8). Erreur : ne doubler que la partie entière (6,4). */
+const dblDec: Gen = (r) => {
+  const a = ri(r, 1, 40);
+  const t = ri(r, 1, 4);
+  const v = a + t / 10;
+  return q(`Double de ${N(v)} = ?`, 2 * v, [2 * a + t / 10, 2 * v + 1, 2 * v + 0.1, v + 2], true);
+};
+
+/** CM2 : moitié d'un décimal simple (8,6 → 4,3). Erreur : ne prendre la moitié que de la partie entière (4,6). */
+const halfDec: Gen = (r) => {
+  const a = 2 * ri(r, 2, 20);
+  const t = 2 * ri(r, 1, 4);
+  const v = a + t / 10;
+  return q(`Moitié de ${N(v)} = ?`, v / 2, [a / 2 + t / 10, v / 2 + 1, v / 2 + 0.1, v / 2 - 1], true);
+};
+
+/** CM2 : entier ÷ 4 et ÷ 8 (moitié de la moitié…). Erreur : s'arrêter à la moitié. */
+const div48: Gen = (r) => {
+  const f = pick(r, [4, 8] as const);
+  const k = f === 4 ? ri(r, 11, 30) : ri(r, 11, 20);
+  const n = k * f;
+  return q(`${N(n)} ÷ ${f} = ?`, k, [n / 2, k + 1, k - 1, k * 2], true);
+};
+
+/** CM2 : décimal × 5 et × 50 (la moitié de × 10 et de × 100). */
+const decMul5: Gen = (r) => {
+  const f = pick(r, [5, 50] as const);
+  const v = 2 * ri(r, 6, 49) / 10;
+  const ans = v * f;
+  return q(`${N(v)} × ${f} = ?`, ans, f === 5 ? [v * 10, ans / 10, ans * 10] : [v * 100, ans / 10, v * 5], true);
+};
+
+/** × 9, × 11, × 19, × 21 (distributivité : 23 × 9 = 23 × 10 − 23). */
 const mulNear =
   (amin: number, amax: number): Gen =>
   (r) => {
     const a = ri(r, amin, amax);
     const b = pick(r, [9, 11, 19, 21]);
-    return q(`${a} × ${b} = ?`, a * b, [a * (b + 1), a * (b - 1), a * b + 10, a * b - 10]);
+    return q(`${a} × ${b} = ?`, a * b, [a * (b + 1), a * (b - 1), a * b + 10, a * b - 10], true);
   };
 
-/** × 5 et × 50 (moitié de × 10). */
-const mul5 =
-  (amin: number, amax: number): Gen =>
-  (r) => {
-    const a = ri(r, amin, amax);
-    const f = pick(r, [5, 50]);
-    return q(`${a} × ${f} = ?`, a * f, [a * f * 2, (a * f) / 2, a * (f / 5), a * f + 10]);
-  };
-
-/** Nombre à 2 chiffres × nombre à 1 chiffre. */
+/** Nombre à 2 chiffres × nombre à 1 chiffre, par décomposition (distributivité). */
 const mul2d =
   (amin: number, amax: number, bmin: number, bmax: number): Gen =>
   (r) => {
     const a = ri(r, amin, amax);
     const b = ri(r, bmin, bmax);
-    // oubli de la retenue : (dizaines × b) × 10 + (unités × b), sans retenue
+    // oubli de multiplier les dizaines, ou oubli de la retenue
+    const onlyUnits = Math.floor(a / 10) * 10 + (a % 10) * b;
     const noCarry = Math.floor(a / 10) * b * 10 + ((a % 10) * b) % 10;
-    return q(`${a} × ${b} = ?`, a * b, [a * (b + 1), a * (b - 1), noCarry]);
+    return q(`${a} × ${b} = ?`, a * b, [onlyUnits, noCarry, a * (b + 1), a * (b - 1)], true);
   };
 
 // ───────── Cycle 2 : petits nombres, écrits seulement avec des chiffres et des signes ─────────
@@ -349,18 +468,32 @@ const subMax =
     return q(`${total} − ${b} = ?`, total - b, [total - b + 1, total - b - 1, total + b], true);
   };
 
-const plus1 =
-  (xmin: number, xmax: number): Gen =>
+/** Table d'addition « dans l'autre sens » : 7 + ? = 15. */
+const addMiss =
+  (max: number): Gen =>
   (r) => {
-    const x = ri(r, xmin, xmax);
-    return q(`${x} + 1 = ?`, x + 1, [x, x + 2], true);
+    const total = ri(r, 11, max);
+    const hi = Math.min(9, total - 2);
+    const a = ri(r, Math.min(hi, Math.max(2, total - 9)), hi);
+    const b = total - a;
+    return q(`${a} + ? = ${total}`, b, [total, b + 1, b - 1], true);
   };
 
-const minus1 =
+/** Ajouter ou soustraire 1 ou 2. */
+const addSmall =
   (xmin: number, xmax: number): Gen =>
   (r) => {
     const x = ri(r, xmin, xmax);
-    return q(`${x} − 1 = ?`, x - 1, [x, x - 2], true);
+    const k = pick(r, [1, 2]);
+    return q(`${x} + ${k} = ?`, x + k, [x + k + 1, x + k - 1, x], true);
+  };
+
+const subSmall =
+  (xmin: number, xmax: number): Gen =>
+  (r) => {
+    const x = ri(r, Math.max(4, xmin), xmax);
+    const k = pick(r, [1, 2]);
+    return q(`${x} − ${k} = ?`, x - k, [x - k + 1, x - k - 1, x], true);
   };
 
 /** Complément : « 7 + ? = 10 ». */
@@ -370,6 +503,17 @@ const compTo =
     const x = ri(r, 1, target - 1);
     const a = target - x;
     return q(`${x} + ? = ${target}`, a, [x, a + 1, a - 1], true);
+  };
+
+/** Complément à la dizaine supérieure : « 47 + ? = 50 ». Erreur : écrire le chiffre des unités (7). */
+const compNextTen =
+  (xmin: number, xmax: number): Gen =>
+  (r) => {
+    let x = ri(r, xmin, xmax);
+    if (x % 10 === 0) x += ri(r, 1, 9);
+    const t = Math.ceil(x / 10) * 10;
+    const a = t - x;
+    return q(`${x} + ? = ${t}`, a, [x % 10, a + 1, a - 1, 10], true);
   };
 
 /** Complément à 100 avec des dizaines : « 60 + ? = 100 ». */
@@ -386,7 +530,7 @@ const dblR =
   (min: number, max: number): Gen =>
   (r) => {
     const n = ri(r, min, max);
-    return q(`${n} + ${n} = ?`, 2 * n, [2 * n + 2, 2 * n - 2, n], true);
+    return q(`${n} + ${n} = ?`, 2 * n, [2 * n + 2, 2 * n - 2, n, 2 * n + 10], true);
   };
 
 const addTens: Gen = (r) => {
@@ -405,143 +549,188 @@ const plusTen =
   (xmin: number, xmax: number): Gen =>
   (r) => {
     const x = ri(r, xmin, xmax);
-    return q(`${x} + 10 = ?`, x + 10, [x + 1, x + 20, x - 10], true);
+    return q(`${N(x)} + 10 = ?`, x + 10, [x + 1, x + 20, x - 10], true);
   };
 
 const minusTen =
   (xmin: number, xmax: number): Gen =>
   (r) => {
     const x = ri(r, xmin, xmax);
-    return q(`${x} − 10 = ?`, x - 10, [x - 1, x - 20, x + 10], true);
+    return q(`${N(x)} − 10 = ?`, x - 10, [x - 1, x - 20, x + 10], true);
   };
 
-/** Un nombre à deux chiffres plus des unités, sans retenue : 34 + 5. */
+/** Ajouter des dizaines entières : 34 + 30. Erreur : ajouter aux unités (37). Résultat ≤ `max`. */
+const addDiz =
+  (xmin: number, xmax: number, max: number): Gen =>
+  (r) => {
+    const x = ri(r, xmin, Math.min(xmax, max - 10));
+    const k = ri(r, 1, Math.min(9, Math.floor((max - x) / 10)));
+    return q(`${N(x)} + ${10 * k} = ?`, x + 10 * k, [x + 10 * k + 10, x + 10 * k - 10, x + k], true);
+  };
+
+/** Soustraire des dizaines entières : 74 − 30. */
+const subDiz =
+  (xmin: number, xmax: number): Gen =>
+  (r) => {
+    const x = ri(r, Math.max(21, xmin), xmax);
+    const k = ri(r, 1, Math.min(9, Math.floor((x - 1) / 10)));
+    return q(`${N(x)} − ${10 * k} = ?`, x - 10 * k, [x - 10 * k + 10, x - 10 * k - 10, x - k], true);
+  };
+
+/** Ajouter des centaines entières (CE1, jusqu'à 999) : 245 + 300. */
+const addCent =
+  (xmin: number, xmax: number): Gen =>
+  (r) => {
+    const x = ri(r, xmin, Math.min(xmax, 899));
+    const k = ri(r, 1, Math.min(9, Math.floor((999 - x) / 100)));
+    return q(`${N(x)} + ${100 * k} = ?`, x + 100 * k, [x + 100 * k + 100, x + 100 * k - 100, x + 10 * k], true);
+  };
+
+/** Soustraire des centaines entières : 745 − 300. */
+const subCent =
+  (xmin: number, xmax: number): Gen =>
+  (r) => {
+    const x = ri(r, Math.max(110, xmin), xmax);
+    const k = ri(r, 1, Math.min(9, Math.floor((x - 1) / 100)));
+    return q(`${N(x)} − ${100 * k} = ?`, x - 100 * k, [x - 100 * k + 100, x - 100 * k - 100, x - 10 * k], true);
+  };
+
+/** Une dizaine entière moins des unités : 40 − 3. Erreurs : 43 (on « colle » le chiffre), 33. */
+const subFromTens =
+  (min: number, max: number): Gen =>
+  (r) => {
+    const x = 10 * ri(r, Math.ceil(min / 10), Math.floor(max / 10));
+    const b = ri(r, 1, 9);
+    return q(`${x} − ${b} = ?`, x - b, [x + b, x - 10 + b, x - b + 1], true);
+  };
+
+/** Un nombre à deux chiffres plus des unités : 34 + 5 (sans passer la dizaine) ou 38 + 5 (en la passant). */
 const addUnits =
   (xmin: number, xmax: number): Gen =>
   (r) => {
     const x = ri(r, xmin, xmax);
-    const u = x % 10;
-    const b = ri(r, 1, Math.max(1, 9 - u));
-    return q(`${x} + ${b} = ?`, x + b, [x + b + 10, x + b - 10, x + b + 1], true);
+    const b = ri(r, 2, 8);
+    return q(`${x} + ${b} = ?`, x + b, [x + b + 10, x + b - 10, x + b + 1, x + b - 1], true);
   };
 
-/** Un nombre à deux chiffres moins des unités, sans passer la dizaine : 38 − 5. */
+/** Un nombre à deux chiffres moins des unités : 38 − 5 ou 53 − 6. Erreur : « le plus petit du plus grand » (53 − 6 → 53). */
 const subUnits =
   (xmin: number, xmax: number): Gen =>
   (r) => {
     const x = ri(r, xmin, xmax);
-    const u = Math.max(2, x % 10);
-    const b = ri(r, 1, u - 1);
-    return q(`${x} − ${b} = ?`, x - b, [x - b + 10, x - b - 10, x - b - 1], true);
+    const b = ri(r, 2, 8);
+    const u = x % 10;
+    const smallFromBig = Math.floor(x / 10) * 10 + Math.abs(u - b);
+    return q(`${x} − ${b} = ?`, x - b, [smallFromBig, x - b + 10, x - b - 1, x - b + 1], true);
   };
 
-/** Addition avec passage de la dizaine : 38 + 27. */
+/** Addition de deux nombres : 38 + 27. Erreur : oublier la retenue. */
 const addC =
   (xmin: number, xmax: number, ymin: number, ymax: number): Gen =>
   (r) => {
     const x = ri(r, xmin, xmax);
     const y = ri(r, ymin, ymax);
-    return q(`${x} + ${y} = ?`, x + y, [x + y + 10, x + y - 10, x + y + 1], true);
-  };
-
-/** Soustraction : x − y avec x > y. */
-const subC =
-  (xmin: number, xmax: number, ymin: number, ymax: number): Gen =>
-  (r) => {
-    const x = ri(r, xmin, xmax);
-    const y = ri(r, ymin, Math.min(ymax, x - 2));
-    return q(`${x} − ${y} = ?`, x - y, [x - y + 10, x - y - 10, x - y + 1], true);
+    return q(`${N(x)} + ${N(y)} = ?`, x + y, [x + y + 10, x + y - 10, x + y + 1], true);
   };
 
 const GENS: Record<Level, Gen[][]> = {
   cp: [
-    // 1 · Échauffement : jusqu'à 10
-    [addMax(6), addMax(10), plus1(2, 19), minus1(3, 20), compTo(10), compTo(10)],
-    // 2 · Jusqu'à 20
-    [addMax(20), addMax(20), subMax(10), subMax(20), dblR(2, 10), compTo(20)],
-    // 3 · Doubles et compléments
-    [dblR(2, 10), dblR(3, 10), compTo(10), compTo(20), subMax(20), addMax(20)],
-    // 4 · Les dizaines
-    [addTens, subTens, plusTen(10, 80), minusTen(20, 90), plus1(20, 59), minus1(21, 60)],
-    // 5 · Jusqu'à 60
-    [addUnits(20, 55), subUnits(23, 59), plusTen(10, 50), minusTen(20, 60), compTo(20), addTens],
-    // 6 · Le grand défi
-    [addMax(20), subMax(20), addUnits(20, 80), subUnits(30, 90), addTens, subTens, compTo(10), dblR(5, 10)],
+    // 1 · Jusqu'à 10 : petites sommes, ± 1 ou 2, compléments à 10, doubles
+    [addMax(10), addMax(10), addSmall(1, 17), subSmall(4, 19), compTo(10), dblR(1, 5)],
+    // 2 · Tables d'addition (on passe la dizaine, dans les deux sens)
+    [addMax(20, 11), addMax(20, 11), subMax(20, 11), addMiss(18), dblR(5, 10), compTo(10)],
+    // 3 · Ajouter et retrancher 10 et des dizaines
+    [plusTen(1, 89), minusTen(11, 99), addDiz(1, 69, 99), subDiz(31, 99), addTens, subTens],
+    // 4 · Vers la dizaine : compléments, + 9, + unités
+    [compNextTen(11, 89), compNextTen(11, 89), addNear([9], 10, 80), addUnits(11, 85), addSmall(20, 97), dblR(5, 10)],
+    // 5 · Jusqu'à 100 : dizaine − unités, deux nombres, − unités
+    [subFromTens(20, 90), subFromTens(20, 90), addC(11, 59, 11, 39), subUnits(23, 99), addUnits(20, 89), addNear([9], 10, 89)],
+    // 6 · Le grand défi : tout mélangé
+    [addMax(20, 11), subMax(20, 11), addC(11, 59, 11, 39), subFromTens(20, 90), compNextTen(11, 89), addNear([9], 10, 89), addDiz(1, 69, 99), dblR(5, 10)],
   ],
   ce1: [
-    // 1 · Échauffement
-    [addMax(10), addMax(20), subMax(20), compTo(10), compTo(20), dblR(3, 10)],
-    // 2 · Tables d'addition (on passe la dizaine)
-    [addMax(20, 11), addMax(20, 11), subMax(20, 11), dblR(5, 10), plusTen(10, 90), minusTen(20, 100)],
-    // 3 · Tables de 2, 5 et 10
-    [mulT([2, 5, 10]), mulT([2, 5, 10]), mulT([2, 5, 10]), dblR(4, 15), plusTen(10, 90), minusTen(20, 100)],
-    // 4 · Tables de 3 et 4
-    [mulT([3, 4]), mulT([3, 4]), mulT([2, 3, 4, 5, 10]), mulT([2, 5, 10]), dblR(6, 20), compH(100, 10)],
-    // 5 · Les dizaines
-    [addTens, subTens, compH(100, 10), compH(100, 10), addUnits(20, 80), subUnits(30, 95)],
+    // 1 · Tables d'addition dans les deux sens
+    [addMax(20, 11), subMax(20, 11), addMiss(20), dblR(5, 10), compTo(10), compNextTen(11, 99)],
+    // 2 · Dizaines et centaines entières (jusqu'à 1 000)
+    [addDiz(10, 899, 999), subDiz(30, 999), addCent(10, 899), subCent(110, 999), addDiz(10, 899, 999), subCent(110, 999)],
+    // 3 · Tables de 2, 3, 4, 5 et 10, dans les deux sens
+    [mulT([2, 5, 10]), mulT([2, 5, 10]), mulT([3, 4]), mulT([3, 4]), mulMiss([2, 5, 10]), mulMiss([3, 4])],
+    // 4 · Ajouter 9, 19, 29 ; soustraire 9 ou un petit nombre
+    [addNear([9, 19, 29], 11, 90), addNear([9, 19, 29], 11, 90), addNear([9], 100, 890), subNear([9], 21, 99), subUnits(21, 99), compH(100, 10)],
+    // 5 · Tables de 6 à 9, et 13 × 4 en décomposant
+    [mulT([6, 7, 8, 9]), mulT([6, 7, 8, 9]), mulT([2, 3, 4, 5, 10]), mulMiss([2, 3, 4, 5]), mul2d(11, 19, 2, 5), mul2d(11, 19, 2, 9)],
     // 6 · Le grand défi
-    [addC(10, 60, 6, 30), subC(30, 90, 6, 29), compH(100, 10), mulT([2, 3, 4, 5, 10]), mulT([2, 3, 4, 5, 10]), addTens, dblR(10, 30)],
+    [mulT(T_ALL), mulMiss([2, 3, 4, 5, 10]), addNear([9, 19, 29], 11, 90), subNear([9], 21, 99), addCent(10, 899), subDiz(30, 999), mul2d(11, 19, 2, 9), addMiss(20)],
   ],
   ce2: [
-    // 1 · Échauffement
-    [mulT([2, 3, 4, 5, 10]), mulT([2, 5, 10]), dbl(50), half(60), addC(10, 60, 6, 30), subC(30, 90, 6, 29)],
-    // 2 · Les tables
-    [mulT(T_ALL), mulT(T_ALL), mulT([6, 7, 8, 9]), mulT([3, 4, 6, 7]), mulT([2, 5, 10]), dbl(60)],
-    // 3 · Compléments et astuces
-    [compH(100, 10), compH(100, 5), comp(100, 1), comp(1000, 100), plus9(21, 90), minus9(40, 100)],
-    // 4 · × 10 et × 100
-    [mulPow(100, 99), mulPow(100, 99), mulTens, mulT([2, 3, 4, 5]), dbl(100), half(200)],
-    // 5 · Additions et soustractions
-    [addC(25, 150, 15, 90), addC(25, 150, 15, 90), subC(60, 200, 15, 90), subC(60, 200, 15, 90), mul2d(12, 25, 2, 4), half(200)],
+    // 1 · Échauffement : tables d'addition, petites tables, doubles et moitiés
+    [addMiss(20), mulT([2, 3, 4, 5, 10]), dbl(50), half(100), compH(100, 10), addC(20, 80, 12, 19)],
+    // 2 · Toutes les tables, dans les deux sens
+    [mulT(T_ALL), mulT([6, 7, 8, 9]), mulT([6, 7, 8, 9]), mulMiss(T_ALL), mulMiss([6, 7, 8, 9]), divT([2, 3, 4, 5, 10])],
+    // 3 · × 10 et × 100, × dizaines
+    [mulPow(100, 99), mulPow(100, 99), mulTens, mulTens, dbl(100), compH(100, 10)],
+    // 4 · Ajouter 8, 9, 18… 39 ; soustraire 9, 19, 29, 39
+    [addNear(NEAR_8_39, 21, 950), addNear(NEAR_8_39, 21, 950), subNear([9, 19, 29, 39], 60, 990), subNear([9, 19, 29, 39], 60, 990), comp(1000, 100), compH(100, 10)],
+    // 5 · × 4, × 8 et 11–99 × un chiffre
+    [mul48(4, 11, 49), mul48(8, 11, 25), mul48(4, 11, 49), mul2d(11, 99, 2, 9), mul2d(11, 49, 2, 9), mulTens],
     // 6 · Le grand défi
-    [mulT(T_ALL), divT([2, 3, 4, 5], 2, 10), compH(100, 10), comp(1000, 100), mulPow(100, 99), plus9(21, 90), mul2d(12, 30, 2, 5)],
+    [mulT(T_ALL), mulMiss(T_ALL), mulPow(100, 99), addNear(NEAR_8_39, 21, 950), subNear([9, 19, 29, 39], 60, 990), mul48(4, 11, 49), mul2d(11, 49, 2, 9), dbl(100)],
   ],
   cm1: [
-    // 1 · Échauffement : tables faciles, doubles, moitiés
-    [mulT([2, 5, 10]), mulT([2, 5, 10]), mulT([3, 4]), dbl(50), half(100), add(5, 30, 5, 30)],
-    // 2 · Toutes les tables
-    [mulT(T_ALL), mulT(T_ALL), mulT([6, 7, 8, 9]), divT(T_ALL), divT([2, 3, 4, 5, 10], 2, 10)],
-    // 3 · Compléments et astuces
-    [comp(100, 10), comp(100, 5), comp(100, 1), comp(1000, 50), plus9(21, 200), minus9(40, 200)],
-    // 4 · × 10, × 100, × 1 000
-    [mulPow(1000, 99), mulPow(1000, 99), mulPow(100, 999), mulTens, mul25(4), dbl(150)],
-    // 5 · Divisions, quotient et reste
-    [quotient(5, 3, 15), quotient(9, 3, 12), reste(7, 3, 12), reste(9, 3, 12), divT(T_ALL, 5, 12), mul25(4)],
-    // 6 · Défi : décimaux et mélanges
-    [fracDec('dixiemes'), fracDec('centiemes'), decMul(1), decDiv(false), quotient(9, 5, 20), comp(1000, 10), mul2d(12, 40, 2, 5)],
+    // 1 · Tables (deux sens), doubles et moitiés
+    [mulT(T_ALL), mulT([6, 7, 8, 9]), mulMiss(T_ALL), divT(T_ALL), dbl(100), half(200)],
+    // 2 · Ajouter ou soustraire 8, 9, 18… 39
+    [addNear(NEAR_8_39, 50, 950), addNear(NEAR_8_39, 50, 950), subNear(NEAR_8_39, 60, 999), subNear(NEAR_8_39, 60, 999), comp(100, 1), comp(1000, 10)],
+    // 3 · × 10, × 100, × 1 000 ; chiffre × dizaines ou centaines
+    [mulPow(1000, 99), mulPow(1000, 99), mulPow(100, 999), mulTens, mulHund, mulHund],
+    // 4 · × 4, × 8, × 5 et décompositions
+    [mul48(4, 12, 60), mul48(8, 11, 30), mul5(12, 98), mul5(12, 98), mul2d(12, 40, 3, 9), mulTens],
+    // 5 · Fractions usuelles et décimaux (× 10, ÷ 10)
+    [fracUsual('cm1'), fracRel('cm1'), fracDec('dixiemes'), fracDec('centiemes'), decMul([10], 'mix'), decDiv([10], true)],
+    // 6 · Défi des décimaux
+    [decPart, decPart, decMul([10], 'mix'), decDiv([10], true), fracUsual('cm1'), quotient(9, 3, 12), mul48(4, 12, 60), addNear(NEAR_8_39, 50, 950)],
   ],
   cm2: [
-    // 1 · Les tables (révisions)
-    [mulT(T_ALL), mulT([6, 7, 8, 9]), divT(T_ALL), divT([6, 7, 8, 9], 3, 12), dbl(500), half(400)],
-    // 2 · Calcul astucieux
-    [mulNear(12, 40), mul5(12, 98), mul25(8), plus9(120, 900), minus9(120, 900), mul2d(12, 60, 3, 6)],
-    // 3 · × et ÷ par 10, 100, 1 000 avec des décimaux
-    [decMul(1), decMul(2), decDiv(true), decDiv(false), mul1000, mulPow(1000, 99)],
-    // 4 · Compléments et décimaux
-    [compDec, compDec, addDec, subDec, comp(1000, 5), comp(1000, 1)],
-    // 5 · Fractions et pourcentages
-    [fracDec('simples'), fracOf, pct, pct, mulSmall, fracDec('centiemes')],
-    // 6 · Défi du cahier : mélanges
-    [mul2d(25, 99, 4, 9), mulNear(25, 80), quotient(9, 12, 60), reste(9, 12, 60), addDec, subDec, pct, fracOf, decMul(2), compDec],
+    // 1 · Faits numériques : tables, moitiés des impairs, doubles
+    [mulT([6, 7, 8, 9]), mulMiss(T_ALL), divT([6, 7, 8, 9], 3, 10), halfOdd, halfOdd, dbl(500)],
+    // 2 · Calcul astucieux : ± 9… 99, distributivité, ÷ 4 et ÷ 8
+    [addNear(NEAR_8_99, 120, 900), subNear(NEAR_8_99, 200, 999), mulNear(12, 40), mul2d(12, 60, 3, 9), div48, div48],
+    // 3 · Décimaux × et ÷ 10, 100, 1 000
+    [decMul([10, 100, 1000], 'mix'), decMul([10, 100, 1000], 'mix'), decDiv([10, 100, 1000], true), decDiv([10, 100, 1000], false), mulPow(1000, 99), tensMul],
+    // 4 · Additionner avec des décimaux, doubles et moitiés
+    [addDec, addDec, intDec(false), intDec(true), dblDec, halfDec],
+    // 5 · Fractions
+    [fracUsual('cm2'), fracUsual('cm2'), fracRel('cm2'), fracOf, fracOf, fracDec('centiemes')],
+    // 6 · Le grand défi du cahier
+    [decMul5, decMul5, div48, tensMul, mulNear(25, 80), addDec, intDec(true), fracOf, decDiv([10, 100, 1000], true), halfOdd],
   ],
 };
 
 export const PAGE_TITLES: Record<Level, string[]> = {
-  cp: ['Échauffement', 'Jusqu’à 20', 'Doubles et compléments', 'Les dizaines', 'Jusqu’à 60', 'Le grand défi'],
-  ce1: ['Échauffement', 'Tables d’addition', 'Tables de 2, 5, 10', 'Tables de 3 et 4', 'Les dizaines', 'Le grand défi'],
-  ce2: ['Échauffement', 'Les tables', 'Compléments et astuces', '× 10 et × 100', 'Additions et soustractions', 'Le grand défi'],
-  cm1: ['Échauffement', 'Toutes les tables', 'Compléments et astuces', '× 10, × 100, × 1 000', 'Divisions et restes', 'Défi des décimaux'],
-  cm2: ['Les tables', 'Calcul astucieux', 'Décimaux : × et ÷ 10, 100', 'Compléments et décimaux', 'Fractions et pourcentages', 'Le grand défi'],
+  cp: ['Jusqu’à 10', 'Tables d’addition', 'Les dizaines', 'Vers la dizaine', 'Jusqu’à 100', 'Le grand défi'],
+  ce1: ['Tables d’addition', 'Dizaines et centaines', 'Tables de 2 à 5', '+ 9, + 19, + 29', 'Tables de 6 à 9', 'Le grand défi'],
+  ce2: ['Échauffement', 'Toutes les tables', '× 10 et × 100', '+ 9, + 19… − 39', '× 4 et × 8', 'Le grand défi'],
+  cm1: ['Tables et doubles', '+ 9, + 19… − 39', '× 10, × 100, × 1 000', '× 4, × 8, × 5', 'Fractions et décimaux', 'Défi des décimaux'],
+  cm2: ['Faits numériques', 'Calcul astucieux', 'Décimaux : × et ÷ 10, 100, 1 000', 'Additionner des décimaux', 'Fractions', 'Le grand défi'],
 };
 
 /** Page (0 à 5) du n-ième calcul de la partie. */
 export const stageOf = (n: number) => Math.min(PAGES - 1, Math.floor(n / PER_PAGE));
 
-/** Prochain calcul. `recent` : textes déjà posés récemment, pour ne pas se répéter. */
+/**
+ * Prochain calcul. `recent` : textes déjà posés récemment, pour ne pas se répéter.
+ * De la 2e à la 5e page, environ un calcul sur quatre reprend une page précédente (révision espacée) ;
+ * la dernière page mélange déjà tous les thèmes.
+ */
 export function makeQuestion(level: Level, n: number, r: Rng = Math.random, recent: readonly string[] = []): Question {
-  const pool = GENS[level][stageOf(n)];
-  let out = pool[Math.floor(r() * pool.length)](r);
-  for (let i = 0; i < 10 && recent.includes(out.text); i++) out = pool[Math.floor(r() * pool.length)](r);
+  const st = stageOf(n);
+  const draw = () => {
+    const page = st > 0 && st < PAGES - 1 && r() < SPIRAL ? Math.floor(r() * st) : st;
+    const pool = GENS[level][page];
+    return pool[Math.floor(r() * pool.length)](r);
+  };
+  let out = draw();
+  for (let i = 0; i < 10 && recent.includes(out.text); i++) out = draw();
   return out;
 }
 
@@ -640,9 +829,9 @@ export function travelTime(level: Level, n: number, diff: CourseDiff = 'standard
 }
 
 export const LEVELS: Array<{ id: Level; label: string; hint: string }> = [
-  { id: 'cp', label: 'CP', hint: 'Jusqu’à 20 puis 60, compléments à 10, doubles, dizaines' },
-  { id: 'ce1', label: 'CE1', hint: 'Tables d’addition, tables de 2, 3, 4, 5 et 10, compléments à 100' },
-  { id: 'ce2', label: 'CE2', hint: 'Toutes les tables, compléments, × 10 et × 100' },
-  { id: 'cm1', label: 'CM1', hint: 'Tables, compléments, ×\u00a010\u00a0/\u00a0100\u00a0/\u00a01\u00a0000, divisions, premiers décimaux' },
-  { id: 'cm2', label: 'CM2', hint: 'Calcul astucieux, décimaux, fractions simples, pourcentages' },
+  { id: 'cp', label: 'CP', hint: 'Jusqu’à 100 : tables d’addition, doubles, dizaines, compléments, + 9' },
+  { id: 'ce1', label: 'CE1', hint: 'Jusqu’à 1 000 : tables d’addition et de multiplication, dizaines et centaines, + 9, + 19' },
+  { id: 'ce2', label: 'CE2', hint: 'Toutes les tables, × 10 et × 100, + 9… + 39, × 4 et × 8' },
+  { id: 'cm1', label: 'CM1', hint: 'Tables, ×\u00a010\u00a0/\u00a0100\u00a0/\u00a01\u00a0000, × 4, × 8, × 5, fractions usuelles, premiers décimaux' },
+  { id: 'cm2', label: 'CM2', hint: 'Calcul astucieux, décimaux, × et ÷ 10, 100, 1 000, fractions' },
 ];
