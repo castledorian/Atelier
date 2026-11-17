@@ -4105,3 +4105,15 @@ button.inline-link {
   position: static;
   font-weight: 700;
 }
+.intro-games {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  font-size: 15px;
+  line-height: 1.3;
+}
+.intro-games .intro-text {
+  display: block;
+}

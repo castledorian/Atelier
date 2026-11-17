@@ -24,6 +24,16 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.4',
+    date: '17 novembre 2026',
+    iso: '2026-11-17',
+    title: 'Un accueil qui explique le site',
+    changes: [
+      { kind: 'better', text: 'L’accueil présente le site en une phrase et montre les quatre jeux, avec leur domaine et leurs classes, avant même de choisir sa classe.' },
+      { kind: 'better', text: 'Description et aperçu de partage du site plus précis (messageries, moteurs de recherche).' },
+    ],
+  },
+  {
     version: '1.3',
     date: '17 novembre 2026',
     iso: '2026-11-17',

@@ -6,6 +6,7 @@ import { InfoButton } from '../components/Preview';
 import type { PreviewGame } from '../components/Preview';
 import PreviewWindow from '../components/PreviewWindow';
 import type { InstallInfo } from '../components/Screens';
+import { GAMES } from '../content/games';
 import { serverEnabled } from '../server/api';
 import { fetchSessionsInfo } from '../server/student';
 import type { StudentAccount } from '../server/types';
@@ -73,6 +74,11 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
         ))}
       </h1>
       <div className="rule" aria-hidden="true" />
+      {!student && !teacher && (
+        <p className="intro mt-3 text-[15px] leading-snug">
+          Quatre jeux pour s’entraîner du CP au CM2&nbsp;: <strong>taper au clavier, calculer, retenir, corriger l’orthographe</strong>. Gratuit, sans publicité ni cookie.
+        </p>
+      )}
 
       <section className="who" aria-label="Connexion">
         {student ? (
@@ -147,7 +153,20 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
           ))}
         </div>
       )}
-      {grade === null && <p className="mt-2 text-[15px] leading-snug">Choisis ta classe pour voir les jeux qui te conviennent.</p>}
+      {grade === null && (
+        <>
+          <p className="mt-2 text-[15px] leading-snug">Choisis ta classe pour voir les jeux qui te conviennent.</p>
+          <h2 className="subhead mt-[var(--sp)]">Les jeux</h2>
+          <ul className="intro-games" aria-label="Les jeux d’Atelier">
+            {GAMES.map((g) => (
+              <li key={g.name}>
+                <strong>{g.name}</strong> <span className="about-tag">{g.tag} · {g.grades}</span>
+                <span className="intro-text">{g.short}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
       {grade !== null && <h2 className="subhead mt-[var(--sp)]">Choisis un jeu</h2>}
       {grade !== null && <div className="games">

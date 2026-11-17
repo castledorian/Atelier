@@ -4,6 +4,7 @@ import { BackButton } from '../components/BackButton';
 import { APP_VERSION, KIND_LABEL, RELEASES, hasUnreadNews, markNewsRead } from '../content/changelog';
 import type { Credit } from '../content/credits';
 import { BUILD, RUNTIME, SERVICES } from '../content/credits';
+import { GAMES } from '../content/games';
 import { LEGAL } from '../legal';
 import { Frame } from './Frame';
 
@@ -111,13 +112,6 @@ export function News({ onBack, onNav }: PageProps) {
 }
 
 // ───────────────────────────── À propos ─────────────────────────────
-
-const GAMES: Array<{ name: string; tag: string; grades: string; text: string }> = [
-  { name: 'Frappe !', tag: 'Clavier', grades: 'CE1 à CM2', text: 'Taper des mots avant qu’ils n’atteignent la marge : précision d’abord, puis vitesse. Des tampons récompensent les progrès.' },
-  { name: 'Course à l’encre', tag: 'Maths', grades: 'CP à CM2', text: 'Calcul mental : le calcul posé correspond à la classe choisie. Il faut viser la bonne réponse avant que l’encre ne rattrape la plume.' },
-  { name: 'Chasse aux fautes', tag: 'Orthographe', grades: 'CE1 à CM2', text: 'Une phrase contient une faute : l’élève la repère, puis la corrige. Un récapitulatif « À retenir » rappelle la règle en fin de partie.' },
-  { name: 'Mémoire d’encre', tag: 'Mémoire', grades: 'CP à CM2', text: 'Retenir une suite de taches qui s’allument (La Suite) ou retrouver leurs places (Les Cases), avec une suite qui s’allonge page après page.' },
-];
 
 export function About({ onBack, onNav }: PageProps) {
   return (
