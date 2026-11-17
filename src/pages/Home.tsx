@@ -14,7 +14,7 @@ import { loadCourseStamps } from '../game/course/scores';
 import { GRADES, gradeLabel, isAvailable, loadClassGrade, loadGrade, saveClassGrade, saveGrade } from '../game/grade';
 import type { Grade } from '../game/grade';
 import { loadTypingStamps } from '../game/storage';
-import { bossName, inkLevel, loadBoss, phaseOf } from '../game/boss/state';
+import { CAVE_ON, bossName, inkLevel, loadBoss, phaseOf } from '../game/boss/state';
 import type { TeacherSession } from '../server/teacher';
 
 interface HomeProps {
@@ -235,7 +235,7 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
         </div>
       </div>}
 
-      {grade !== null && (
+      {CAVE_ON && grade !== null && (
         <button type="button" className="cave-door" onClick={onCave}>
           <span className="cave-door-art" aria-hidden="true">
             <span className="cave-door-drop" data-size={inkLevel(boss)} />

@@ -7,7 +7,14 @@
  *
  * Tout est gardé SUR L'APPAREIL (localStorage) : aucun prénom, aucun compteur n'est envoyé au serveur.
  * Les prénoms du combat final sont saisis par la classe (ou l'enseignant) et restent sur cet appareil.
+ *
+ * ⚠ FONCTION MASQUÉE POUR L'INSTANT : mettre CAVE_ON à true pour la remettre en service.
+ * Tant qu'elle est à false, la porte n'apparaît pas sur l'accueil, la page n'est pas accessible
+ * et plus rien n'est compté (aucune donnée n'est écrite sur l'appareil).
  */
+
+/** Interrupteur unique de la grotte : passer à `true` pour la rendre de nouveau visible. */
+export const CAVE_ON = false;
 
 export interface BossState {
   /** année scolaire en cours, ex. « 2026-2027 » (tout repart à zéro à la rentrée) */
@@ -73,13 +80,14 @@ function save(s: BossState): BossState {
 /** Fin de partie : les fautes nourrissent la créature, les réussites renforcent la classe. */
 export function feedBoss(ok: number, err: number, d?: Date): BossState {
   const s = loadBoss(d);
-  if (ok + err <= 0) return s;
+  if (!CAVE_ON || ok + err <= 0) return s;
   return save({ ...s, ink: s.ink + Math.max(0, err), power: s.power + Math.max(0, ok), games: s.games + 1 });
 }
 
 /** Une règle retravaillée (entraînement réussi) : on retire de l'encre à la créature. */
 export function calmBoss(n: number = CALM, d?: Date): BossState {
   const s = loadBoss(d);
+  if (!CAVE_ON) return s;
   return save({ ...s, ink: Math.max(0, s.ink - Math.max(0, n)) });
 }
 

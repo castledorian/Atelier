@@ -8,6 +8,7 @@ import Memory from './games/Memory';
 import Spelling from './games/Spelling';
 import Admin from './pages/Admin';
 import Cave from './pages/Cave';
+import { CAVE_ON } from './game/boss/state';
 import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -154,7 +155,7 @@ function Pages() {
     return <Admin email={teacher.email} onHome={home} onSignOut={teacherLost} />;
   }
 
-  if (view === 'cave') return <Cave onBack={home} studentName={student?.student.name ?? null} />;
+  if (view === 'cave' && CAVE_ON) return <Cave onBack={home} studentName={student?.student.name ?? null} />;
 
   if (view === 'sessions' && student) {
     return (
@@ -199,7 +200,7 @@ function Pages() {
       }}
       onDashboard={() => setView('dashboard')}
       onAdmin={admin ? () => setView('admin') : undefined}
-      onCave={() => setView('cave')}
+      onCave={() => CAVE_ON && setView('cave')}
       onInfo={setView}
       onLogout={logout}
       install={install}
