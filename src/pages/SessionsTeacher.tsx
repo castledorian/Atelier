@@ -6,8 +6,8 @@ import type { CourseDiff, Level } from '../game/course/questions';
 import { DEFAULT_CUSTOM } from '../game/difficulty';
 import type { CustomConfig, Difficulty } from '../game/difficulty';
 import { downloadText, fmtDate, toCsv } from '../game/history';
-import { MODES, PAGES, PAGE_TITLES } from '../game/memory/rounds';
-import type { Mode } from '../game/memory/rounds';
+import { MEM_DIFFS, MODES, PAGES, PAGE_TITLES } from '../game/memory/rounds';
+import type { MemDiff, Mode } from '../game/memory/rounds';
 import { AVAILABLE } from '../game/grade';
 import { GAME_NAMES, describeConfig, parseMath, parseMemory, parseTyping } from '../game/sessionConfig';
 import type { GameKind } from '../game/sessionConfig';
@@ -37,6 +37,7 @@ interface Draft {
   level: Level;
   courseDiff: CourseDiff;
   mode: Mode;
+  memDiff: MemDiff;
   startPage: number;
 }
 
@@ -50,6 +51,7 @@ const blank = (): Draft => ({
   level: 'cm1',
   courseDiff: 'standard',
   mode: 'suite',
+  memDiff: 'standard',
   startPage: 0,
 });
 
@@ -68,6 +70,7 @@ function draftOf(s: ClassSession): Draft {
     level: m.level,
     courseDiff: m.diff,
     mode: y.mode,
+    memDiff: y.diff,
     startPage: y.startPage,
   };
 }
@@ -75,7 +78,7 @@ function draftOf(s: ClassSession): Draft {
 function configOf(d: Draft): Record<string, unknown> {
   if (d.game === 'typing') return d.typingDiff === 'perso' ? { diff: 'perso', custom: d.custom } : { diff: d.typingDiff };
   if (d.game === 'math' || d.game === 'spelling') return { level: d.level, diff: d.courseDiff };
-  return { mode: d.mode, startPage: d.startPage };
+  return { mode: d.mode, diff: d.memDiff, startPage: d.startPage };
 }
 
 function Seg<V extends string | number>({ label, value, options, onChange }: { label: string; value: V; options: Array<[V, string]>; onChange: (v: V) => void }) {
@@ -248,6 +251,7 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
             {draft.game === 'memory' && (
               <>
                 <Seg label="Mode" value={draft.mode} options={MODES.map((m) => [m.id, m.label] as [Mode, string])} onChange={(mode) => set({ mode })} />
+                <Seg label="Difficulté" value={draft.memDiff} options={MEM_DIFFS.map((d) => [d.id, d.label] as [MemDiff, string])} onChange={(memDiff) => set({ memDiff })} />
                 <div className="cfg-row">
                   <label className="cfg-label" htmlFor="ses-page">
                     Départ

@@ -2,8 +2,8 @@ import { isDifficulty, sanitizeCustom } from './difficulty';
 import type { CustomConfig, Difficulty } from './difficulty';
 import { COURSE_DIFFS, LEVELS, isCourseDiff, isLevel } from './course/questions';
 import type { CourseDiff, Level } from './course/questions';
-import { MODES, PAGES } from './memory/rounds';
-import type { Mode } from './memory/rounds';
+import { MEM_DIFFS, MODES, PAGES, isMemDiff } from './memory/rounds';
+import type { MemDiff, Mode } from './memory/rounds';
 
 /**
  * Réglages d'une séance de classe, pour chaque jeu. Les valeurs viennent du serveur : tout est revalidé ici,
@@ -23,6 +23,7 @@ export interface MathCfg {
 }
 export interface MemoryCfg {
   mode: Mode;
+  diff: MemDiff;
   /** page du cahier où l'on commence (0 à 5) */
   startPage: number;
 }
@@ -45,7 +46,7 @@ export const parseSpelling = (v: unknown): MathCfg => parseMath(v);
 export function parseMemory(v: unknown): MemoryCfg {
   const o = obj(v);
   const n = typeof o.startPage === 'number' && Number.isFinite(o.startPage) ? Math.floor(o.startPage) : 0;
-  return { mode: o.mode === 'cases' ? 'cases' : 'suite', startPage: Math.max(0, Math.min(PAGES - 1, n)) };
+  return { mode: o.mode === 'cases' ? 'cases' : 'suite', diff: isMemDiff(o.diff) ? o.diff : 'standard', startPage: Math.max(0, Math.min(PAGES - 1, n)) };
 }
 
 export const GAME_NAMES: Record<GameKind, string> = { typing: 'Frappe !', math: 'Course à l’encre', memory: 'Mémoire d’encre', spelling: 'Chasse aux fautes' };
@@ -66,5 +67,5 @@ export function describeConfig(game: GameKind, config: unknown): string[] {
     return [LEVELS.find((l) => l.id === c.level)?.label ?? c.level, COURSE_DIFFS.find((d) => d.id === c.diff)?.label ?? c.diff];
   }
   const c = parseMemory(config);
-  return [MODES.find((m) => m.id === c.mode)?.label ?? c.mode, ...(c.startPage > 0 ? [`départ à la page ${c.startPage + 1}`] : [])];
+  return [MODES.find((m) => m.id === c.mode)?.label ?? c.mode, MEM_DIFFS.find((d) => d.id === c.diff)?.label ?? c.diff, ...(c.startPage > 0 ? [`départ à la page ${c.startPage + 1}`] : [])];
 }

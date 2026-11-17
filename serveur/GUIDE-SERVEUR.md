@@ -261,3 +261,11 @@ Reconnectez-vous sur le site : un bouton **Administration** apparaît sur l'accu
 
 **Garde-fous** : réservé aux comptes de `public.site_admins` (vérifié par le serveur, pas par le site) ; **lecture seule** ; les codes d'accès des élèves ne sont **jamais** renvoyés ; chaque consultation est notée dans `private.admin_audit` (effacée après 1 an). La page « Confidentialité » du site en informe les familles et enseignants. Si vous donnez ce rôle à une autre personne, tenez-en compte dans votre registre des traitements.
 
+## Niveaux de classe et difficultés (CP → CM2) : comment c'est réglé
+
+- **Les 3 difficultés (Apprenti, Standard, Expert) existent maintenant dans les 4 jeux.** Apprenti = initiation (beaucoup de temps ou de vies, erreurs peu coûteuses), Standard = référence de la classe, Expert = les plus rapides ou les plus sûrs d'eux.
+- **Mémoire d'encre** : Apprenti 5 vies et rythme plus lent, Expert départ à une suite de 3 et rythme serré. Les classements sont séparés par difficulté (`suite`, `suite-apprenti`, `suite-expert`, `cases`…) : **aucune mise à jour SQL n'est nécessaire**.
+- **Chasse aux fautes** : disponible dès le CE1 (phrases de 5 mots au plus) et au CE2 (7 mots au plus). Avant le CM1, Expert propose quatre réponses sans indice (on n'écrit pas le mot).
+- **Course à l'encre** : temps, montée de l'encre et pénalité d'erreur recalibrés pour que chaque classe ait la même courbe (Apprenti ≈ 9 élèves sur 10 finissent le cahier, Standard ≈ 2 sur 3 des élèves moyens, Expert = les plus rapides).
+- Ces réglages viennent de **simulations d'élèves fragiles / moyens / à l'aise** (hypothèses, pas de mesures). Après quelques semaines d'usage, comparez avec les vraies parties anonymes : `serveur/stats-equilibrage.sql`.
+

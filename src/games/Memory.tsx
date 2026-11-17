@@ -6,9 +6,9 @@ import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionP
 import { Sfx } from '../game/audio';
 import { MemoryGame } from '../game/memory/engine';
 import type { MemoryResult } from '../game/memory/engine';
-import { MODES, PAGES } from '../game/memory/rounds';
-import type { Mode } from '../game/memory/rounds';
-import { addMemoryScore, clearMemoryScores, loadMemoryMode, loadMemoryScores, loadProgress, recordProgress, saveMemoryMode } from '../game/memory/scores';
+import { MEM_DIFFS, MODES, PAGES, memBoard } from '../game/memory/rounds';
+import type { MemBoard, MemDiff, Mode } from '../game/memory/rounds';
+import { addMemoryScore, clearMemoryScores, loadMemoryDiff, loadMemoryMode, loadMemoryScores, loadProgress, recordProgress, saveMemoryDiff, saveMemoryMode } from '../game/memory/scores';
 import type { MemoryScore } from '../game/memory/scores';
 import { newRunId } from '../game/history';
 import { parseMemory } from '../game/sessionConfig';
@@ -34,7 +34,9 @@ const TEXT_LABEL: Record<TextSize, string> = { normal: 'normal', large: 'grand',
 const NEXT_SIZE: Record<TextSize, TextSize> = { normal: 'large', large: 'xlarge', xlarge: 'normal' };
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 /** Plus longue suite (ou plus grand nombre de taches) déjà réussie sur cet appareil. */
-const bestSpan = (m: Mode) => loadMemoryScores(m).reduce((a, x) => Math.max(a, x.span), 0);
+const boardMode = (b: MemBoard): Mode => (b.startsWith('cases') ? 'cases' : 'suite');
+const diffLabel = (d: MemDiff) => MEM_DIFFS.find((x) => x.id === d)?.label ?? d;
+const bestSpan = (b: MemBoard) => loadMemoryScores(b).reduce((a, x) => Math.max(a, x.span), 0);
 const modeLabel = (m: Mode) => MODES.find((x) => x.id === m)?.label ?? m;
 const spanLabel = (m: Mode) => (m === 'suite' ? 'Suite max' : 'Cases max');
 
@@ -68,6 +70,7 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const grade = levelOf(effectiveGrade(account?.student.id ?? null));
   const [mode, setMode] = useState<Mode>(() => (session ? parseMemory(session.config).mode : loadMemoryMode()));
+  const [diff, setDiff] = useState<MemDiff>(() => (session ? parseMemory(session.config).diff : loadMemoryDiff()));
   const ses = useSessionRun(account, session);
   const sesRef = useRef(ses);
   sesRef.current = ses;
@@ -77,9 +80,10 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
   const lost = useRef(false);
   const accountRef = useRef(account);
   accountRef.current = account;
-  const live = useRef({ phase, mode, settings, overAt: 0, recId: '', startPage: 0 });
+  const live = useRef({ phase, mode, diff, settings, overAt: 0, recId: '', startPage: 0 });
   live.current.phase = phase;
   live.current.mode = mode;
+  live.current.diff = diff;
   live.current.settings = settings;
   live.current.startPage = startPage;
 
@@ -95,7 +99,7 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
     const payload: RunPayload = {
       clientId: id,
       game: 'memory',
-      mode: result.mode,
+      mode: memBoard(result.mode, result.diff),
       kind: 'game',
       score: result.score,
       wave: result.maxSpan,
@@ -118,7 +122,7 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
     if (total > 0) {
       payload.balance = {
         game: 'memory',
-        difficulty: result.mode,
+        difficulty: memBoard(result.mode, result.diff),
         version: 1,
         outcome: result.won ? 'finished' : 'lost',
         score: result.score,
@@ -133,9 +137,9 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
     let rank = -1;
     let record = false;
     if (result.score > 0) {
-      const before = loadMemoryScores(result.mode);
+      const before = loadMemoryScores(memBoard(result.mode, result.diff));
       record = before.length === 0 ? result.score > 0 : result.score > before[0].score;
-      const res = addMemoryScore(result.mode, { id, name, score: result.score, span: result.maxSpan, date: Date.now() });
+      const res = addMemoryScore(memBoard(result.mode, result.diff), { id, name, score: result.score, span: result.maxSpan, date: Date.now() });
       rank = res.rank;
     }
     if (acct && result.correct > 0) {
@@ -154,7 +158,7 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
         });
     } else setCloud('off');
     live.current.overAt = performance.now();
-    const prog = recordProgress(result.mode, result.won ? PAGES : result.page - 1, result.maxSpan);
+    const prog = recordProgress(memBoard(result.mode, result.diff), result.won ? PAGES : result.page - 1, result.maxSpan);
     setRun({ result, rank, id, record, prevSpan: prog.before.lastSpan, stampsBefore: prog.before.stamps, stampsAfter: prog.after.stamps });
     setPhase('over');
   };
@@ -199,11 +203,15 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
       if (s.sess && (s.left <= 0 || !s.sess.active)) return; // essais épuisés ou séance fermée
       sfx.unlock();
       (document.activeElement as HTMLElement | null)?.blur?.();
-      if (!s.sess) saveMemoryMode(m);
+      if (!s.sess) {
+        saveMemoryMode(m);
+        saveMemoryDiff(live.current.diff);
+      }
       setMode(m);
       live.current.mode = m;
-      gameRef.current?.setOptions({ best: s.sess ? 0 : bestSpan(m) });
-      gameRef.current?.start(m, s.sess ? parseMemory(s.sess.config).startPage : Math.min(live.current.startPage, loadProgress(m).stamps));
+      const d = s.sess ? parseMemory(s.sess.config).diff : live.current.diff;
+      gameRef.current?.setOptions({ best: s.sess ? 0 : bestSpan(memBoard(m, d)) });
+      gameRef.current?.start(m, s.sess ? parseMemory(s.sess.config).startPage : Math.min(live.current.startPage, loadProgress(memBoard(m, d)).stamps), d);
       setRun(null);
       setPhase('play');
     },
@@ -358,6 +366,8 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
             grade={grade}
             mode={mode}
             setMode={setMode}
+            diff={diff}
+            setDiff={setDiff}
             settings={settings}
             account={account}
             onChange={change}
@@ -456,6 +466,8 @@ interface MenuProps {
   grade: Grade;
   mode: Mode;
   setMode: (m: Mode) => void;
+  diff: MemDiff;
+  setDiff: (d: MemDiff) => void;
   settings: Settings;
   account: StudentAccount | null;
   onChange: (p: Partial<Settings>) => void;
@@ -465,12 +477,15 @@ interface MenuProps {
   onHome: () => void;
 }
 
-function MenuScreen({ view, setView, grade, mode, setMode, settings, account, onChange, onStart, startPage, setStartPage, onHome }: MenuProps) {
-  const [scores, setScores] = useState<MemoryScore[]>(() => loadMemoryScores(mode));
+function MenuScreen({ view, setView, grade, mode, setMode, diff, setDiff, settings, account, onChange, onStart, startPage, setStartPage, onHome }: MenuProps) {
   const [sMode, setSMode] = useState<Mode>(mode);
+  const [sDiff, setSDiff] = useState<MemDiff>(diff);
+  const sBoard = memBoard(sMode, sDiff);
+  const [scores, setScores] = useState<MemoryScore[]>(() => loadMemoryScores(sBoard));
   useEffect(() => {
-    setScores(loadMemoryScores(sMode));
-  }, [sMode, view]);
+    setScores(loadMemoryScores(sBoard));
+  }, [sBoard, view]);
+  const board = memBoard(mode, diff);
 
   if (view !== 'main') {
     const titles = { howto: 'Comment jouer', scores: 'Scores', settings: 'Réglages' } as const;
@@ -486,7 +501,7 @@ function MenuScreen({ view, setView, grade, mode, setMode, settings, account, on
           </li>
           <li className="howto">
             <kbd className="kbd">♥</kbd>
-            <span>3 vies&nbsp;: une erreur en coûte une, puis tu réessaies. Une page sans erreur en rend une&nbsp;! Bats ton propre record.</span>
+            <span>Des vies&nbsp;: une erreur en coûte une, puis tu réessaies (5 en Apprenti, 3 sinon). Une page sans erreur en rend une&nbsp;! Bats ton propre record.</span>
           </li>
           <li className="howto howto-opt">
             <kbd className="kbd kbd-sym">← ↑ ↓ →</kbd>
@@ -508,14 +523,21 @@ function MenuScreen({ view, setView, grade, mode, setMode, settings, account, on
               </button>
             ))}
           </div>
+          <div className="seg mb-2" role="tablist" aria-label="Difficulté">
+            {MEM_DIFFS.map((d) => (
+              <button key={d.id} type="button" role="tab" aria-selected={sDiff === d.id} className="seg-b" onClick={() => setSDiff(d.id)}>
+                {d.label}
+              </button>
+            ))}
+          </div>
           <LocalTable scores={scores} limit={6} mode={sMode} />
-          {account && <Board account={account} mode={sMode} refreshKey="menu" />}
+          {account && <Board account={account} board={sBoard} refreshKey="menu" />}
           {scores.length > 0 && (
             <button
               type="button"
               className="btn btn-ghost mt-3"
               onClick={() => {
-                if (window.confirm('Effacer les scores de cet appareil pour ce mode ?')) setScores(clearMemoryScores(sMode));
+                if (window.confirm('Effacer les scores de cet appareil pour ce mode ?')) setScores(clearMemoryScores(sBoard));
               }}
             >
               Effacer les scores
@@ -615,11 +637,20 @@ function MenuScreen({ view, setView, grade, mode, setMode, settings, account, on
               />
             </div>
           )}
+          <h2 className="subhead mt-[var(--sp)]">Ta difficulté</h2>
+          <div className="seg mt-1" role="radiogroup" aria-label="Difficulté">
+            {MEM_DIFFS.map((d) => (
+              <button key={d.id} type="button" role="radio" aria-checked={diff === d.id} className="seg-b" onClick={() => setDiff(d.id)}>
+                {d.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-[14px] leading-snug text-ink/75">{MEM_DIFFS.find((d) => d.id === diff)?.hint}</p>
           <h2 className="subhead mt-[var(--sp)]">Choisis ton jeu</h2>
           <div className="games games-levels" data-n="2">
             {MODES.map((m) => {
-              const best = loadMemoryScores(m.id)[0]?.score;
-              const stamps = loadProgress(m.id).stamps;
+              const best = loadMemoryScores(memBoard(m.id, diff))[0]?.score;
+              const stamps = loadProgress(memBoard(m.id, diff)).stamps;
               return (
                 <button
                   key={m.id}
@@ -639,16 +670,16 @@ function MenuScreen({ view, setView, grade, mode, setMode, settings, account, on
               );
             })}
           </div>
-          {loadProgress(mode).stamps > 0 && (
+          {loadProgress(board).stamps > 0 && (
             <div className="tip-opt mt-2 flex flex-wrap items-center gap-2" role="group" aria-label="Page de départ">
               <span className="subhead">Départ</span>
               <div className="seg">
-                {Array.from({ length: Math.min(PAGES, loadProgress(mode).stamps + 1) }, (_, k) => (
+                {Array.from({ length: Math.min(PAGES, loadProgress(board).stamps + 1) }, (_, k) => (
                   <button
                     key={k}
                     type="button"
                     className="seg-b"
-                    aria-pressed={Math.min(startPage, loadProgress(mode).stamps) === k}
+                    aria-pressed={Math.min(startPage, loadProgress(board).stamps) === k}
                     onClick={() => setStartPage(k)}
                   >
                     {k === 0 ? 'Début' : `Page ${k + 1}`}
@@ -699,7 +730,8 @@ function LocalTable({ scores, limit, highlightId, mode }: { scores: MemoryScore[
   );
 }
 
-function Board({ account, mode, refreshKey }: { account: StudentAccount; mode: Mode; refreshKey: string }) {
+function Board({ account, board, refreshKey }: { account: StudentAccount; board: MemBoard; refreshKey: string }) {
+  const mode = boardMode(board);
   const [scope, setScope] = useState<Scope>('class');
   const [rows, setRows] = useState<BoardRow[] | null>(null);
   const [err, setErr] = useState('');
@@ -708,13 +740,13 @@ function Board({ account, mode, refreshKey }: { account: StudentAccount; mode: M
     let alive = true;
     setRows(null);
     setErr('');
-    fetchBoard(account.token, 'memory', mode, scope, 5)
+    fetchBoard(account.token, 'memory', board, scope, 5)
       .then((r) => alive && setRows(r))
       .catch((e) => alive && setErr(explain(e)));
     return () => {
       alive = false;
     };
-  }, [account.token, mode, scope, refreshKey]);
+  }, [account.token, board, scope, refreshKey]);
   return (
     <div className="mt-3">
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -803,7 +835,7 @@ function OverScreen({ run, account, cloud, onRestart, onMenu, onHome }: OverProp
     const t = window.setTimeout(() => setArmed(true), 550);
     return () => window.clearTimeout(t);
   }, []);
-  const scores = loadMemoryScores(r.mode);
+  const scores = loadMemoryScores(memBoard(r.mode, r.diff));
   const total = r.correct + r.wrong;
   const title = r.won ? 'Cahier terminé !' : run.record ? 'Nouveau record !' : 'Plus de vies, bien essayé !';
 
@@ -812,7 +844,9 @@ function OverScreen({ run, account, cloud, onRestart, onMenu, onHome }: OverProp
       <section className="card card-game card-cover w-full max-w-[600px]" role="dialog" aria-modal="true" aria-labelledby="over-title">
         <div className="card-top">
           <BackButton onClick={onHome} />
-          <span className="subhead">{modeLabel(r.mode)}</span>
+          <span className="subhead">
+            {modeLabel(r.mode)} · {diffLabel(r.diff)}
+          </span>
         </div>
         <h2 id="over-title" className="title-sm">
           {title}
@@ -875,7 +909,7 @@ function OverScreen({ run, account, cloud, onRestart, onMenu, onHome }: OverProp
         ) : (
           <div className="mt-2">
             <LocalTable scores={scores} limit={rows} highlightId={run.id} mode={r.mode} />
-            {account && <Board account={account} mode={r.mode} refreshKey={cloud} />}
+            {account && <Board account={account} board={memBoard(r.mode, r.diff)} refreshKey={cloud} />}
           </div>
         )}
 

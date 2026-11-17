@@ -19,7 +19,8 @@ test('jeux : seuls ceux qui conviennent à la classe apparaissent', () => {
   assert.equal(isAvailable('typing', 'cp'), false);
   assert.equal(isAvailable('math', 'cp'), true);
   assert.equal(isAvailable('math', 'cm2'), true);
-  assert.equal(isAvailable('spelling', 'ce1'), false);
+  assert.equal(isAvailable('spelling', 'cp'), false);
+  assert.equal(isAvailable('spelling', 'ce1'), true);
   for (const list of Object.values(AVAILABLE)) assert.ok(list.length > 0);
 });
 

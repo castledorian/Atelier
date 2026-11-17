@@ -105,3 +105,35 @@ test('points : parfait 15 + bonus de série ; erreur sans pénalité négative',
   assert.equal(isFault({ tapFirst: false, fixTries: 1, hint: true }), false);
   assert.equal(isFault({ tapFirst: true, fixTries: 2, hint: false }), true);
 });
+
+import { MAX_WORDS, hpFor, isTyped, wordCount } from '../src/game/spelling/engine';
+
+test('CE1 et CE2 : phrases courtes et simples, de toutes les règles, en nombre suffisant', () => {
+  for (const [lv, min] of [['ce1', 60], ['ce2', 100]] as const) {
+    const items = itemsFor(lv);
+    assert.ok(items.length >= min, `${lv} : ${items.length} phrases`);
+    assert.ok(items.every((i) => i.level === 1 && wordCount(i) <= (MAX_WORDS[lv] as number)), `${lv} : phrase trop longue ou de niveau 2`);
+    for (const rule of ['doublon', 'jumeaux', 'accordeur'] as const) assert.ok(items.some((i) => i.rule === rule), `${lv} : pas de règle ${rule}`);
+  }
+  assert.ok(itemsFor('ce1').length < itemsFor('ce2').length && itemsFor('ce2').length < itemsFor('cm1').length);
+});
+
+test('CE1 à CM2 : une partie de dix phrases se compose sans répétition', () => {
+  for (const lv of ['ce1', 'ce2', 'cm1', 'cm2'] as const) {
+    const used = new Set<string>();
+    const last: boolean[] = [];
+    for (let a = 0; a < 10; a++) {
+      const { item } = nextItem(lv, a, last, [], used, Math.random);
+      assert.ok(!used.has(item.id), `${lv} : phrase répétée`);
+      used.add(item.id);
+      last.push(true);
+    }
+  }
+});
+
+test('Expert : tapé en CM1/CM2 seulement ; ailleurs quatre propositions et une vie de moins', () => {
+  assert.ok(isTyped('expert', 'cm1') && isTyped('expert', 'cm2'));
+  assert.ok(!isTyped('expert', 'ce1') && !isTyped('expert', 'ce2') && !isTyped('standard', 'cm2'));
+  assert.ok(hpFor('expert', 'ce2') < hpFor('standard', 'ce2'));
+  for (const lv of ['ce1', 'ce2', 'cm1', 'cm2'] as const) assert.ok(hpFor('apprenti', lv) > hpFor('standard', lv) && hpFor('standard', lv) > hpFor('expert', lv), lv);
+});

@@ -10,10 +10,50 @@
 import type { Grade } from '../grade';
 
 export type Mode = 'suite' | 'cases';
+/** Difficulté (même vocabulaire que Frappe ! et Course à l'encre). */
+export type MemDiff = 'apprenti' | 'standard' | 'expert';
 export type Rng = () => number;
 
 export const PAGES = 6;
 export const MAX_LIVES = 3;
+
+export const MEM_DIFFS: Array<{ id: MemDiff; label: string; hint: string }> = [
+  { id: 'apprenti', label: 'Apprenti', hint: '5 vies, tout va plus lentement et les taches restent plus longtemps : pour découvrir le jeu.' },
+  { id: 'standard', label: 'Standard', hint: '3 vies : le rythme de référence pour la classe.' },
+  { id: 'expert', label: 'Expert', hint: 'On commence par une suite de 3, ça va plus vite et il y a plus de taches : pour les mémoires de lynx.' },
+];
+export const isMemDiff = (v: unknown): v is MemDiff => v === 'apprenti' || v === 'standard' || v === 'expert';
+
+/**
+ * Réglage de chaque difficulté, appliqué en plus de la classe (qui règle déjà la cadence et la taille des grilles).
+ * Valeurs réglées par simulation d'élèves fragiles, moyens et à l'aise de chaque classe : Apprenti = parties longues
+ * et rassurantes (une dizaine de manches), Standard = référence, Expert = départ à 3 et rythme serré.
+ */
+export interface MemDiffTune {
+  /** vies au départ (et plafond de vies) */
+  lives: number;
+  /** multiplie la durée entre deux taches de la suite */
+  step: number;
+  /** multiplie le temps d'observation des cases */
+  show: number;
+  /** multiplie le nombre de taches à retrouver (Les Cases) */
+  count: number;
+  /** manche de départ de La Suite (2 = on commence par une suite de 3) */
+  start: number;
+}
+export const MEMORY_DIFF: Record<MemDiff, MemDiffTune> = {
+  apprenti: { lives: 5, step: 1.3, show: 1.35, count: 0.85, start: 0 },
+  standard: { lives: 3, step: 1, show: 1, count: 1, start: 0 },
+  expert: { lives: 3, step: 0.85, show: 0.8, count: 1.15, start: 2 },
+};
+
+/** Clé d'un classement : « suite » = Standard (comme avant l'ajout des difficultés), « suite-apprenti », « cases-expert »… */
+export type MemBoard = Mode | `${Mode}-apprenti` | `${Mode}-expert`;
+export const memBoard = (mode: Mode, diff: MemDiff): MemBoard => (diff === 'standard' ? mode : `${mode}-${diff}`);
+
+/** Première manche d'une partie : le début de la page choisie, ou plus loin en Expert (La Suite). */
+export const firstRound = (mode: Mode, startPage: number, diff: MemDiff) =>
+  Math.max(startPage * perPage(mode), mode === 'suite' ? MEMORY_DIFF[diff].start : 0);
 export const SUITE_PER_PAGE = 5;
 export const CASES_PER_PAGE = 4;
 
@@ -63,11 +103,11 @@ export const MEMORY_TUNE: Record<Grade, MemoryTune> = {
 };
 
 /** Côté de la grille et nombre de taches à la manche n, pour une classe. */
-export function casesSpec(n: number, grade: Grade = 'cm1'): { size: number; count: number } {
+export function casesSpec(n: number, grade: Grade = 'cm1', diff: MemDiff = 'standard'): { size: number; count: number } {
   const i = Math.min(n, CASES_TOTAL - 1);
   const t = MEMORY_TUNE[grade];
   const size = Math.min(CASES_SIZE[i], t.size);
-  const count = Math.min(Math.max(2, Math.round(CASES_COUNT[i] * t.count)), size * size - 2);
+  const count = Math.min(Math.max(2, Math.round(CASES_COUNT[i] * t.count * MEMORY_DIFF[diff].count)), size * size - 2);
   return { size, count };
 }
 
@@ -75,16 +115,17 @@ export function casesSpec(n: number, grade: Grade = 'cm1'): { size: number; coun
 export const suiteLen = (n: number) => n + 1;
 
 /** Durée entre deux taches de la suite (s) : très légèrement plus rapide quand la suite s'allonge. */
-export const suiteStep = (n: number, grade: Grade = 'cm1') => Math.max(0.55, 0.9 - 0.014 * n) * MEMORY_TUNE[grade].step;
+export const suiteStep = (n: number, grade: Grade = 'cm1', diff: MemDiff = 'standard') =>
+  Math.max(0.55, 0.9 - 0.014 * n) * MEMORY_TUNE[grade].step * MEMORY_DIFF[diff].step;
 
 /** Durée pendant laquelle les taches restent visibles dans Les Cases (s). */
-export const casesShow = (n: number, grade: Grade = 'cm1') => {
+export const casesShow = (n: number, grade: Grade = 'cm1', diff: MemDiff = 'standard') => {
   const t = MEMORY_TUNE[grade];
-  return Math.max(1.3, 1.0 + 0.2 * casesSpec(n, grade).count - 0.02 * n) * t.show;
+  return Math.max(1.3, 1.0 + 0.2 * casesSpec(n, grade, diff).count - 0.02 * n) * t.show * MEMORY_DIFF[diff].show;
 };
 
 /** Nombre de taches à retenir à la manche n. */
-export const spanOf = (mode: Mode, n: number, grade: Grade = 'cm1') => (mode === 'suite' ? suiteLen(n) : casesSpec(n, grade).count);
+export const spanOf = (mode: Mode, n: number, grade: Grade = 'cm1', diff: MemDiff = 'standard') => (mode === 'suite' ? suiteLen(n) : casesSpec(n, grade, diff).count);
 
 /**
  * Allonge la suite : on GARDE le début et on ajoute des taches (grille 3×3, jamais deux fois la même case de suite).
@@ -101,8 +142,8 @@ export function extendSuite(prev: number[], len: number, rng: Rng): number[] {
 }
 
 /** Cases à retrouver : toutes différentes, réparties au hasard sur la grille. */
-export function makeCases(n: number, rng: Rng, grade: Grade = 'cm1'): { size: number; cells: number[] } {
-  const { size, count } = casesSpec(n, grade);
+export function makeCases(n: number, rng: Rng, grade: Grade = 'cm1', diff: MemDiff = 'standard'): { size: number; cells: number[] } {
+  const { size, count } = casesSpec(n, grade, diff);
   const all = Array.from({ length: size * size }, (_, k) => k);
   for (let k = all.length - 1; k > 0; k--) {
     const j = Math.floor(rng() * (k + 1));

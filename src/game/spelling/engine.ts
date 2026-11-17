@@ -89,7 +89,16 @@ export const ITEMS: readonly Item[] = BANK.map(([rule, level, template, tip], n)
 
 /** Phrases disponibles pour un niveau (le CM1 n'a que le niveau 1). */
 export const itemsFor = (level: Level, rules?: readonly RuleId[]): Item[] =>
-  ITEMS.filter((i) => (level === 'cm2' || i.level === 1) && (!rules || rules.includes(i.rule)));
+  ITEMS.filter((i) => (level === 'cm2' || i.level === 1) && wordCount(i) <= (MAX_WORDS[level] ?? 99) && (!rules || rules.includes(i.rule)));
+
+/** Longueur maximale d'une phrase (en mots) pour les plus jeunes : on lit moins, on cherche mieux. Le CE1 et le CE2 piochent dans les phrases les plus courtes. */
+export const MAX_WORDS: Partial<Record<Level, number>> = { ce1: 5, ce2: 7 };
+
+/** Expert : on écrit soi-même la bonne orthographe (CM1 et CM2). Avant, Expert = quatre propositions et aucun indice. */
+export const isTyped = (diff: CourseDiff, level: Level): boolean => diff === 'expert' && (level === 'cm1' || level === 'cm2');
+
+/** Vies au départ : un cœur de plus au CE1 (la lecture demande déjà beaucoup d'attention) ; un de moins en Expert quand on ne tape pas la réponse (c'est ce qui le distingue du Standard). */
+export const hpFor = (diff: CourseDiff, level: Level): number => HP[diff] + (level === 'ce1' ? 1 : 0) - (diff === 'expert' && !isTyped(diff, level) ? 1 : 0);
 
 export function shuffle<T>(list: readonly T[], r: Rng = Math.random): T[] {
   const a = [...list];

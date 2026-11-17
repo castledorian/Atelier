@@ -90,8 +90,8 @@ test('Course : l’encre monte moins vite et pardonne plus l’erreur pour les p
   monotone('érosion', LEVEL_IDS.map((l) => LEVEL_TUNING[l].drain), 'up');
   monotone('pénalité d’erreur', LEVEL_IDS.map((l) => LEVEL_TUNING[l].wrong), 'up');
   monotone('temps de chute', LEVEL_IDS.map((l) => travelTime(l, 40)), 'down');
-  assert.equal(LEVEL_TUNING.cm1.drain, 1);
-  assert.equal(LEVEL_TUNING.cm1.wrong, 1);
+  assert.equal(LEVEL_TUNING.cm2.wrong, 1, 'le CM2 est la référence pour la pénalité d’erreur');
+  assert.ok(LEVEL_TUNING.cp.wrong < LEVEL_TUNING.cm2.wrong && LEVEL_TUNING.cp.drain < LEVEL_TUNING.cm2.drain);
 });
 
 import { BOONS, BOON_AFTER, HP, ROUNDS, offerBoons } from '../src/game/spelling/engine';
@@ -208,4 +208,36 @@ test('Chasse aux fautes : la Gomme n\'est proposée qu\'en Standard', () => {
     for (const d of ['apprenti', 'expert'] as const) assert.ok(!offerBoons(Math.random, d).some((b) => b.id === 'gomme'));
     assert.equal(new Set(offerBoons(Math.random, 'standard').map((b) => b.id)).size, 3);
   }
+});
+
+test('Mémoire : Apprenti plus lent et plus généreux, Expert plus serré — à chaque classe', () => {
+  const d = R.MEMORY_DIFF;
+  assert.ok(d.apprenti.lives > d.standard.lives && d.standard.lives >= d.expert.lives);
+  assert.ok(d.apprenti.lives <= 5 && d.standard.lives === R.MAX_LIVES);
+  for (const g of ORDER) {
+    for (const n of [0, 6, 12, 23]) {
+      assert.ok(R.suiteStep(n, g, 'apprenti') > R.suiteStep(n, g, 'standard') && R.suiteStep(n, g, 'standard') > R.suiteStep(n, g, 'expert'), `cadence ${g} ${n}`);
+      assert.ok(R.casesShow(n, g, 'apprenti') > R.casesShow(n, g, 'standard') && R.casesShow(n, g, 'standard') > R.casesShow(n, g, 'expert'), `observation ${g} ${n}`);
+      assert.ok(R.casesSpec(n, g, 'apprenti').count <= R.casesSpec(n, g, 'standard').count && R.casesSpec(n, g, 'standard').count <= R.casesSpec(n, g, 'expert').count, `taches ${g} ${n}`);
+    }
+  }
+  // Standard = comportement d'avant les difficultés
+  assert.equal(R.suiteStep(5, 'cm1'), R.suiteStep(5, 'cm1', 'standard'));
+  assert.deepEqual(R.casesSpec(10, 'cm1'), R.casesSpec(10, 'cm1', 'standard'));
+});
+
+test('Mémoire : le CP reste jouable même en Expert (grille et rythme restent doux)', () => {
+  assert.ok(R.suiteStep(0, 'cp', 'expert') >= 0.9 * 0.85 * 1.45 - 1e-9);
+  assert.ok(R.casesSpec(23, 'cp', 'expert').size <= 3);
+  assert.ok(R.casesSpec(23, 'cp', 'expert').count <= 7);
+});
+
+test('Mémoire : clés de classement et manche de départ', () => {
+  assert.equal(R.memBoard('suite', 'standard'), 'suite');
+  assert.equal(R.memBoard('cases', 'apprenti'), 'cases-apprenti');
+  assert.equal(R.memBoard('suite', 'expert'), 'suite-expert');
+  assert.equal(R.firstRound('suite', 0, 'standard'), 0);
+  assert.equal(R.firstRound('suite', 0, 'expert'), 2);
+  assert.equal(R.firstRound('cases', 0, 'expert'), 0);
+  assert.equal(R.firstRound('suite', 3, 'expert'), 15);
 });

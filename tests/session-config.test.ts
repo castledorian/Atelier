@@ -7,13 +7,15 @@ test('réglages inconnus ou abîmés : on retombe sur une partie normale', () =>
   for (const bad of [null, undefined, 'x', 42, [], {}, { diff: 'facile', level: 'cm9', mode: 'zzz', startPage: 'a' }]) {
     assert.equal(S.parseTyping(bad).diff, 'standard');
     assert.deepEqual(S.parseMath(bad), { level: 'cm1', diff: 'standard' });
-    assert.deepEqual(S.parseMemory(bad), { mode: 'suite', startPage: 0 });
+    assert.deepEqual(S.parseMemory(bad), { mode: 'suite', diff: 'standard', startPage: 0 });
   }
 });
 
 test('réglages valides conservés, bornés', () => {
   assert.deepEqual(S.parseMath({ level: 'cm2', diff: 'expert' }), { level: 'cm2', diff: 'expert' });
-  assert.deepEqual(S.parseMemory({ mode: 'cases', startPage: 3.9 }), { mode: 'cases', startPage: 3 });
+  assert.deepEqual(S.parseMemory({ mode: 'cases', startPage: 3.9 }), { mode: 'cases', diff: 'standard', startPage: 3 });
+  assert.equal(S.parseMemory({ diff: 'expert' }).diff, 'expert');
+  assert.equal(S.parseMemory({ diff: 'perso' }).diff, 'standard');
   assert.equal(S.parseMemory({ startPage: 99 }).startPage, 5);
   assert.equal(S.parseMemory({ startPage: -4 }).startPage, 0);
   assert.equal(S.parseTyping({ diff: 'perso', custom: { speed: 9999 } }).custom.speed, 160);
@@ -21,7 +23,7 @@ test('réglages valides conservés, bornés', () => {
 
 test('descriptions lisibles', () => {
   assert.deepEqual(S.describeConfig('math', { level: 'cm2', diff: 'apprenti' }), ['CM2', 'Apprenti']);
-  assert.deepEqual(S.describeConfig('memory', { mode: 'cases', startPage: 2 }), ['Les Cases', 'départ à la page 3']);
+  assert.deepEqual(S.describeConfig('memory', { mode: 'cases', startPage: 2 }), ['Les Cases', 'Standard', 'départ à la page 3']);
   assert.deepEqual(S.describeConfig('typing', { diff: 'expert' }), ['Expert']);
   assert.ok(S.describeConfig('typing', { diff: 'perso', custom: { lives: 1 } }).includes('1 vie'));
 });

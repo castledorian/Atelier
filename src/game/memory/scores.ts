@@ -1,4 +1,5 @@
-import type { Mode } from './rounds';
+import { isMemDiff } from './rounds';
+import type { MemBoard, MemDiff, Mode } from './rounds';
 
 /** Tableau des meilleurs scores de « Mémoire d'encre », gardé sur cet appareil (un classement par mode). */
 
@@ -15,14 +16,15 @@ const KEY = 'atelier.memory.scores.v1';
 const MODE_KEY = 'atelier.memory.mode.v1';
 export const MAX_MEMORY_SCORES = 10;
 
-type Store = Record<Mode, MemoryScore[]>;
+type Store = Record<string, MemoryScore[]>;
+const BOARDS: MemBoard[] = ['suite', 'suite-apprenti', 'suite-expert', 'cases', 'cases-apprenti', 'cases-expert'];
 
 function read(): Store {
-  const empty: Store = { suite: [], cases: [] };
+  const empty: Store = Object.fromEntries(BOARDS.map((b) => [b, []]));
   try {
     const v = JSON.parse(localStorage.getItem(KEY) ?? 'null');
     if (!v || typeof v !== 'object') return empty;
-    for (const m of ['suite', 'cases'] as const) {
+    for (const m of BOARDS) {
       empty[m] = Array.isArray(v[m])
         ? v[m].filter((s: MemoryScore) => s && typeof s.id === 'string' && typeof s.score === 'number' && typeof s.name === 'string')
         : [];
@@ -41,18 +43,18 @@ function write(s: Store) {
   }
 }
 
-export const loadMemoryScores = (mode: Mode): MemoryScore[] => read()[mode];
+export const loadMemoryScores = (mode: MemBoard): MemoryScore[] => read()[mode] ?? [];
 
 /** Ajoute une partie ; renvoie le tableau à jour et le rang obtenu (1 = record), ou -1 si elle n'entre pas dans le top 10. */
-export function addMemoryScore(mode: Mode, entry: MemoryScore): { scores: MemoryScore[]; rank: number } {
+export function addMemoryScore(mode: MemBoard, entry: MemoryScore): { scores: MemoryScore[]; rank: number } {
   const all = read();
-  const list = [...all[mode], entry].sort((a, b) => b.score - a.score || a.date - b.date).slice(0, MAX_MEMORY_SCORES);
+  const list = [...(all[mode] ?? []), entry].sort((a, b) => b.score - a.score || a.date - b.date).slice(0, MAX_MEMORY_SCORES);
   all[mode] = list;
   write(all);
   return { scores: list, rank: list.findIndex((s) => s.id === entry.id) + 1 || -1 };
 }
 
-export function clearMemoryScores(mode: Mode): MemoryScore[] {
+export function clearMemoryScores(mode: MemBoard): MemoryScore[] {
   const all = read();
   all[mode] = [];
   write(all);
@@ -64,6 +66,25 @@ export function loadMemoryMode(): Mode {
     return localStorage.getItem(MODE_KEY) === 'cases' ? 'cases' : 'suite';
   } catch {
     return 'suite';
+  }
+}
+
+const DIFF_KEY = 'atelier.memory.diff.v1';
+
+export function loadMemoryDiff(): MemDiff {
+  try {
+    const v = localStorage.getItem(DIFF_KEY);
+    return isMemDiff(v) ? v : 'standard';
+  } catch {
+    return 'standard';
+  }
+}
+
+export function saveMemoryDiff(d: MemDiff) {
+  try {
+    localStorage.setItem(DIFF_KEY, d);
+  } catch {
+    /* ignoré */
   }
 }
 
@@ -87,12 +108,12 @@ export interface MemoryProgress {
 
 const PKEY = 'atelier.memory.progress.v1';
 
-function readProgress(): Record<Mode, MemoryProgress> {
-  const empty: Record<Mode, MemoryProgress> = { suite: { stamps: 0, lastSpan: 0 }, cases: { stamps: 0, lastSpan: 0 } };
+function readProgress(): Record<string, MemoryProgress> {
+  const empty: Record<string, MemoryProgress> = Object.fromEntries(BOARDS.map((b) => [b, { stamps: 0, lastSpan: 0 }]));
   try {
     const v = JSON.parse(localStorage.getItem(PKEY) ?? 'null');
     if (!v || typeof v !== 'object') return empty;
-    for (const m of ['suite', 'cases'] as const) {
+    for (const m of BOARDS) {
       const x = v[m];
       if (x && typeof x.stamps === 'number' && typeof x.lastSpan === 'number') {
         empty[m] = { stamps: Math.max(0, Math.min(6, Math.floor(x.stamps))), lastSpan: Math.max(0, Math.floor(x.lastSpan)) };
@@ -104,12 +125,12 @@ function readProgress(): Record<Mode, MemoryProgress> {
   }
 }
 
-export const loadProgress = (mode: Mode): MemoryProgress => readProgress()[mode];
+export const loadProgress = (mode: MemBoard): MemoryProgress => readProgress()[mode] ?? { stamps: 0, lastSpan: 0 };
 
 /** Enregistre une partie terminée ; renvoie la progression d'AVANT et d'APRÈS (pour féliciter d'un nouveau tampon). */
-export function recordProgress(mode: Mode, pagesCleared: number, span: number): { before: MemoryProgress; after: MemoryProgress } {
+export function recordProgress(mode: MemBoard, pagesCleared: number, span: number): { before: MemoryProgress; after: MemoryProgress } {
   const all = readProgress();
-  const before = { ...all[mode] };
+  const before = { ...(all[mode] ?? { stamps: 0, lastSpan: 0 }) };
   const after = { stamps: Math.max(before.stamps, Math.max(0, Math.min(6, pagesCleared))), lastSpan: span };
   all[mode] = after;
   try {

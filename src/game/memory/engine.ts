@@ -2,6 +2,8 @@ import type { Sfx, SfxName } from '../audio';
 import type { Grade } from '../grade';
 import {
   MAX_LIVES,
+  MEMORY_DIFF,
+  firstRound,
   PAGES,
   PAGE_TITLES,
   casesShow,
@@ -15,7 +17,7 @@ import {
   suiteStep,
   totalOf,
 } from './rounds';
-import type { Mode } from './rounds';
+import type { MemDiff, Mode } from './rounds';
 
 /**
  * Moteur de « Mémoire d'encre » (canvas 2D).
@@ -35,6 +37,8 @@ export interface MemoryResult {
   bestStreak: number;
   /** plus longue suite (ou plus grand nombre de cases) retenue */
   maxSpan: number;
+  /** difficulté jouée */
+  diff: MemDiff;
   /** page de départ (0 = début du cahier) */
   startPage: number;
   /** par page : manches jouées (a) et ratées (e) — sert à régler la difficulté */
@@ -172,6 +176,7 @@ export class MemoryGame {
   // état de partie
   private t = 0;
   private n = 0; // manche en cours (0 à 23)
+  private diff: MemDiff = 'standard';
   private lives = MAX_LIVES;
   private score = 0;
   private streak = 0;
@@ -284,12 +289,13 @@ export class MemoryGame {
   // ───────────────────────── Commandes ─────────────────────────
 
   /** `startPage` : on peut repartir du début d'une page déjà terminée (0 à 5), pour jouer à son niveau sans tout refaire. */
-  start(mode: Mode, startPage = 0) {
+  start(mode: Mode, startPage = 0, diff: MemDiff = 'standard') {
     this.mode = mode;
+    this.diff = diff;
     this.run = 'play';
     this.reset();
     this.startPage = clamp(Math.floor(startPage), 0, PAGES - 1);
-    this.n = this.startPage * perPage(mode);
+    this.n = firstRound(mode, this.startPage, diff);
     this.tintBg();
     this.paused = false;
     this.sfx.play('start');
@@ -407,7 +413,7 @@ export class MemoryGame {
   private reset() {
     this.t = 0;
     this.n = 0;
-    this.lives = MAX_LIVES;
+    this.lives = MEMORY_DIFF[this.diff].lives;
     this.score = 0;
     this.streak = 0;
     this.best = 0;
@@ -505,11 +511,11 @@ export class MemoryGame {
       this.targets = [];
       this.rankOf = [];
     } else {
-      const r = makeCases(this.n, Math.random, this.grade);
+      const r = makeCases(this.n, Math.random, this.grade, this.diff);
       this.setGrid(r.size);
       this.targets = r.cells;
       this.seq = [];
-      this.showT = casesShow(this.n, this.grade);
+      this.showT = casesShow(this.n, this.grade, this.diff);
       this.rankOf = new Array(r.size * r.size).fill(-1);
       r.cells.forEach((c, i) => (this.rankOf[c] = i));
     }
@@ -573,7 +579,7 @@ export class MemoryGame {
   }
 
   private roundOk() {
-    const span = spanOf(this.mode, this.n, this.grade);
+    const span = spanOf(this.mode, this.n, this.grade, this.diff);
     this.correct++;
     this.pageA[stageOf(this.mode, this.n)]++;
     this.streak++;
@@ -661,7 +667,7 @@ export class MemoryGame {
         this.scorePop = 1;
         this.text(this.W / 2, this.gy + this.gs * 0.3, `${this.mode === 'suite' ? 'PALIER' : 'PAGE'} PARFAIT${this.mode === 'suite' ? '' : 'E'} ! +${PERFECT_PAGE}`, GOLD, 28);
       }
-      if (this.pageLost === 0 && this.lives < MAX_LIVES) {
+      if (this.pageLost === 0 && this.lives < MEMORY_DIFF[this.diff].lives) {
         this.lives++;
         this.text(this.W / 2, this.gy + this.gs * 0.45, '+1 VIE', RED, 26);
       }
@@ -979,6 +985,7 @@ export class MemoryGame {
         this.reported = true;
         this.cb.onOver({
           mode: this.mode,
+          diff: this.diff,
           score: this.score,
           correct: this.correct,
           wrong: this.wrong,
@@ -1042,7 +1049,7 @@ export class MemoryGame {
   /** Pièce allumée dans la suite à cet instant (−1 si aucune). */
   private litNow(): number {
     if (this.st !== 'show' || this.mode !== 'suite') return -1;
-    const step = suiteStep(this.n, this.grade);
+    const step = suiteStep(this.n, this.grade, this.diff);
     const rel = this.tt - LEAD;
     if (rel < 0) return -1;
     const idx = Math.floor(rel / step);
@@ -1080,7 +1087,7 @@ export class MemoryGame {
       if (this.tt >= this.bannerDur) this.beginRound();
     } else if (this.st === 'show') {
       if (this.mode === 'suite') {
-        const step = suiteStep(this.n, this.grade);
+        const step = suiteStep(this.n, this.grade, this.diff);
         const idx = Math.floor((this.tt - LEAD) / step);
         if (idx !== this.lastLit && idx >= 0 && idx < this.seq.length) {
           this.lastLit = idx;
@@ -1521,10 +1528,12 @@ export class MemoryGame {
       c.fillText(`×${mult}`, bx, this.compact ? hudH / 2 - 2 : hudH * 0.62);
     }
     // vies : la dernière bat comme un cœur
-    for (let i = 0; i < MAX_LIVES; i++) {
+    const maxL = MEMORY_DIFF[this.diff].lives;
+    const hz = maxL > MAX_LIVES ? 0.78 : 1; // cinq cœurs tiennent dans la même largeur que trois
+    for (let i = 0; i < maxL; i++) {
       const beat = this.lives === 1 && i === 0 ? 1 + 0.16 * Math.max(0, Math.sin(this.pulse * 7)) : 1;
-      const hs = 8 * u * beat;
-      const hx = right - (MAX_LIVES - 1 - i) * (8 * u * 2.7) - 8 * u;
+      const hs = 8 * u * beat * hz;
+      const hx = right - (maxL - 1 - i) * (8 * u * 2.7 * hz) - 8 * u * hz;
       const hy = this.compact ? hudH / 2 - 2 : hudH * 0.45;
       heart(c, hx, hy, hs);
       if (i < this.lives) {
@@ -1607,7 +1616,7 @@ export class MemoryGame {
         filled = total;
         col = GREEN;
       } else if (this.mode === 'suite') {
-        filled = clamp(Math.floor((this.tt - LEAD) / suiteStep(this.n, this.grade)) + 1, 0, total);
+        filled = clamp(Math.floor((this.tt - LEAD) / suiteStep(this.n, this.grade, this.diff)) + 1, 0, total);
         col = GOLD_D;
       }
       const sp = Math.min(clamp(qH * 0.075, 3.5, 6) * 3.3, (W - 48) / total);

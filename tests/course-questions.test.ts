@@ -57,9 +57,9 @@ test('temps de chute : décroît doucement et ne descend pas sous le plancher', 
   for (const level of LEVELS) {
     for (let n = 1; n < Q.TOTAL; n++) assert.ok(Q.travelTime(level, n) <= Q.travelTime(level, n - 1));
   }
-  assert.equal(Q.travelTime('cm1', 10_000), 6.5);
-  assert.equal(Q.travelTime('cm2', 10_000), 5.5);
-  assert.equal(Q.travelTime('cm1', 0), 10);
+  assert.equal(Q.travelTime('cm1', 10_000), 6.5 * Q.COURSE_TUNING.standard.time);
+  assert.equal(Q.travelTime('cm2', 10_000), 5.5 * Q.COURSE_TUNING.standard.time);
+  assert.equal(Q.travelTime('cm1', 0), 10 * Q.COURSE_TUNING.standard.time);
 });
 
 test('pages', () => {

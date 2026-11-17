@@ -20,7 +20,7 @@ const ALL: Grade[] = ['cp', 'ce1', 'ce2', 'cm1', 'cm2'];
 export const AVAILABLE: Record<GameKey, Grade[]> = {
   typing: ['ce1', 'ce2', 'cm1', 'cm2'],
   math: ALL,
-  spelling: ['cm1', 'cm2'],
+  spelling: ['ce1', 'ce2', 'cm1', 'cm2'],
   memory: ALL,
 };
 

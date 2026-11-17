@@ -16,7 +16,7 @@ import { newRunId } from '../game/history';
 import { parseSpelling } from '../game/sessionConfig';
 import { loadSettings, saveSettings } from '../game/storage';
 import type { Settings } from '../game/storage';
-import { BOON_AFTER, BOSS_PHASES, HINT, HP, RETRY_MAX, REVIVE_HP, ROUNDS, choicesFor, duelItems, isFault, isPerfect, isTypedRight, nextItem, offerBoons, pickFeedback, pickRetry, pointsFor, roleOf, shuffle } from '../game/spelling/engine';
+import { BOON_AFTER, BOSS_PHASES, HINT, RETRY_MAX, REVIVE_HP, ROUNDS, choicesFor, duelItems, hpFor, isFault, isPerfect, isTyped, isTypedRight, nextItem, offerBoons, pickFeedback, pickRetry, pointsFor, roleOf, shuffle } from '../game/spelling/engine';
 import type { Boon, Item, RoundOutcome } from '../game/spelling/engine';
 import { addSpellingScore, loadSpellingPrefs, loadSpellingScores, saveSpellingPrefs } from '../game/spelling/scores';
 import { enqueue, flush } from '../server/outbox';
@@ -389,8 +389,8 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
         retry: duel || sx.sess ? [] : loadRetry(),
         revived: false,
         t0: Date.now(),
-        hp: duel ? 0 : HP[diff],
-        maxHp: duel ? 0 : HP[diff],
+        hp: duel ? 0 : hpFor(diff, level),
+        maxHp: duel ? 0 : hpFor(diff, level),
         shield: 0,
         loupe: 0,
         gomme: 0,
@@ -492,7 +492,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
   const pick = (choice: string) => {
     const r = rr.current;
     if (!r || r.step !== 'fix') return;
-    const good = diff === 'expert' ? isTypedRight(r.item, choice) : choice === r.item.right;
+    const good = isTyped(diff, level) ? isTypedRight(r.item, choice) : choice === r.item.right;
     if (good) {
       upd(settle({ ...r, tries: r.tries + 1 }, r.tries + 1));
       return;
@@ -588,7 +588,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
               </button>
             ))}
           </div>
-          <p className="mt-1 text-[14px] leading-snug text-ink/75">{HINT_TEXT[diff]}</p>
+          <p className="mt-1 text-[14px] leading-snug text-ink/75">{hintText(diff, level)}</p>
           <div className="mt-[var(--sp)] flex flex-wrap gap-2">
             <Check on={settings.comfort} onClick={() => setSettings((s) => ({ ...s, comfort: !s.comfort }))}>
               Lecture confortable
@@ -662,10 +662,12 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
   );
 }
 
-const HINT_TEXT: Record<CourseDiff, string> = {
-  apprenti: '7 vies. Deux propositions seulement, l’astuce s’affiche toute seule, et ta première hésitation est gratuite.',
-  standard: '6 vies. Trois propositions. Un indice est possible, mais il rapporte moins de points.',
-  expert: '5 vies. Pas de propositions : tu écris toi-même la bonne orthographe, sans indice.',
+/** Résumé de la difficulté ; le nombre de vies vient du moteur (il dépend de la classe). */
+const hintText = (diff: CourseDiff, level: Level) => {
+  const hp = `${hpFor(diff, level)} vies.`;
+  if (diff === 'apprenti') return `${hp} Deux propositions seulement, l’astuce s’affiche toute seule, et ta première hésitation est gratuite.`;
+  if (diff === 'standard') return `${hp} Trois propositions. Un indice est possible, mais il rapporte moins de points.`;
+  return isTyped(diff, level) ? `${hp} Pas de propositions : tu écris toi-même la bonne orthographe, sans indice.` : `${hp} Quatre propositions, sans indice : à toi de bien lire.`;
 };
 
 interface PlayProps {
@@ -866,7 +868,7 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
               <p className={`sp-ask${round.msg && !done ? ' sp-ask-bad' : ''}`} aria-live="polite">
                 {round.msg && !done && round.msg}
                 {!round.msg && round.step === 'tap' && 'Touche le mot qui n’est pas bien écrit.'}
-                {!round.msg && round.step === 'fix' && (diff === 'expert' ? 'Écris la bonne orthographe du mot.' : 'Choisis la bonne écriture.')}
+                {!round.msg && round.step === 'fix' && (isTyped(diff, s.level) ? 'Écris la bonne orthographe du mot.' : 'Choisis la bonne écriture.')}
                 {done && (round.lost ? 'L’encre t’a submergé… Voici la bonne phrase.' : round.revealed ? 'Il s’enfuit… mais tu as perdu des vies. Voici la bonne écriture.' : 'Ennemi vaincu !')}
               </p>
               <div className="sp-sentence" role="group" aria-label="Phrase">
@@ -908,7 +910,7 @@ function PlayView({ s, round, counter, summon, boon, hurtKey, diff, onTap, onPic
 
           <div className="sp-zone">
             <div className={`sp-layer${round.step === 'fix' ? '' : ' off'}`}>
-              {diff === 'expert' ? (
+              {isTyped(diff, s.level) ? (
                 <TypeBox key={round.item.id + round.tries} word={round.item.wrong} active={round.step === 'fix'} onSend={onPick} />
               ) : (
                 <div className="sp-choices" role="group" aria-label="Propositions">

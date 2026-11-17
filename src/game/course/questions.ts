@@ -591,9 +591,9 @@ export function makeChoices(question: Question, r: Rng = Math.random): { choices
 
 export type CourseDiff = 'apprenti' | 'standard' | 'expert';
 export const COURSE_DIFFS: Array<{ id: CourseDiff; label: string; hint: string }> = [
-  { id: 'apprenti', label: 'Apprenti', hint: 'Plus de temps, l’encre monte doucement : pour bien démarrer.' },
+  { id: 'apprenti', label: 'Apprenti', hint: 'Beaucoup de temps, l’encre monte doucement, une erreur coûte peu : pour découvrir et bien démarrer.' },
   { id: 'standard', label: 'Standard', hint: 'Le rythme de référence pour la classe.' },
-  { id: 'expert', label: 'Expert', hint: 'Peu de temps, l’encre monte vite : pour les plus rapides.' },
+  { id: 'expert', label: 'Expert', hint: 'Un peu moins de temps, l’encre monte vite et une erreur coûte cher : pour les plus rapides.' },
 ];
 
 /** Réglages de chaque difficulté (les calculs, eux, ne changent pas : ils suivent le programme du niveau). */
@@ -608,22 +608,22 @@ export interface CourseTuning {
   heal: number;
 }
 export const COURSE_TUNING: Record<CourseDiff, CourseTuning> = {
-  apprenti: { time: 1.35, drain: 0.6, wrong: 0.18, heal: 0.1 },
-  standard: { time: 1, drain: 1, wrong: 0.28, heal: 0.08 },
-  expert: { time: 0.8, drain: 1.3, wrong: 0.38, heal: 0.06 },
+  apprenti: { time: 1.6, drain: 0.58, wrong: 0.14, heal: 0.1 },
+  standard: { time: 1.2, drain: 0.86, wrong: 0.275, heal: 0.086 },
+  expert: { time: 0.95, drain: 1.17, wrong: 0.61, heal: 0.065 },
 };
 
 /**
  * Réglage par classe, appliqué en plus de la difficulté : les plus jeunes laissent moins vite l'encre monter
  * et sont moins punis d'une erreur (ils découvrent le calcul), les CM2 sont au rythme de référence ou un peu au-dessus.
- * Valeurs de départ à ajuster d'après les parties réelles (serveur/stats-equilibrage.sql).
+ * Réglées par simulation d'élèves fragiles, moyens et à l'aise de chaque classe (cibles : Apprenti = presque tous finissent le cahier, Standard = les deux tiers des élèves moyens, Expert = les plus rapides) ; à confirmer avec les parties réelles (serveur/stats-equilibrage.sql).
  */
 export const LEVEL_TUNING: Record<Level, { drain: number; wrong: number }> = {
-  cp: { drain: 0.55, wrong: 0.6 },
-  ce1: { drain: 0.7, wrong: 0.75 },
-  ce2: { drain: 0.85, wrong: 0.9 },
-  cm1: { drain: 1, wrong: 1 },
-  cm2: { drain: 1.08, wrong: 1.05 },
+  cp: { drain: 0.75, wrong: 0.88 },
+  ce1: { drain: 0.8, wrong: 0.9 },
+  ce2: { drain: 0.85, wrong: 0.94 },
+  cm1: { drain: 0.9, wrong: 0.97 },
+  cm2: { drain: 0.95, wrong: 1 },
 };
 
 export const isCourseDiff = (v: unknown): v is CourseDiff => v === 'apprenti' || v === 'standard' || v === 'expert';
