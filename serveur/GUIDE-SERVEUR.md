@@ -246,3 +246,18 @@ order by c.at desc limit 50;
 ```
 
 Si un élève très honnête apparaît par erreur (cas rare : deux appareils en même temps), dites-le moi avec les valeurs de la ligne : on desserre la borne concernée.
+
+## Espace administrateur (voir toutes les écoles, classes, élèves et journaux)
+
+**À faire une fois** : dans Supabase → SQL Editor, collez et exécutez `serveur/mise-a-jour-admin.sql` (sans danger si répété ; à exécuter après les autres mises à jour). Puis **nommez-vous administrateur** : créez d'abord un compte enseignant avec votre adresse sur le site, puis, dans le SQL Editor, exécutez cette ligne seule en remplaçant l'adresse :
+
+```sql
+insert into public.site_admins (user_id) select id from auth.users where email = 'votre@adresse.fr' on conflict do nothing;
+```
+
+Reconnectez-vous sur le site : un bouton **Administration** apparaît sur l'accueil, à côté de « Mon espace école ». Retirer l'accès : `delete from public.site_admins where user_id = (select id from auth.users where email = 'votre@adresse.fr');`
+
+**Ce que vous voyez** : chiffres clés (écoles, enseignants, classes, élèves, parties, activité des 7 derniers jours), courbe des parties sur 14 jours, liste des écoles (avec e-mails des enseignants, recherche), détail d'une école (classes, élèves avec nombre de parties, temps de jeu et dernière partie, dernières parties), journal de toutes les parties (export CSV), inscriptions d'enseignants, parties refusées par l'anti-triche, et la liste des consultations de cet espace.
+
+**Garde-fous** : réservé aux comptes de `public.site_admins` (vérifié par le serveur, pas par le site) ; **lecture seule** ; les codes d'accès des élèves ne sont **jamais** renvoyés ; chaque consultation est notée dans `private.admin_audit` (effacée après 1 an). La page « Confidentialité » du site en informe les familles et enseignants. Si vous donnez ce rôle à une autre personne, tenez-en compte dans votre registre des traitements.
+

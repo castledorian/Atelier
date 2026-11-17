@@ -20,12 +20,14 @@ interface HomeProps {
   onSessions: () => void;
   onLogin: (tab: 'student' | 'teacher') => void;
   onDashboard: () => void;
+  /** présent seulement pour l'administrateur du site */
+  onAdmin?: () => void;
   onPrivacy: () => void;
   onLogout: () => void;
   install: InstallInfo;
 }
 
-export default function Home({ student, teacher, onPlay, onSessions, onLogin, onDashboard, onPrivacy, onLogout, install }: HomeProps) {
+export default function Home({ student, teacher, onPlay, onSessions, onLogin, onDashboard, onAdmin, onPrivacy, onLogout, install }: HomeProps) {
   const online = serverEnabled();
   /** jeu dont l'extrait est ouvert (le « i » d'une carte) */
   const [preview, setPreview] = useState<PreviewGame | null>(null);
@@ -98,6 +100,11 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
               <button type="button" className="btn btn-primary" onClick={onDashboard}>
                 Mon espace école
               </button>
+              {onAdmin && (
+                <button type="button" className="btn btn-ghost" onClick={onAdmin}>
+                  Administration
+                </button>
+              )}
               <button type="button" className="link" onClick={onLogout}>
                 Se déconnecter
               </button>

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import App from './App';
 import BreakNotice from './components/BreakNotice';
 import CheatNotice from './components/CheatNotice';
@@ -6,18 +6,20 @@ import { useInstall } from './install';
 import Course from './games/Course';
 import Memory from './games/Memory';
 import Spelling from './games/Spelling';
+import Admin from './pages/Admin';
 import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Sessions from './pages/Sessions';
 import Privacy from './pages/Privacy';
+import { isAdmin } from './server/admin';
 import { serverEnabled } from './server/api';
 import { loadStudent, saveStudent, studentLogout } from './server/student';
 import { loadTeacher, saveTeacher, signOut, takeAuthHash } from './server/teacher';
 import type { TeacherSession } from './server/teacher';
 import type { SessionInfo, StudentAccount } from './server/types';
 
-type View = 'home' | 'login' | 'dashboard' | 'privacy' | 'sessions' | 'typing' | 'math' | 'memory' | 'spelling';
+type View = 'home' | 'login' | 'dashboard' | 'admin' | 'privacy' | 'sessions' | 'typing' | 'math' | 'memory' | 'spelling';
 
 // Lien reçu par email (confirmation d'inscription / mot de passe oublié) : lu une seule fois, au chargement de la page.
 const ARRIVAL = serverEnabled() ? takeAuthHash() : null;
@@ -38,6 +40,18 @@ function Pages() {
   const [recovery, setRecovery] = useState(ARRIVAL?.type === 'recovery');
   const [tab, setTab] = useState<'student' | 'teacher'>('student');
   const [view, setView] = useState<View>(ARRIVAL ? (ARRIVAL.type === 'recovery' ? 'login' : 'dashboard') : 'home');
+
+  /** le compte enseignant est aussi administrateur du site (réponse du serveur) */
+  const [admin, setAdmin] = useState(false);
+  const teacherId = teacher?.email ?? '';
+  useEffect(() => {
+    let live = true;
+    if (!teacherId) setAdmin(false);
+    else void isAdmin().then((ok) => live && setAdmin(ok));
+    return () => {
+      live = false;
+    };
+  }, [teacherId]);
 
   /** séance de classe en cours de jeu (null = jeu libre) */
   const [active, setActive] = useState<SessionInfo | null>(null);
@@ -125,6 +139,10 @@ function Pages() {
     );
   }
 
+  if (view === 'admin' && teacher && admin) {
+    return <Admin email={teacher.email} onHome={home} onSignOut={teacherLost} />;
+  }
+
   if (view === 'sessions' && student) {
     return (
       <Sessions
@@ -167,6 +185,7 @@ function Pages() {
         setView('login');
       }}
       onDashboard={() => setView('dashboard')}
+      onAdmin={admin ? () => setView('admin') : undefined}
       onPrivacy={() => setView('privacy')}
       onLogout={logout}
       install={install}

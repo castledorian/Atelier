@@ -275,7 +275,6 @@ select pg_temp.as_admin();
 select pg_temp.eq('plus aucune donnée de l''école A', (select (select count(*) from public.students where school_id=(select v::uuid from ctx where k='schoolA'))
   + (select count(*) from public.runs where school_id=(select v::uuid from ctx where k='schoolA')) + (select count(*) from public.classes where school_id=(select v::uuid from ctx where k='schoolA'))), 0::bigint);
 select pg_temp.eq('l''école B est intacte', (select count(*) from public.students where school_id=(select v::uuid from ctx where k='schoolB')), 2::bigint);
-\echo TOUS LES TESTS SQL PASSENT
 
 -- ───────────────────────── Sécurité des scores ─────────────────────────
 select pg_temp.as_admin();
@@ -302,3 +301,51 @@ select pg_temp.eq('1 h de jeu : accepté', public.submit_run((select v from ctx 
 select pg_temp.eq('50 min de plus : accepté', public.submit_run((select v from ctx where k='tok_nina'),'temps000002','math','standard','game',500,10,0,100,20,3000)->>'ok', 'true');
 select pg_temp.eq('au-delà de 2 h dans l''heure : refusé', public.submit_run((select v from ctx where k='tok_nina'),'temps000003','math','standard','game',500,10,0,100,20,600)->>'error', 'cheat');
 select pg_temp.eq('le journal est inaccessible au navigateur', has_schema_privilege('anon', 'private', 'USAGE'), false);
+
+
+-- ═══ Espace administrateur du site ═══
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+insert into ctx select 'schoolX', public.create_school('École X')::text;
+insert into ctx select 'classX', (public.create_class((select v::uuid from ctx where k='schoolX'), 'CE2 X')->>'id');
+insert into ctx select 'stuX', public.add_students((select v::uuid from ctx where k='classX'), array['Ana','Ben','Chloé','Dan'])::text;
+select pg_temp.as_admin();
+insert into ctx select 'code_ana', (select v::jsonb->0->>'access_code' from ctx where k='stuX');
+insert into auth.users (id, email) values ('cccccccc-0000-0000-0000-000000000003','proprio@atelier.fr');
+insert into public.site_admins (user_id) values ('cccccccc-0000-0000-0000-000000000003');
+
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select pg_temp.eq('un enseignant n''est pas administrateur', public.admin_check(), false);
+select pg_temp.fails($$select public.admin_overview()$$, 'forbidden');
+select pg_temp.fails($$select public.admin_logs(10)$$, 'forbidden');
+select pg_temp.fails($$select public.admin_school('$$||(select v from ctx where k='schoolB')||$$'::uuid)$$, 'forbidden');
+select pg_temp.fails($$select count(*) from public.site_admins$$, 'permission denied');
+select pg_temp.fails($$select count(*) from private.admin_audit$$, 'permission denied');
+
+select pg_temp.as_anon();
+select pg_temp.fails($$select public.admin_check()$$, 'permission denied');
+select pg_temp.fails($$select public.admin_overview()$$, 'permission denied');
+
+select pg_temp.as_admin();
+insert into ctx select 'nsch', count(*)::text from public.schools;
+select pg_temp.as_user('cccccccc-0000-0000-0000-000000000003');
+select pg_temp.eq('l''administrateur est reconnu', public.admin_check(), true);
+select pg_temp.eq('vue d''ensemble : toutes les écoles', (public.admin_overview()->'totals'->>'schools')::int, (select v::int from ctx where k='nsch'));
+select pg_temp.eq('vue d''ensemble : liste des écoles', jsonb_array_length(public.admin_overview()->'schools'), (select v::int from ctx where k='nsch'));
+select pg_temp.eq('14 jours de courbe', jsonb_array_length(public.admin_overview()->'daily'), 14);
+select pg_temp.eq('détail d''une école : ses classes', jsonb_array_length(public.admin_school((select v::uuid from ctx where k='schoolX'))->'classes'), 1);
+select pg_temp.eq('détail d''une école : ses élèves', jsonb_array_length(public.admin_school((select v::uuid from ctx where k='schoolX'))->'classes'->0->'students'), 4);
+select pg_temp.eq('détail d''une école : ses enseignants', public.admin_school((select v::uuid from ctx where k='schoolX'))->'teachers'->0->>'email', 'a@ecole-a.fr');
+select pg_temp.fails($$select public.admin_school('99999999-0000-0000-0000-000000000000'::uuid)$$, 'not_found');
+-- jamais de code d'accès, quel que soit l'appel
+select pg_temp.eq('aucun code d''accès dans le détail', (public.admin_school((select v::uuid from ctx where k='schoolX'))::text ~ 'access_code'), false);
+select pg_temp.eq('aucun code élève dans le détail', position((select v from ctx where k='code_ana') in public.admin_school((select v::uuid from ctx where k='schoolX'))::text), 0);
+select pg_temp.eq('aucun code élève dans le journal', position((select v from ctx where k='code_ana') in public.admin_logs(500)::text), 0);
+select pg_temp.eq('le journal contient les parties', jsonb_typeof(public.admin_logs(5)->'runs'), 'array');
+select pg_temp.eq('le journal contient les anomalies', (jsonb_array_length(public.admin_logs(50)->'flags') >= 1), true);
+select pg_temp.eq('le journal contient les inscriptions', (jsonb_array_length(public.admin_logs(50)->'signups') >= 3), true);
+select pg_temp.eq('limite bornée', jsonb_array_length(public.admin_logs(-5)->'runs') <= 1, true);
+select pg_temp.as_admin();
+select pg_temp.eq('chaque consultation est journalisée', (select count(*) >= 3 from private.admin_audit where admin_id = 'cccccccc-0000-0000-0000-000000000003'), true);
+select pg_temp.eq('la consultation d''une école est tracée avec sa cible', (select count(*) >= 1 from private.admin_audit where action = 'school' and target is not null), true);
+
+\echo TOUS LES TESTS SQL PASSENT

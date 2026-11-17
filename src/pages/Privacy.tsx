@@ -94,6 +94,12 @@ export default function Privacy({ onBack }: { onBack: () => void }) {
           <li>L’adresse e-mail et le mot de passe du compte (le mot de passe est protégé par le service d’identification et n’est lisible par personne).</li>
           <li>Le nom de l’école et les noms des classes.</li>
         </ul>
+        <h3 className="font-bold">Administrateur du site</h3>
+        <p>
+          Le responsable du site peut consulter, en lecture seule, la liste des écoles, des classes, des prénoms ou pseudos des élèves, leurs parties, les adresses e-mail des
+          enseignants et les parties refusées par la vérification des scores. Il ne voit <strong>jamais les codes personnels</strong> des élèves et ne peut rien modifier par cet
+          espace. Chaque consultation est enregistrée (qui, quand, quoi) pendant un an, et ces accès servent uniquement à l’assistance, à la sécurité et au bon fonctionnement du site.
+        </p>
         <h3 className="font-bold">Données techniques</h3>
         <p>
           Lors d’une connexion par code, l’adresse IP est gardée <strong>24 heures au plus</strong>, uniquement pour bloquer les essais répétés de codes. Les hébergeurs (voir
