@@ -24,6 +24,19 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.12',
+    date: '18 novembre 2026',
+    iso: '2026-11-18',
+    title: 'Fenêtres plus accessibles et connexion mieux protégée',
+    changes: [
+      { kind: 'better', text: 'Toutes les fenêtres (pause, fin de partie, avertissements) se pilotent au clavier : le focus reste dans la fenêtre, Échap la ferme et on revient là où on était.' },
+      { kind: 'better', text: 'Les onglets et les choix de réglages se parcourent avec les flèches du clavier.' },
+      { kind: 'better', text: 'La session d’un élève dure 30 jours et se prolonge tant qu’il joue : un appareil oublié se déconnecte plus tôt.' },
+      { kind: 'better', text: 'La connexion et l’espace enseignant refusent de s’ouvrir dans une page intégrée d’un autre site.' },
+      { kind: 'fix', text: 'Le site hors ligne se met à jour tout seul à chaque nouvelle version, sans manipulation.' },
+    ],
+  },
+  {
     version: '1.11',
     date: '18 novembre 2026',
     iso: '2026-11-18',

@@ -8,6 +8,7 @@
 --   2. public.server_version() : dit quelles mises à jour SQL manquent (le site affiche l'avertissement aux administrateurs).
 --   3. Inscription des enseignants sur invitation (code à donner à chaque enseignant, géré dans l'espace administrateur).
 --   4. Conservation limitée : nettoyage automatique des anciennes données d'élèves (13 mois).
+--   5. Sessions élèves de 30 jours (au lieu de 60), prolongées tant que l'élève joue.
 
 -- ───────────────────────── 1. Heure de réception des parties ─────────────────────────
 
@@ -37,6 +38,9 @@ begin
     return jsonb_build_object('error', 'invalid_data');
   end if;
   select * into v_s from public.students where id = v_sid for update;   -- deux envois simultanés ne dépassent pas les limites
+  -- la session de l'élève est prolongée tant qu'il joue (30 jours après la dernière partie envoyée)
+  update public.student_sessions set expires_at = now() + interval '30 days'
+   where token_hash = private.hash_token(p_token) and expires_at < now() + interval '15 days';
   if private.too_many_runs(v_sid) then return jsonb_build_object('error', 'rate_limited'); end if;
   if p_played_ms is not null then
     v_at := least(now(), greatest(now() - interval '30 days', to_timestamp(p_played_ms / 1000.0)));
@@ -89,6 +93,9 @@ begin
   if v_sid is null then return jsonb_build_object('error', 'invalid_session'); end if;
   if p_client_id !~ '^[A-Za-z0-9_-]{6,40}$' then return jsonb_build_object('error', 'invalid_data'); end if;
   select * into v_s from public.students where id = v_sid for update;   -- deux envois simultanés ne dépassent pas le quota
+  -- la session de l'élève est prolongée tant qu'il joue (30 jours après la dernière partie envoyée)
+  update public.student_sessions set expires_at = now() + interval '30 days'
+   where token_hash = private.hash_token(p_token) and expires_at < now() + interval '15 days';
   select * into v_x from public.class_sessions where id = p_session and class_id = v_s.class_id;
   if not found then return jsonb_build_object('error', 'unknown_session'); end if;
   if exists (select 1 from public.runs where student_id = v_sid and client_id = p_client_id) then
@@ -304,6 +311,51 @@ exception when others then
   raise notice 'pg_cron indisponible (%) : activez l''extension « pg_cron » dans Database → Extensions puis relancez ce fichier.', sqlerrm;
 end $$;
 
+-- ───────────────────────── 5. Sessions élèves plus courtes ─────────────────────────
+-- Le jeton d'un élève, gardé sur l'appareil, vaut 30 jours au lieu de 60 ; il est prolongé à chaque envoi de partie
+-- (voir ci-dessus) : un élève qui joue n'a jamais à retaper son code, un appareil oublié finit par se déconnecter.
+
+create or replace function public.student_login(p_code text) returns jsonb
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  hdr     text := nullif(current_setting('request.headers', true), '');
+  v_ip    text := coalesce(nullif(btrim(split_part(coalesce(hdr::json ->> 'x-forwarded-for', ''), ',', 1)), ''), 'local');
+  v_s     public.students%rowtype;
+  v_token text;
+begin
+  delete from private.login_attempts where at < now() - interval '1 day';
+  -- limites : 30 refus / 10 min par adresse, 1 500 refus / 10 min au total (la devinette est ainsi impraticable)
+  if (select count(*) from private.login_attempts where ip = v_ip and at > now() - interval '10 minutes') >= 30
+     or (select count(*) from private.login_attempts where at > now() - interval '10 minutes') >= 1500 then
+    return jsonb_build_object('error', 'rate_limited');
+  end if;
+
+  select * into v_s from public.students where access_code = private.norm_code(p_code);
+  if not found then
+    insert into private.login_attempts (ip) values (v_ip);
+    return jsonb_build_object('error', 'invalid_code');
+  end if;
+
+  -- on garde au plus 20 connexions par élève
+  delete from public.student_sessions
+  where student_id = v_s.id
+    and (expires_at < now() or token_hash in (
+      select token_hash from public.student_sessions where student_id = v_s.id
+      order by created_at desc offset 19));
+
+  v_token := replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');
+  insert into public.student_sessions (token_hash, student_id, expires_at)
+  values (private.hash_token(v_token), v_s.id, now() + interval '30 days');
+
+  return jsonb_build_object(
+    'token', v_token,
+    'student', jsonb_build_object('id', v_s.id, 'name', v_s.name),
+    'class',   (select jsonb_build_object('id', c.id, 'name', c.name, 'session_config', c.session_config)
+                from public.classes c where c.id = v_s.class_id),
+    'school',  (select jsonb_build_object('id', sc.id, 'name', sc.name)
+                from public.schools sc where sc.id = v_s.school_id));
+end $$;
+
 -- ───────────────────────── 2. Version du serveur ─────────────────────────
 -- Vérifie, en regardant la base elle-même, que chaque mise à jour a bien été appliquée (rien à mettre à jour à la main).
 -- Les fonctions d'envoi des parties sont lues pour s'assurer qu'elles contrôlent bien les parties (une vieille mise à jour
@@ -318,6 +370,8 @@ declare
                            where p.pronamespace = 'public'::regnamespace and p.proname = 'submit_session_run' and p.pronargs = 11), '');
   v_ov   text := coalesce((select pg_get_functiondef(p.oid) from pg_proc p
                            where p.pronamespace = 'public'::regnamespace and p.proname = 'class_overview'), '');
+  v_login text := coalesce((select pg_get_functiondef(p.oid) from pg_proc p
+                            where p.pronamespace = 'public'::regnamespace and p.proname = 'student_login'), '');
   v_cron boolean := false;
   f      jsonb;
 begin
@@ -340,6 +394,7 @@ begin
     'memoire',     v_ov like '%best_memory%',
     'invitations', to_regclass('private.invitations') is not null and to_regprocedure('public.redeem_invitation(text)') is not null,
     'nettoyage',   to_regprocedure('private.purge_old_data()') is not null,
+    'sessions',    v_login like '%30 days%' and v_run like '%student_sessions%' and v_ses like '%student_sessions%',
     'nettoyage_auto', v_cron
   );
   return jsonb_build_object(

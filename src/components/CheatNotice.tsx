@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { CHEAT_EVENT } from '../server/student';
+import { Dialog } from './Dialog';
 
 /**
  * Message affiché quand le serveur a refusé une partie impossible (score ou durée qu'aucun joueur ne peut obtenir).
@@ -21,7 +22,7 @@ export default function CheatNotice() {
 
   if (!open) return null;
   return (
-    <div className="cheat-layer" role="alertdialog" aria-modal="true" aria-labelledby="cheat-title" aria-describedby="cheat-text">
+    <Dialog as="div" className="cheat-layer" role="alertdialog" labelledBy="cheat-title" describedBy="cheat-text" onEscape={() => setOpen(false)}>
       <div className="cheat-card">
         <p className="eyebrow">Alerte de l’atelier</p>
         <h2 id="cheat-title" className="title-sm">
@@ -35,6 +36,6 @@ export default function CheatNotice() {
           Compris, je rejoue honnêtement
         </button>
       </div>
-    </div>
+    </Dialog>
   );
 }

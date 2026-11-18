@@ -60,8 +60,7 @@ npm run build    # site complet dans dist/
 À chaque publication (la CI refait `tsc`, les tests et le build) :
 
 1. Ajouter une entrée en tête de `src/content/changelog.ts` (numéro de version affiché en bas des pages).
-2. Incrémenter le cache dans `public/sw.js` (`atelier-vNN`).
-3. `npm run check`, `npm run build`, puis pousser sur `main`.
+2. `npm run check`, `npm run build`, puis pousser sur `main`. (Le cache du service worker se renouvelle tout seul : son numéro est l'empreinte de la page, calculée à la construction.)
 
 ## Confidentialité
 

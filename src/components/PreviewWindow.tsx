@@ -8,6 +8,7 @@ import { levelOf } from '../game/grade';
 import type { Grade } from '../game/grade';
 import { PREVIEWS } from './Preview';
 import type { PreviewGame, PreviewStep } from './Preview';
+import { useDialog } from './Dialog';
 
 /**
  * Fenêtre d'extrait : s'ouvre par-dessus l'accueil comme un petit onglet. En haut, le jeu joué tout seul
@@ -63,9 +64,11 @@ export default function PreviewWindow({ game, grade, onClose, onPlay }: { game: 
     sfx.play(info.steps[step].sound);
   }, [info, step, sfx]);
 
-  // Clavier : Échap ferme, Tab reste dans la fenêtre ; le focus revient au « i » à la fermeture
+  // Fenêtre modale : focus piégé, reste de la page inerte, focus rendu au « i » à la fermeture (voir Dialog.tsx)
+  useDialog(dialogRef);
+
+  // Clavier : Échap ferme, flèches ← → changent d'étape
   useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null;
     closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -76,26 +79,10 @@ export default function PreviewWindow({ game, grade, onClose, onPlay }: { game: 
       if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
         e.preventDefault();
         setStep((k) => Math.max(0, Math.min(lastRef.current, k + (e.key === 'ArrowRight' ? 1 : -1))));
-        return;
-      }
-      if (e.key !== 'Tab' || !dialogRef.current) return;
-      const items = [...dialogRef.current.querySelectorAll<HTMLElement>('button:not([disabled])')];
-      if (items.length === 0) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
       }
     };
     window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      opener?.focus?.();
-    };
+    return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
   const cur = info.steps[step];

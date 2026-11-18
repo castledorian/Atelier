@@ -187,7 +187,7 @@ begin
 
   v_token := replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');
   insert into public.student_sessions (token_hash, student_id, expires_at)
-  values (private.hash_token(v_token), v_s.id, now() + interval '60 days');
+  values (private.hash_token(v_token), v_s.id, now() + interval '30 days');
 
   return jsonb_build_object(
     'token', v_token,
@@ -581,6 +581,9 @@ begin
     return jsonb_build_object('error', 'invalid_data');
   end if;
   select * into v_s from public.students where id = v_sid for update;   -- deux envois simultanés ne dépassent pas les limites
+  -- la session de l'élève est prolongée tant qu'il joue (30 jours après la dernière partie envoyée)
+  update public.student_sessions set expires_at = now() + interval '30 days'
+   where token_hash = private.hash_token(p_token) and expires_at < now() + interval '15 days';
   if private.too_many_runs(v_sid) then return jsonb_build_object('error', 'rate_limited'); end if;
   if p_played_ms is not null then
     v_at := least(now(), greatest(now() - interval '30 days', to_timestamp(p_played_ms / 1000.0)));
@@ -633,6 +636,9 @@ begin
   if v_sid is null then return jsonb_build_object('error', 'invalid_session'); end if;
   if p_client_id !~ '^[A-Za-z0-9_-]{6,40}$' then return jsonb_build_object('error', 'invalid_data'); end if;
   select * into v_s from public.students where id = v_sid for update;   -- deux envois simultanés ne dépassent pas le quota
+  -- la session de l'élève est prolongée tant qu'il joue (30 jours après la dernière partie envoyée)
+  update public.student_sessions set expires_at = now() + interval '30 days'
+   where token_hash = private.hash_token(p_token) and expires_at < now() + interval '15 days';
   select * into v_x from public.class_sessions where id = p_session and class_id = v_s.class_id;
   if not found then return jsonb_build_object('error', 'unknown_session'); end if;
   if exists (select 1 from public.runs where student_id = v_sid and client_id = p_client_id) then
@@ -1192,6 +1198,8 @@ declare
                            where p.pronamespace = 'public'::regnamespace and p.proname = 'submit_session_run' and p.pronargs = 11), '');
   v_ov   text := coalesce((select pg_get_functiondef(p.oid) from pg_proc p
                            where p.pronamespace = 'public'::regnamespace and p.proname = 'class_overview'), '');
+  v_login text := coalesce((select pg_get_functiondef(p.oid) from pg_proc p
+                            where p.pronamespace = 'public'::regnamespace and p.proname = 'student_login'), '');
   v_cron boolean := false;
   f      jsonb;
 begin
@@ -1214,6 +1222,7 @@ begin
     'memoire',     v_ov like '%best_memory%',
     'invitations', to_regclass('private.invitations') is not null and to_regprocedure('public.redeem_invitation(text)') is not null,
     'nettoyage',   to_regprocedure('private.purge_old_data()') is not null,
+    'sessions',    v_login like '%30 days%' and v_run like '%student_sessions%' and v_ses like '%student_sessions%',
     'nettoyage_auto', v_cron
   );
   return jsonb_build_object(

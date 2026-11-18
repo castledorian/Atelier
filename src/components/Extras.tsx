@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Dialog } from './Dialog';
 import { DIFFICULTIES } from '../game/difficulty';
 import type { Difficulty } from '../game/difficulty';
 import type { RunRecord } from '../game/history';
@@ -225,7 +226,7 @@ export function Progress({ runs, loading, currentName, onBack, onDrill }: { runs
 
   return (
     <div className="overlay">
-      <section ref={fit} className="card card-game card-progress w-full" role="dialog" aria-modal="true" aria-labelledby="prog-title">
+      <Dialog innerRef={fit} className="card card-game card-progress w-full" labelledBy="prog-title">
         <div className="card-top">
           <BackButton onClick={onBack} label="Retour" autoFocus />
         </div>
@@ -331,7 +332,7 @@ export function Progress({ runs, loading, currentName, onBack, onDrill }: { runs
             </>
           )}
         </section>
-      </section>
+      </Dialog>
     </div>
   );
 }

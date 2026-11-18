@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useRovingArrows } from './components/roving';
+import { isFramed } from './server/framed';
+import FramedNotice from './pages/FramedNotice';
 import App from './App';
 import BreakNotice from './components/BreakNotice';
 import CheatNotice from './components/CheatNotice';
@@ -30,6 +33,7 @@ const ARRIVAL = serverEnabled() ? takeAuthHash() : null;
 
 /** Racine : accueil, connexion, espace enseignant et jeux. */
 export default function Shell() {
+  useRovingArrows();
   return (
     <>
       <Pages />
@@ -108,6 +112,9 @@ function Pages() {
     if (view === 'credits') return <Credits {...page} />;
     if (view === 'contact') return <Contact {...page} />;
   }
+
+  // les espaces connectés ne s'ouvrent pas dans une page intégrée (voir server/framed.ts)
+  if ((view === 'login' || view === 'dashboard' || view === 'admin') && isFramed()) return <FramedNotice onBack={home} />;
 
   if (view === 'login') {
     return (

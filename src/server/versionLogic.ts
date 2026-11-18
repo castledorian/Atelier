@@ -33,6 +33,7 @@ export const STEPS: Array<[string, Step]> = [
   ['fiabilite', { file: 'mise-a-jour-fiabilite.sql', why: 'limites d’envoi fiables, invitations, nettoyage', critical: true }],
   ['invitations', { file: 'mise-a-jour-fiabilite.sql', why: 'inscription sur invitation', critical: true }],
   ['nettoyage', { file: 'mise-a-jour-fiabilite.sql', why: 'effacement des anciennes données', critical: true }],
+  ['sessions', { file: 'mise-a-jour-fiabilite.sql', why: 'sessions élèves plus courtes', critical: false }],
 ];
 
 export interface Todo {

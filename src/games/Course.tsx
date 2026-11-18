@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Dialog } from '../components/Dialog';
 import { RotateNotice, useShortLandscape } from '../components/RotateNotice';
 import type { ReactNode } from 'react';
 import { BackButton, useFitRows } from '../components/BackButton';
@@ -478,7 +479,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
         )}
         {phase === 'pause' && (
           <div className="overlay">
-            <section className="card card-game w-full max-w-[440px]" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+            <Dialog className="card card-game w-full max-w-[440px]" labelledBy="pause-title">
               <div className="card-top">
                 <BackButton onClick={onHome} />
               </div>
@@ -502,7 +503,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
               <div className="mt-[var(--sp)] border-t-2 border-dashed border-ink/25 pt-2">
                 <SettingsRow settings={settings} onChange={change} />
               </div>
-            </section>
+            </Dialog>
           </div>
         )}
         {phase === 'over' && run && ses.sess && (
@@ -890,7 +891,7 @@ function OverScreen({ run, account, cloud, onRestart, onDrill, onDuel, onMenu, o
 
   return (
     <div className="overlay">
-      <section className="card card-game card-cover w-full max-w-[600px]" role="dialog" aria-modal="true" aria-labelledby="over-title">
+      <Dialog className="card card-game card-cover w-full max-w-[600px]" labelledBy="over-title">
         <div className="card-top">
           <BackButton onClick={onHome} />
           <span className="subhead">
@@ -985,7 +986,7 @@ function OverScreen({ run, account, cloud, onRestart, onDrill, onDuel, onMenu, o
             Menu du jeu
           </button>
         </div>
-      </section>
+      </Dialog>
     </div>
   );
 }

@@ -5,7 +5,8 @@
  * - Les autres fichiers (icônes, manifeste) : cache d'abord, mis à jour en arrière-plan.
  * - Les données des comptes (serveur) ne passent jamais par ce cache.
  */
-const CACHE = 'atelier-v52';
+// « __BUILD__ » est remplacé à la construction par l'empreinte de la page (voir scripts/sw-version.ts) : ne pas numéroter à la main.
+const CACHE = 'atelier-__BUILD__';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (event) => {

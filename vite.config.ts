@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import tailwindcss from "@tailwindcss/vite";
@@ -7,6 +7,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import type { Plugin } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
+import { stampServiceWorker } from "./scripts/sw-version";
 
 /**
  * Politique de sécurité du contenu (CSP) ajoutée à la page à la construction.
@@ -47,6 +48,25 @@ function csp(): Plugin {
   };
 }
 
+/** Donne au service worker un numéro de cache propre à chaque version du site (empreinte de index.html). */
+function swVersion(): Plugin {
+  let outDir = "dist";
+  return {
+    name: "atelier-sw-version",
+    apply: "build",
+    enforce: "post",
+    configResolved(config) {
+      outDir = path.resolve(config.root, config.build.outDir);
+    },
+    closeBundle() {
+      const page = path.join(outDir, "index.html");
+      const sw = path.join(outDir, "sw.js");
+      if (!existsSync(page) || !existsSync(sw)) return;
+      writeFileSync(sw, stampServiceWorker(readFileSync(sw, "utf8"), readFileSync(page)));
+    },
+  };
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -54,7 +74,7 @@ const __dirname = path.dirname(__filename);
 export default defineConfig({
   // chemins relatifs : le jeu fonctionne quel que soit le dossier où il est publié (GitHub Pages…)
   base: "./",
-  plugins: [react(), tailwindcss(), viteSingleFile(), csp()],
+  plugins: [react(), tailwindcss(), viteSingleFile(), csp(), swVersion()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),

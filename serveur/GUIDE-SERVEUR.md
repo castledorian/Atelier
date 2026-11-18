@@ -166,7 +166,7 @@ Une vraie application des **magasins** (App Store, Google Play) est possible plu
 **Limites actuelles à connaître**
 - N'importe qui peut créer un compte enseignant (on ne vérifie pas le métier). Chaque compte est limité à 3 écoles, 60 classes par école, 1 500 élèves par école. En cas d'abus, Supabase permet de désactiver les inscriptions ou d'ajouter un captcha (demande un petit développement).
 - Le code élève est la seule clé : il faut le garder privé comme un mot de passe. 8 caractères parmi 31 → ~850 milliards de combinaisons, avec frein sur les essais ratés. L'enseignant peut le renouveler en un clic.
-- Un élève sur un appareil partagé reste connecté 60 jours : **« Changer d'élève »** (accueil) le déconnecte.
+- Un élève sur un appareil partagé reste connecté tant qu'il joue (la session expire après 30 jours sans partie) : **« Changer d'élève »** (accueil) le déconnecte.
 - Pas encore : inviter un second enseignant dans la même école (chacun voit ses propres écoles), changement d'adresse email depuis l'interface, statistiques d'école globales.
 
 ## 12. Coûts et hébergement du site
@@ -304,6 +304,6 @@ Reconnectez-vous sur le site : un bouton **Administration** apparaît sur l'accu
 
 1. Ouvrir `src/content/changelog.ts` et ajouter une entrée **en tête** de `RELEASES` (version, date, titre, changements « Nouveau / Amélioré / Corrigé »).
 2. Le numéro de cette première entrée s'affiche tout seul en bas de chaque page, et un repère « nouveau » apparaît à l'accueil jusqu'à ce que la page soit lue sur l'appareil.
-3. Augmenter aussi le numéro du cache dans `public/sw.js` (`atelier-vNN`) pour que les appareils récupèrent la nouvelle version.
+3. Rien d'autre à faire pour que les appareils récupèrent la nouvelle version : le numéro du cache du service worker est calculé à la construction (empreinte de la page, voir `scripts/sw-version.ts`).
 
 Les adresses de contact et le nom de l'éditeur affichés dans les pages Contact, Crédits et Confidentialité viennent de `src/legal.ts`. Les bibliothèques citées dans « Crédits et licences » sont listées dans `src/content/credits.ts` : à mettre à jour quand une dépendance est ajoutée.

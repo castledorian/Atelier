@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { Dialog } from './Dialog';
 import type { ReactNode } from 'react';
 import { GAME_NAMES, describeConfig } from '../game/sessionConfig';
 import { enqueue } from '../server/outbox';
@@ -128,7 +129,7 @@ export function SessionOver({
   const best = session.best_score ?? score;
   return (
     <div className="overlay">
-      <section className="card card-game card-cover w-full max-w-[560px]" role="dialog" aria-modal="true" aria-labelledby="sover-title">
+      <Dialog className="card card-game card-cover w-full max-w-[560px]" labelledBy="sover-title">
         <div className="card-top">
           <BackButton label="Mes séances" onClick={onBack} />
           <span className="subhead">{session.title}</span>
@@ -164,7 +165,7 @@ export function SessionOver({
             Retour aux séances
           </button>
         </div>
-      </section>
+      </Dialog>
     </div>
   );
 }

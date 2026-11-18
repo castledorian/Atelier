@@ -495,4 +495,17 @@ select pg_temp.as_anon();
 select pg_temp.fails($q$select private.purge_old_data()$q$, 'permission denied');
 select pg_temp.as_admin();
 
+
+-- Sessions élèves : 30 jours, prolongées tant que l'élève joue
+select pg_temp.as_admin();
+select pg_temp.eq('session élève : 30 jours', (select expires_at between now() + interval '29 days' and now() + interval '31 days' from public.student_sessions where token_hash = private.hash_token((select v from ctx where k='tok_nina'))), true);
+update public.student_sessions set expires_at = now() + interval '5 days' where token_hash = private.hash_token((select v from ctx where k='tok_nina'));
+select pg_temp.as_anon();
+select public.submit_run((select v from ctx where k='tok_nina'),'renew000001','typing','standard','game',100,1,30,95,40,60);
+select pg_temp.as_admin();
+select pg_temp.eq('session prolongée par l''envoi d''une partie', (select expires_at > now() + interval '29 days' from public.student_sessions where token_hash = private.hash_token((select v from ctx where k='tok_nina'))), true);
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select pg_temp.eq('server_version : sessions de 30 jours détectées', (public.server_version()->'features'->>'sessions'), 'true');
+select pg_temp.as_admin();
+
 \echo TOUS LES TESTS SQL PASSENT

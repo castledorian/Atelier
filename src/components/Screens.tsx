@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Dialog } from './Dialog';
 import type { ReactNode } from 'react';
 import { weakLetters } from '../game/analysis';
 import { DIFFICULTIES, DIFFICULTIES_ORDER } from '../game/difficulty';
@@ -519,7 +520,7 @@ interface PauseProps {
 export function Pause({ settings, kbOn, onResume, onRestart, onMenu, onHome, onChange }: PauseProps) {
   return (
     <div className="overlay">
-      <section className="card card-game w-full max-w-[440px]" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+      <Dialog className="card card-game w-full max-w-[440px]" labelledBy="pause-title">
         <div className="card-top">
           <BackButton onClick={onHome} />
         </div>
@@ -543,7 +544,7 @@ export function Pause({ settings, kbOn, onResume, onRestart, onMenu, onHome, onC
         <div className="mt-[var(--sp)] border-t-2 border-dashed border-ink/25 pt-2">
           <Options settings={settings} kbOn={kbOn} onChange={onChange} />
         </div>
-      </section>
+      </Dialog>
     </div>
   );
 }
@@ -695,7 +696,7 @@ export function GameOver({
 
   return (
     <div className="overlay">
-      <section className="card card-game card-over relative w-full" role="dialog" aria-modal="true" aria-labelledby="over-title">
+      <Dialog className="card card-game card-over relative w-full" labelledBy="over-title">
         <div className="over-a">
           <div className="card-top">
             <BackButton onClick={() => armed && onHome()} />
@@ -762,7 +763,7 @@ export function GameOver({
             </>
           )}
         </div>
-      </section>
+      </Dialog>
     </div>
   );
 }

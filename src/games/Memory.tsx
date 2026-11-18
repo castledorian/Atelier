@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Dialog } from '../components/Dialog';
 import type { ReactNode } from 'react';
 import { BackButton, useFitRows } from '../components/BackButton';
 import { useFit } from '../components/FitCard';
@@ -387,7 +388,7 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
         )}
         {phase === 'pause' && (
           <div className="overlay">
-            <section className="card card-game w-full max-w-[440px]" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+            <Dialog className="card card-game w-full max-w-[440px]" labelledBy="pause-title">
               <div className="card-top">
                 <BackButton onClick={onHome} />
               </div>
@@ -411,7 +412,7 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
               <div className="mt-[var(--sp)] border-t-2 border-dashed border-ink/25 pt-2">
                 <SettingsRow settings={settings} onChange={change} />
               </div>
-            </section>
+            </Dialog>
           </div>
         )}
         {phase === 'over' && run && ses.sess && (
@@ -885,7 +886,7 @@ function OverScreen({ run, account, cloud, onRestart, onMenu, onHome }: OverProp
 
   return (
     <div className="overlay">
-      <section className="card card-game card-cover w-full max-w-[600px]" role="dialog" aria-modal="true" aria-labelledby="over-title">
+      <Dialog className="card card-game card-cover w-full max-w-[600px]" labelledBy="over-title">
         <div className="card-top">
           <BackButton onClick={onHome} />
           <span className="subhead">
@@ -973,7 +974,7 @@ function OverScreen({ run, account, cloud, onRestart, onMenu, onHome }: OverProp
             Menu du jeu
           </button>
         </div>
-      </section>
+      </Dialog>
     </div>
   );
 }

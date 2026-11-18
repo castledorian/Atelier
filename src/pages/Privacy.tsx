@@ -82,7 +82,7 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
             l’enseignant voit tous les essais.
           </li>
           <li>
-            Un jeton de connexion, gardé sur l’appareil. Sur le serveur, seule son empreinte est conservée (le jeton lui-même n’y est jamais lu) et il expire au bout de 60 jours.
+            Un jeton de connexion, gardé sur l’appareil. Sur le serveur, seule son empreinte est conservée (le jeton lui-même n’y est jamais lu) et il expire au bout de 30 jours, prolongés tant que l’élève joue.
           </li>
         </ul>
         <h3 className="font-bold">Statistiques anonymes pour régler la difficulté</h3>
