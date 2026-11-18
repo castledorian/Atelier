@@ -1,5 +1,5 @@
 import type { Sfx, SfxName } from '../audio';
-import { norm, plain } from './data';
+import { plain } from './data';
 import { edgeDistance, multFor, reachDistance, spreadAngles, winPoints } from './geometry';
 import { LEX_TUNE, buildRound, enemyCount, lossNote, travelTime } from './rounds';
 import type { LexDiff, LexLevel, LexWord, Rel, Round } from './rounds';
@@ -18,8 +18,6 @@ export interface LexResult {
   correct: number;
   /** manches perdues (mauvais mot, ou bonne réponse laissée passer) */
   wrong: number;
-  /** fautes de frappe (une mauvaise lettre) : elles ne font pas perdre de vie */
-  typos: number;
   /** numéro de la manche atteinte */
   wave: number;
   bestStreak: number;
@@ -33,8 +31,6 @@ export interface LexResult {
 
 export interface LexCallbacks {
   onOver: (r: LexResult) => void;
-  /** prochaine lettre à frapper sur le mot verrouillé (clavier à l'écran) */
-  onHint?: (next: string | null) => void;
   /** phrase à lire par un lecteur d'écran (début de manche, résultat) */
   onAnnounce?: (text: string) => void;
 }
@@ -45,7 +41,6 @@ type Phase = 'wait' | 'live' | 'shock' | 'rest';
 
 interface Enemy {
   w: LexWord;
-  typed: number;
   /** direction d'arrivée (radians), distance restante au centre, distance de contact */
   a: number;
   d: number;
@@ -164,7 +159,12 @@ export class LexiqueGame {
   private next: Round | null = null;
   private enemies: Enemy[] = [];
   private target: Enemy | null = null;
-  private lastHint: string | null = null;
+  private link: { e: Enemy; t: number } | null = null;
+  /** mot central saisi : le fil suit le pointeur */
+  private armed = false;
+  private drag = false;
+  private px = 0;
+  private py = 0;
   private parts: Part[] = [];
   private texts: Txt[] = [];
   private rings: Ring[] = [];
@@ -178,8 +178,6 @@ export class LexiqueGame {
   private lives = 3;
   private wins = 0;
   private losses = 0;
-  private typos = 0;
-  private roundTypos = 0;
   private roundNo = 0;
   private playTime = 0;
   private missed: LexResult['missed'] = [];
@@ -268,50 +266,101 @@ export class LexiqueGame {
     this.dirty = true;
   }
 
-  /** Lâche le mot verrouillé (touche Retour arrière). */
-  release() {
-    if (this.target) {
-      this.target.typed = 0;
-      this.target = null;
-      this.emitHint();
+  /** Le mot sous le doigt ou le pointeur (marge généreuse pour les doigts d'enfants), le plus proche du pointeur. */
+  private enemyAt(x: number, y: number): Enemy | null {
+    let best: Enemy | null = null;
+    let bd = Infinity;
+    const hh = this.fs * 0.9;
+    for (const e of this.enemies) {
+      if (e.dead || e.doomed || e.delay > 0) continue;
+      const dx = Math.abs(x - e.x);
+      const dy = Math.abs(y - e.y);
+      if (dx > e.halfW + 12 || dy > hh + 14) continue;
+      const d = dx * dx + dy * dy;
+      if (d < bd) {
+        bd = d;
+        best = e;
+      }
+    }
+    return best;
+  }
+
+  private onCore(x: number, y: number) {
+    return Math.abs(x - this.cx) <= this.coreW / 2 + 16 && Math.abs(y - this.cy) <= this.coreH / 2 + 16;
+  }
+
+  private canPoint() {
+    return !this.paused && this.mode === 'play' && this.phase === 'live' && !this.link;
+  }
+
+  /** Appui : sur le mot central on le « saisit » ; une fois saisi, un appui sur un mot qui arrive les relie. */
+  downAt(x: number, y: number) {
+    if (!this.canPoint()) return;
+    this.px = x;
+    this.py = y;
+    if (this.armed) {
+      const e = this.enemyAt(x, y);
+      if (e) this.choose(e);
+      else if (!this.onCore(x, y)) this.armed = false;
+      this.dirty = true;
+      return;
+    }
+    if (this.onCore(x, y)) {
+      this.armed = true;
+      this.drag = true;
+      this.core = 1;
+      this.snd('select');
+      this.dirty = true;
     }
   }
 
-  /** Une frappe : une lettre de plus sur le mot verrouillé. */
-  key(raw: string) {
-    if (this.paused || this.mode !== 'play' || this.phase !== 'live') return;
-    const ch = norm(raw);
-    if (ch.length !== 1) return;
-    let t = this.target;
-    if (t && (t.dead || t.doomed)) t = this.target = null;
-    // si on tape la première lettre d'un autre mot alors qu'on n'a rien tapé sur le mot verrouillé, on change de cible sans pénalité
-    if (t && t.typed === 0 && t.w.key[0] !== ch) {
-      const alt = this.findByFirst(ch);
-      if (alt) t = this.target = alt;
-    }
-    if (!t) {
-      const alt = this.findByFirst(ch);
-      if (!alt) {
-        if (this.liveCount() > 0) this.typo(null);
-        return;
-      }
-      t = this.target = alt;
-    }
-    if (t.w.key[t.typed] === ch) {
-      t.typed++;
-      t.flash = 1;
-      t.pop = 1;
-      if (t.typed >= t.w.key.length) {
-        this.target = null;
-        this.resolve(t);
-      } else {
-        this.snd('key');
-        this.spark(t.x, t.y, 2, false);
-      }
-    } else {
-      this.typo(t);
-    }
-    this.emitHint();
+  /** Déplacement : le fil suit le doigt ; le mot visé est mis en valeur. */
+  moveAt(x: number, y: number) {
+    if (!this.canPoint() || !this.armed) return;
+    this.px = x;
+    this.py = y;
+    const e = this.enemyAt(x, y);
+    if (e !== this.target) this.target = e;
+    this.dirty = true;
+  }
+
+  /** Relâchement : au-dessus d'un mot, la liaison est faite ; sinon le mot central reste saisi (on peut toucher ensuite le bon mot). */
+  upAt(x: number, y: number) {
+    if (!this.drag) return;
+    this.drag = false;
+    if (!this.canPoint()) return;
+    const e = this.enemyAt(x, y);
+    if (e) this.choose(e);
+    else if (!this.onCore(x, y)) this.armed = false;
+    this.dirty = true;
+  }
+
+  /** Au clavier : passe d'un mot au suivant (+1) ou au précédent (−1), du plus proche du centre au plus lointain. */
+  cycle(dir: 1 | -1) {
+    if (this.paused || this.mode !== 'play' || this.phase !== 'live' || this.link) return;
+    const live = this.enemies.filter((e) => !e.dead && !e.doomed && e.delay <= 0).sort((a, b) => a.d - b.d);
+    if (live.length === 0) return;
+    const i = this.target ? live.indexOf(this.target) : -1;
+    this.target = live[(i + dir + live.length) % live.length];
+    this.snd('select');
+    this.dirty = true;
+  }
+
+  /** Au clavier : relie le mot choisi au mot central (Entrée ou Espace). */
+  confirm() {
+    if (this.paused || this.mode !== 'play' || this.phase !== 'live' || this.link) return;
+    const t = this.target;
+    if (t && !t.dead && !t.doomed) this.choose(t);
+  }
+
+  private choose(e: Enemy) {
+    this.target = e;
+    this.link = { e, t: 0 };
+    this.armed = false;
+    this.drag = false;
+    e.pop = 1;
+    this.snd('attack');
+    this.spark(e.x, e.y, 4, false);
   }
 
   destroy() {
@@ -436,8 +485,6 @@ export class LexiqueGame {
     this.bestStreak = 0;
     this.wins = 0;
     this.losses = 0;
-    this.typos = 0;
-    this.roundTypos = 0;
     this.roundNo = 0;
     this.playTime = 0;
     this.missed = [];
@@ -452,7 +499,6 @@ export class LexiqueGame {
     this.slowT = 0;
     this.flash = 0;
     this.whiteFlash = 0;
-    this.lastHint = null;
     this.phase = 'wait';
     this.dirty = true;
   }
@@ -465,31 +511,6 @@ export class LexiqueGame {
     this.trauma = Math.min(1, this.trauma + (this.mode === 'demo' ? v * 0.25 : v));
   }
 
-  private emitHint() {
-    if (this.mode === 'demo' || !this.cb.onHint) return;
-    const t = this.target;
-    const next = t && !t.doomed && t.typed < t.w.key.length ? t.w.key[t.typed] : null;
-    if (next !== this.lastHint) {
-      this.lastHint = next;
-      this.cb.onHint(next);
-    }
-  }
-
-  private liveCount() {
-    let n = 0;
-    for (const e of this.enemies) if (!e.dead && !e.doomed && e.delay <= 0) n++;
-    return n;
-  }
-
-  private findByFirst(ch: string): Enemy | null {
-    let best: Enemy | null = null;
-    for (const e of this.enemies) {
-      if (e.dead || e.doomed || e.delay > 0 || e.typed !== 0 || e.w.key[0] !== ch) continue;
-      if (!best || e.d < best.d) best = e;
-    }
-    return best;
-  }
-
   // ───────────────────────── Manches ─────────────────────────
 
   /** Prépare la manche suivante : mot central, consigne, ennemis en attente d'apparition. */
@@ -498,15 +519,15 @@ export class LexiqueGame {
     this.next = null;
     this.round = rnd;
     this.roundNo++;
-    this.roundTypos = 0;
     this.measureCore();
     this.enemies = [];
     this.target = null;
+    this.link = null;
+    this.armed = false;
+    this.drag = false;
     this.phase = 'wait';
     this.timer = first ? 0.9 : 0.35;
     this.botT = 0;
-    this.lastHint = null;
-    this.emitHint();
     const words = rnd.words.map((w) => w.text).join(', ');
     this.cb.onAnnounce?.(`Manche ${this.roundNo}. ${rnd.prompt.toLowerCase()} : ${rnd.center}. Mots : ${words}.`);
     this.dirty = true;
@@ -530,7 +551,6 @@ export class LexiqueGame {
       const t = travel * rand(0.94, 1.06);
       const e: Enemy = {
         w,
-        typed: 0,
         a,
         d: d0,
         d0,
@@ -569,7 +589,7 @@ export class LexiqueGame {
     this.streak++;
     this.bestStreak = Math.max(this.bestStreak, this.streak);
     const mult = multFor(this.streak);
-    const pts = winPoints(e.w.key.length, left, this.roundTypos === 0, mult);
+    const pts = winPoints(e.w.key.length, left, true, mult);
     if (this.mode === 'play') {
       this.score += pts;
       this.wins++;
@@ -583,6 +603,7 @@ export class LexiqueGame {
     this.morph = e.w.morph ? { s: e.w.morph, t: 0 } : null;
     // onde de choc
     this.phase = 'shock';
+    this.armed = false;
     this.shockR = 0;
     this.timer = 0;
     e.doomed = true;
@@ -633,7 +654,6 @@ export class LexiqueGame {
       e.dead = true;
     }
     this.target = null;
-    this.emitHint();
     this.phase = 'rest';
     this.timer = 0;
     this.next = buildRound(this.rel, this.level, enemyCount(this.diff, this.roundNo), Math.random, this.used);
@@ -686,6 +706,15 @@ export class LexiqueGame {
 
   private updatePhase(dt: number) {
     this.timer += dt;
+    if (this.link) {
+      this.link.t += dt;
+      if (this.phase !== 'live') this.link = null;
+      else if (this.link.t >= 0.16) {
+        const e = this.link.e;
+        this.link = null;
+        if (!e.dead && !e.doomed) this.resolve(e);
+      }
+    }
     if (this.phase === 'wait') {
       if (this.timer >= (this.roundNo === 1 ? 0.9 : 0.35)) this.spawnWave();
     } else if (this.phase === 'shock') {
@@ -696,7 +725,6 @@ export class LexiqueGame {
       if (this.timer >= 0.32 && this.next && this.round !== this.next) {
         this.round = this.next;
         this.roundNo++;
-        this.roundTypos = 0;
         this.measureCore();
         this.core = 1;
         this.snd('ready');
@@ -724,7 +752,6 @@ export class LexiqueGame {
         this.round = this.next;
         this.next = null;
         this.roundNo++;
-        this.roundTypos = 0;
         this.measureCore();
         this.core = 1;
         this.phase = 'wait';
@@ -767,8 +794,7 @@ export class LexiqueGame {
           e.dead = true;
           if (e === this.target) {
             this.target = null;
-            this.emitHint();
-          }
+                  }
           this.burst(e.x, e.y, 8, false);
         }
       }
@@ -822,15 +848,6 @@ export class LexiqueGame {
       p.vy = p.vy * (1 - Math.min(1, sdt * 2.5)) + 260 * sdt;
     }
     if (this.parts.length > MAX_PARTS) this.parts.length = MAX_PARTS;
-  }
-
-  private typo(t: Enemy | null) {
-    this.typos++;
-    this.roundTypos++;
-    if (t) t.err = 1;
-    this.flash = Math.max(this.flash, 0.25);
-    this.addTrauma(0.18);
-    this.snd('error');
   }
 
   // ───────────────────────── Effets ─────────────────────────
@@ -935,24 +952,34 @@ export class LexiqueGame {
     c.globalAlpha = 1;
   }
 
-  /** Le fil qui « relie » le mot central au mot en cours de frappe : il avance à chaque lettre juste. */
+  /** Le fil qui « relie » le mot central au mot choisi : il se tend en un instant. */
   private drawLinks() {
-    const t = this.target;
-    if (!t || t.dead || t.doomed || t.delay > 0 || this.phase !== 'live') return;
+    const l = this.link;
     const c = this.ctx;
-    const p = t.typed / t.w.key.length;
-    const dx = t.x - this.cx;
-    const dy = t.y - this.cy;
+    if (!l && this.armed && this.phase === 'live') {
+      // mot central saisi : le fil suit le doigt (ou s'accroche au mot visé)
+      const t = this.target && !this.target.dead ? this.target : null;
+      c.strokeStyle = RED;
+      c.lineWidth = 3;
+      c.lineCap = 'round';
+      c.setLineDash([2, 8]);
+      c.beginPath();
+      c.moveTo(this.cx, this.cy);
+      c.lineTo(t ? t.x : this.px, t ? t.y : this.py);
+      c.stroke();
+      c.setLineDash([]);
+      return;
+    }
+    if (!l || l.e.dead || this.phase !== 'live') return;
+    const p = Math.min(1, l.t / 0.16);
     c.strokeStyle = RED;
-    c.lineWidth = 3;
+    c.lineWidth = 4;
     c.lineCap = 'round';
-    c.setLineDash([2, 7]);
-    c.globalAlpha = 0.9;
+    c.globalAlpha = 0.95;
     c.beginPath();
     c.moveTo(this.cx, this.cy);
-    c.lineTo(this.cx + dx * p, this.cy + dy * p);
+    c.lineTo(this.cx + (l.e.x - this.cx) * p, this.cy + (l.e.y - this.cy) * p);
     c.stroke();
-    c.setLineDash([]);
     c.globalAlpha = 1;
   }
 
@@ -979,17 +1006,9 @@ export class LexiqueGame {
     c.font = `700 ${this.fs}px ${F_WORD}`;
     c.textBaseline = 'middle';
     c.textAlign = 'left';
-    const full = c.measureText(text).width;
-    let x = -full / 2;
-    const done = e.typed;
-    if (done > 0) {
-      const head = text.slice(0, done);
-      c.fillStyle = RED;
-      c.fillText(head, x, 1);
-      x += c.measureText(head).width;
-    }
+    c.textAlign = 'center';
     c.fillStyle = INK;
-    c.fillText(text.slice(done), x, 1);
+    c.fillText(text, 0, 1);
     c.restore();
   }
 
@@ -1008,8 +1027,8 @@ export class LexiqueGame {
     rr(c, -w / 2 + 4, -h / 2 + 5, w, h, 12);
     c.fill();
     c.fillStyle = PAPER_HI;
-    c.strokeStyle = INK;
-    c.lineWidth = 4;
+    c.strokeStyle = this.armed ? RED : INK;
+    c.lineWidth = this.armed ? 6 : 4;
     rr(c, -w / 2, -h / 2, w, h, 12);
     c.fill();
     c.stroke();
@@ -1023,6 +1042,12 @@ export class LexiqueGame {
     c.fillStyle = RED;
     c.textBaseline = 'bottom';
     c.fillText(r.prompt, 0, -h / 2 - 6);
+    if (this.mode === 'play' && this.phase === 'live' && this.roundNo <= 2 && !this.armed) {
+      c.textBaseline = 'top';
+      c.fillStyle = 'rgba(27,25,21,.75)';
+      c.font = `${Math.round(this.fs * 0.72)}px ${F_DISP}`;
+      c.fillText('Touche ce mot, puis le bon mot', 0, h / 2 + 8);
+    }
     c.restore();
   }
 
@@ -1198,7 +1223,6 @@ export class LexiqueGame {
       score: this.score,
       correct: this.wins,
       wrong: this.losses,
-      typos: this.typos,
       wave: Math.max(1, this.wins + this.losses),
       bestStreak: this.bestStreak,
       time: this.playTime,

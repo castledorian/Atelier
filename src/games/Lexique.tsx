@@ -4,7 +4,6 @@ import { BackButton, useFitRows } from '../components/BackButton';
 import { Dialog } from '../components/Dialog';
 import { useFit } from '../components/FitCard';
 import { GameProgress } from '../components/GameProgress';
-import { Keyboard } from '../components/Keyboard';
 import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
 import { Sfx } from '../game/audio';
@@ -46,12 +45,6 @@ const diffLabel = (d: LexDiff) => LEX_DIFFS.find((x) => x.id === d)?.label ?? d;
 const boardRel = (b: LexBoard): Rel => b.split('-')[0] as Rel;
 const levelWord = (l: LexLevel) => l.toUpperCase();
 
-function detectTouch() {
-  if (typeof window === 'undefined') return false;
-  const coarse = !!window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-  return coarse && navigator.maxTouchPoints > 0;
-}
-
 interface Props {
   account: StudentAccount | null;
   onHome: () => void;
@@ -86,13 +79,10 @@ export default function Lexique({ account, onHome, onSessionLost, session, onSes
   sesRef.current = ses;
   const [run, setRun] = useState<Run | null>(null);
   const [cloud, setCloud] = useState<Cloud>('off');
-  const [hint, setHint] = useState<string | null>(null);
   const [say, setSay] = useState('');
-  const [touch, setTouch] = useState(detectTouch);
   const lost = useRef(false);
   const accountRef = useRef(account);
   accountRef.current = account;
-  const kbOn = settings.keyboard ?? touch;
   const live = useRef({ phase, rel, diff, level, settings, overAt: 0, recId: '' });
   live.current.phase = phase;
   live.current.rel = rel;
@@ -187,7 +177,7 @@ export default function Lexique({ account, onHome, onSessionLost, session, onSes
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const game = new LexiqueGame(canvas, sfx, { onOver: (r) => onOver.current(r), onHint: setHint, onAnnounce: setSay });
+    const game = new LexiqueGame(canvas, sfx, { onOver: (r) => onOver.current(r), onAnnounce: setSay });
     gameRef.current = game;
     try {
       if (localStorage.getItem('atelier.debug')) (window as unknown as { __lexique?: LexiqueGame }).__lexique = game;
@@ -207,13 +197,6 @@ export default function Lexique({ account, onHome, onSessionLost, session, onSes
     document.documentElement.dataset.text = settings.textSize;
     document.documentElement.dataset.comfort = settings.comfort ? 'on' : 'off';
   }, [settings, sfx]);
-
-  useEffect(() => {
-    if (touch) return;
-    const onTouch = () => setTouch(true);
-    window.addEventListener('touchstart', onTouch, { once: true, passive: true });
-    return () => window.removeEventListener('touchstart', onTouch);
-  }, [touch]);
 
   const change = useCallback(
     (patch: Partial<Settings>) => {
@@ -237,7 +220,6 @@ export default function Lexique({ account, onHome, onSessionLost, session, onSes
       live.current.rel = rr;
       gameRef.current?.start(rr, cfg ? cfg.level : live.current.level, d);
       setRun(null);
-      setHint(null);
       setPhase('play');
     },
     [sfx],
@@ -274,12 +256,12 @@ export default function Lexique({ account, onHome, onSessionLost, session, onSes
         if (e.key === 'Escape') {
           e.preventDefault();
           pause();
-        } else if (e.key === 'Backspace' || e.key === 'Tab') {
+        } else if (e.key === 'Tab' || e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
           e.preventDefault();
-          game.release();
-        } else if (e.key.length === 1 && /\p{L}/u.test(e.key)) {
+          game.cycle(e.key === 'ArrowLeft' || e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey) ? -1 : 1);
+        } else if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) {
           e.preventDefault();
-          if (!e.repeat) game.key(e.key);
+          game.confirm();
         }
       } else if (p === 'pause') {
         if (e.key === 'Escape' || (e.key === 'Enter' && !interactive)) {
@@ -326,21 +308,30 @@ export default function Lexique({ account, onHome, onSessionLost, session, onSes
     return () => window.removeEventListener('online', go);
   }, [studentId, token]);
 
-  const kbKey = useCallback(
-    (ch: string) => {
-      sfx.unlock();
-      gameRef.current?.key(ch);
-      if (live.current.settings.shake) {
-        try {
-          navigator.vibrate?.(8);
-        } catch {
-          /* sans vibreur */
-        }
-      }
-    },
-    [sfx],
-  );
-  const kbRelease = useCallback(() => gameRef.current?.release(), []);
+  // Pointeur : on saisit le mot central, puis on le relie au bon mot (en glissant, ou en touchant l'un puis l'autre)
+  const pos = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    return [e.clientX - r.left, e.clientY - r.top] as const;
+  };
+  const onDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (live.current.phase !== 'play') return;
+    sfx.unlock();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignoré */
+    }
+    const [x, y] = pos(e);
+    gameRef.current?.downAt(x, y);
+  };
+  const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const [x, y] = pos(e);
+    gameRef.current?.moveAt(x, y);
+  };
+  const onUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const [x, y] = pos(e);
+    gameRef.current?.upAt(x, y);
+  };
 
   const status =
     phase === 'pause'
@@ -360,7 +351,10 @@ export default function Lexique({ account, onHome, onSessionLost, session, onSes
             className="absolute inset-0 block h-full w-full"
             style={{ touchAction: 'none' }}
             role="img"
-            aria-label="Zone de jeu : un mot au centre et des mots qui arrivent de toutes les directions. Tape le mot qui répond à la consigne affichée au-dessus du mot central."
+            aria-label="Zone de jeu : un mot au centre et des mots qui arrivent de toutes les directions. Touche le mot central, puis relie-le au mot qui répond à la consigne. Au clavier : Tab ou les flèches pour choisir un mot, Entrée pour le relier."
+            onPointerDown={onDown}
+            onPointerMove={onMove}
+            onPointerUp={onUp}
           />
           {phase === 'play' && (
             <button type="button" className="pause-btn" tabIndex={-1} aria-label="Pause" onClick={pause}>
@@ -369,8 +363,6 @@ export default function Lexique({ account, onHome, onSessionLost, session, onSes
             </button>
           )}
         </div>
-
-        {kbOn && (phase === 'play' || phase === 'pause') && <Keyboard layout={settings.layout} hint={hint} chargeReady={false} onKey={kbKey} onRelease={kbRelease} />}
 
         {phase === 'menu' && ses.sess && (
           <SessionIntro session={ses.sess} left={ses.left} onStart={() => begin(rel)} onBack={() => (onSessions ?? onHome)()} />
@@ -538,7 +530,7 @@ function MenuScreen({ view, setView, grade, level, rel, setRel, diff, setDiff, s
           <li className="howto">
             <kbd className="kbd">◎</kbd>
             <span>
-              Un <strong>mot</strong> est au centre, avec une <strong>consigne</strong> : même sens, contraire ou même famille. Des mots arrivent de partout&nbsp;: <strong>tape celui qui convient</strong>.
+              Un <strong>mot</strong> est au centre, avec une <strong>consigne</strong> : même sens, contraire ou même famille. Des mots arrivent de partout&nbsp;: <strong>touche le mot central, puis relie-le au bon mot</strong> (en glissant le doigt, ou en touchant l’un puis l’autre).
             </span>
           </li>
           <li className="howto">
@@ -547,11 +539,11 @@ function MenuScreen({ view, setView, grade, level, rel, setRel, diff, setDiff, s
           </li>
           <li className="howto">
             <kbd className="kbd">♥</kbd>
-            <span>Un mauvais mot tapé, ou la bonne réponse laissée arriver au centre, coûte une vie (5 en Apprenti, 3 sinon). Les autres mots qui arrivent au centre ne font pas de mal.</span>
+            <span>Un mauvais mot relié, ou la bonne réponse laissée arriver au centre, coûte une vie (5 en Apprenti, 3 sinon). Les autres mots qui arrivent au centre ne font pas de mal.</span>
           </li>
           <li className="howto howto-opt">
-            <kbd className="kbd">⌫</kbd>
-            <span>Une lettre fausse ne coûte pas de vie. Retour arrière ou Tab&nbsp;: lâcher le mot en cours.</span>
+            <kbd className="kbd">Tab</kbd>
+            <span>Au clavier&nbsp;: Tab ou les flèches choisissent un mot, Entrée le relie au mot central.</span>
           </li>
           <li className="howto howto-opt">
             <kbd className="kbd">Échap</kbd>
@@ -653,7 +645,7 @@ function MenuScreen({ view, setView, grade, level, rel, setRel, diff, setDiff, s
             </span>
           </h1>
           <div className="rule" aria-hidden="true" />
-          <p className="tagline menu-opt">Relie le mot du centre au bon mot avant qu’il n’arrive&nbsp;!</p>
+          <p className="tagline menu-opt">Touche le mot du centre et relie-le au bon mot avant qu’il n’arrive&nbsp;!</p>
           <div className="tools" data-n="4" role="group" aria-label="Plus d’options">
             <button type="button" className="tool" onClick={() => setView('howto')}>
               <span aria-hidden="true">?</span> Comment jouer
@@ -890,7 +882,7 @@ function OverScreen({ run, account, cloud, onRestart, onMenu, onHome }: OverProp
               {[
                 ['Manches', `${r.correct}${total ? ` / ${total}` : ''}`],
                 ['Meilleure série', String(r.bestStreak)],
-                ['Fautes de frappe', String(r.typos)],
+                ['Vies perdues', String(r.wrong)],
               ].map(([k, v], i) => (
                 <div key={k} className={`px-2 py-2 text-center ${i > 0 ? 'border-l-2 border-ink' : ''}`}>
                   <dt className="text-[14px] uppercase tracking-[0.08em] text-ink/65">{k}</dt>
