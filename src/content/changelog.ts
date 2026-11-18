@@ -24,6 +24,17 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.17',
+    date: '18 novembre 2026',
+    iso: '2026-11-18',
+    title: 'La grotte change d’ambiance',
+    changes: [
+      { kind: 'better', text: 'Une grotte sombre où l’on descend à l’échelle, lanterne en main, jusqu’au monstre d’encre éclairé. Les élèves ne voient que lui et ses points de vie, qui montent avec chaque faute de l’année.' },
+      { kind: 'new', text: 'Une ambiance sonore de caverne : un grondement lointain et de grosses gouttes d’eau qui résonnent très lentement (coupée si le son est désactivé dans les réglages).' },
+      { kind: 'better', text: 'Côté enseignant : on coche les classes qui descendent dans la grotte, au lieu de saisir les prénoms un par un.' },
+    ],
+  },
+  {
     version: '1.16',
     date: '18 novembre 2026',
     iso: '2026-11-18',

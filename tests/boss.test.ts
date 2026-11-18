@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BOSS_NAMES, INK_STEPS, POWER_STEPS, fillOf, monthsToFinal, parseNames, phaseOf, saveNames, schoolYear, stepOf } from '../src/game/boss/state';
+import { BASE_HP, BOSS_NAMES, INK_STEPS, bossHp, POWER_STEPS, fillOf, monthsToFinal, parseNames, phaseOf, saveNames, schoolYear, stepOf } from '../src/game/boss/state';
 import type { BossState } from '../src/game/boss/state';
 import { LOW, buildFight, stateAt } from '../src/game/boss/fight';
 
@@ -77,4 +77,11 @@ test('combat : la vie ne remonte jamais pour la créature', () => {
     assert.ok(b.hp <= hp, `la créature ne se soigne pas (${b.hp} après ${hp})`);
     hp = b.hp;
   }
+});
+
+test('points de vie : ils montent avec les fautes et redescendent quand on revoit une règle', () => {
+  assert.equal(bossHp(S({ ink: 0 })), BASE_HP);
+  assert.equal(bossHp(S({ ink: 37 })), BASE_HP + 37);
+  assert.ok(bossHp(S({ ink: 38 })) > bossHp(S({ ink: 37 })), 'une faute de plus = un point de vie de plus');
+  assert.equal(bossHp(S({ ink: -5 })), BASE_HP, 'jamais en dessous du départ');
 });

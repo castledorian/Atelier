@@ -139,7 +139,7 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
         </p>
         <p>
           «&nbsp;La grotte&nbsp;» (réservée aux élèves et enseignants connectés) fonctionne de la même façon&nbsp;: le nombre de fautes et de réussites des parties jouées sur l’appareil et les
-          prénoms saisis pour le jeu final restent <strong>sur l’appareil, et uniquement là</strong>. Rien n’est envoyé au serveur ; la grotte a son bouton pour tout remettre à zéro.
+          prénoms des élèves repris de leurs classes par l’enseignant pour le jeu final restent <strong>sur l’appareil, et uniquement là</strong>. Rien n’est envoyé au serveur ; la grotte a son bouton pour tout remettre à zéro.
         </p>
         <p>
           Sur un ordinateur partagé, l’élève utilise <strong>« Changer d’élève »</strong> en fin de séance. On peut tout effacer avec les réglages du navigateur (« effacer les données du

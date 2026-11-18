@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BackButton } from '../components/BackButton';
 import BossFight from '../components/BossFight';
+import CaveClasses from '../components/CaveClasses';
+import CaveScene from '../components/CaveScene';
 import { InkEnemy } from '../components/InkEnemy';
 import { Frame } from './Frame';
 import {
@@ -8,6 +10,7 @@ import {
   INK_STEPS,
   POWER_STEPS,
   addName,
+  bossHp,
   bossKind,
   bossName,
   fillOf,
@@ -16,7 +19,6 @@ import {
   loadNames,
   markSeen,
   monthsToFinal,
-  parseNames,
   phaseOf,
   powerLevel,
   resetBoss,
@@ -24,6 +26,7 @@ import {
   winBoss,
 } from '../game/boss/state';
 import type { BossPhase } from '../game/boss/state';
+import { CaveSound } from '../game/caveSound';
 import { loadSettings } from '../game/storage';
 
 /**
@@ -43,8 +46,8 @@ export default function Cave({ onBack, studentName, isTeacher = false }: { onBac
   const [boss, setBoss] = useState(() => markSeen());
   const [names, setNames] = useState<string[]>(() => (studentName ? addName(studentName) : loadNames()));
   const [fight, setFight] = useState<null | { real: boolean }>(null);
-  const [edit, setEdit] = useState(false);
   const sound = useMemo(() => loadSettings().sound, []);
+  const fighting = fight !== null;
 
   const phase: BossPhase = phaseOf(boss);
   const ink = inkLevel(boss);
@@ -59,9 +62,17 @@ export default function Cave({ onBack, studentName, isTeacher = false }: { onBac
     };
   }, [phase]);
 
+  // Ambiance sonore : grondement lointain et gouttes d'eau qui résonnent, sauf pendant le combat (qui a ses propres sons)
+  useEffect(() => {
+    if (!sound || fighting) return;
+    const cave = new CaveSound();
+    cave.start();
+    return () => cave.stop();
+  }, [sound, fighting]);
+
   if (fight) {
     return (
-      <Frame>
+      <Frame dark>
         <div className="card-top">
           <BackButton label="Quitter la grotte" onClick={() => setFight(null)} />
         </div>
@@ -79,92 +90,45 @@ export default function Cave({ onBack, studentName, isTeacher = false }: { onBac
     );
   }
 
+  const hp = bossHp(boss);
+  const depth = phase === 'early' ? 0.3 : phase === 'growing' ? 0.65 : 1;
+
   return (
-    <Frame>
+    <Frame dark>
       <div className="card-top">
         <BackButton onClick={onBack} />
       </div>
-      <p className="eyebrow">Fin d’année</p>
-      <h1 className="title-sm">La grotte</h1>
-      <div className="rule" aria-hidden="true" />
+      <h1 className="sr-only">La grotte</h1>
 
       {phase === 'won' ? (
         <Victory boss={boss} names={names} onReplay={() => setFight({ real: false })} />
       ) : (
         <>
-          <div className={`cave cave-${phase}`}>
-            <div className="cave-dark" aria-hidden="true">
-              <span className="cave-drop" />
-              <span className="cave-drop cave-drop-2" />
-            </div>
+          <CaveScene depth={depth}>
             <div className="cave-boss" style={{ ['--bsize' as string]: String(ink / 6) }}>
               <InkEnemy kind={bossKind(ink)} mood={phase === 'early' ? 'idle' : 'angry'} name={bossName(boss)} />
             </div>
-            <p className="cave-speech">
-              {phase === 'early'
-                ? '« Ne t’approche pas… Je ne suis qu’une goutte. Reviens me voir en fin d’année. »'
-                : phase === 'final'
-                  ? `« Vous voilà. Toute une année de fautes m’a nourri : je suis ${bossName(boss)}. »`
-                  : `« Je grossis à chaque faute oubliée. On m’appelle déjà ${bossName(boss)}. »`}
+          </CaveScene>
+
+          <div className="cave-vitals">
+            <p className="cave-name">{bossName(boss)}</p>
+            <p className="cave-hp" role="status">
+              <span aria-hidden="true">♥</span>
+              <span className="sr-only">Points de vie de {bossName(boss)} : </span>
+              <b>{hp.toLocaleString('fr-FR')}</b>
+              <span className="cave-hp-unit" aria-hidden="true">
+                points de vie
+              </span>
             </p>
           </div>
 
-          {phase === 'early' ? (
-            <p className="mt-3 text-[16px] leading-snug">
-              Quelque chose dort au fond de la grotte. Chaque faute laissée derrière vous le nourrit&nbsp;; chaque règle revue lui en reprend un
-              peu. Rendez-vous en <strong>juin</strong> pour le grand combat — dans {left} mois.
-            </p>
-          ) : (
-            <>
-              <Gauges boss={boss} ink={ink} power={power} />
-              <p className="mt-2 text-[15px] leading-snug">
-                Les fautes de vos parties nourrissent la créature. Vos réponses justes, et surtout les règles que vous retravaillez dans
-                «&nbsp;Mes progrès&nbsp;», rendent vos attaques plus fortes.
-              </p>
-            </>
-          )}
-
-          <section className="sec" aria-labelledby="cave-who">
-            <h2 id="cave-who" className="subhead">
-              Qui descendra dans la grotte&nbsp;?
-            </h2>
-            {names.length === 0 ? (
-              <p className="mt-1 text-[15px] leading-snug">Aucun prénom pour l’instant : la classe combattra d’un seul bloc.</p>
-            ) : (
-              <ul className="cave-names" aria-label={`${names.length} combattants`}>
-                {names.map((n) => (
-                  <li key={n}>{n}</li>
-                ))}
-              </ul>
-            )}
-            {edit ? (
-              <NameForm
-                names={names}
-                onSave={(list) => {
-                  setNames(saveNames(list));
-                  setEdit(false);
-                }}
-                onCancel={() => setEdit(false)}
-              />
-            ) : (
-              <button type="button" className="btn btn-ghost mt-2" onClick={() => setEdit(true)}>
-                {names.length ? 'Modifier la liste' : 'Écrire les prénoms'}
-              </button>
-            )}
-            <p className="sec-note">Les prénoms restent sur cet appareil : ils ne sont jamais envoyés et servent uniquement au combat final.</p>
-          </section>
-
-          <div className="mt-[var(--sp)] flex flex-wrap items-center gap-3">
-            {phase === 'final' ? (
+          {phase === 'final' && (
+            <div className="mt-[var(--sp)] flex justify-center">
               <button type="button" className="btn btn-primary" onClick={() => setFight({ real: true })}>
                 Descendre dans la grotte
               </button>
-            ) : (
-              <p className="text-[15px] leading-snug">
-                <strong>Le grand combat s’ouvre en juin.</strong> D’ici là, la créature grossit… et vous aussi.
-              </p>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Réservé au compte enseignant : les élèves ne doivent pas voir qu'un combat d'essai existe, ni qu'il est écrit d'avance */}
           {isTeacher && (
@@ -172,10 +136,12 @@ export default function Cave({ onBack, studentName, isTeacher = false }: { onBac
               <summary>Pour l’enseignant</summary>
               <div className="fold-in">
                 <p className="text-[15px] leading-snug">
-                  La créature grossit avec les fautes de toutes les parties jouées sur cet appareil, et faiblit quand les élèves retravaillent une
-                  règle. Le combat final est écrit d’avance&nbsp;: <strong>la classe gagne toujours</strong>, après un moment où tout semble perdu.
-                  Rien n’est envoyé au serveur, rien n’est relié à un élève.
+                  La créature grossit avec les fautes de toutes les parties jouées sur cet appareil (ses points de vie montent d’un point par faute) et
+                  faiblit quand les élèves retravaillent une règle. {phase === 'final' ? '' : `Le grand combat s’ouvre en juin (dans ${left} mois). `}Le combat final est
+                  écrit d’avance&nbsp;: <strong>la classe gagne toujours</strong>, après un moment où tout semble perdu. Rien n’est envoyé au serveur, rien n’est relié à un élève.
                 </p>
+                <Gauges boss={boss} ink={ink} power={power} />
+                <CaveClasses count={names.length} onNames={(list) => setNames(saveNames(list))} />
                 <div className="flex flex-wrap gap-2">
                   <button type="button" className="btn btn-ghost" onClick={() => setFight({ real: false })}>
                     Essayer le combat (sans le compter)
@@ -228,40 +194,6 @@ function Gauges({ boss, ink, power }: { boss: ReturnType<typeof loadBoss>; ink: 
         </dd>
       </div>
     </dl>
-  );
-}
-
-function NameForm({ names, onSave, onCancel }: { names: string[]; onSave: (list: string[]) => void; onCancel: () => void }) {
-  const [text, setText] = useState(names.join('\n'));
-  return (
-    <form
-      className="form mt-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSave(parseNames(text));
-      }}
-    >
-      <label className="subhead" htmlFor="cave-names">
-        Un prénom par ligne
-      </label>
-      <textarea
-        id="cave-names"
-        className="field cave-area"
-        rows={6}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder={'Léa\nTom\nSam'}
-        autoFocus
-      />
-      <div className="flex flex-wrap gap-2">
-        <button type="submit" className="btn btn-primary">
-          Enregistrer
-        </button>
-        <button type="button" className="btn btn-ghost" onClick={onCancel}>
-          Annuler
-        </button>
-      </div>
-    </form>
   );
 }
 

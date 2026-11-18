@@ -125,6 +125,11 @@ export function stepOf(value: number, steps: readonly number[]): number {
 /** Dessin de la créature selon sa taille : une goutte, puis une tache, un gros pâté, et enfin le boss. */
 export const bossKind = (level: number): number => (level <= 0 ? 2 : level <= 1 ? 0 : level <= 2 ? 4 : level <= 4 ? 7 : 6);
 
+/** Points de vie de départ de la créature (la petite goutte). */
+export const BASE_HP = 10;
+/** Points de vie affichés : chaque faute des élèves en ajoute un ; une règle retravaillée en retire (voir CALM). */
+export const bossHp = (s: Pick<BossState, 'ink'>): number => BASE_HP + Math.max(0, Math.round(s.ink));
+
 export const inkLevel = (s: BossState) => stepOf(s.ink, INK_STEPS);
 export const powerLevel = (s: BossState) => stepOf(s.power, POWER_STEPS);
 export const bossName = (s: BossState) => BOSS_NAMES[inkLevel(s)];
