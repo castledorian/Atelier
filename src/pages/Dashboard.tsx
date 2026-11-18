@@ -8,6 +8,8 @@ import { ApiError, explain } from '../server/api';
 import { GRADES } from '../game/grade';
 import * as T from '../server/teacher';
 import { Check } from '../components/Screens';
+import { ServerNotice } from '../components/ServerNotice';
+import { endOfYearReminder, RETENTION_MONTHS } from '../server/retention';
 import { SortTh, useSort, useSorted } from '../components/SortTable';
 import type { SortValue } from '../components/SortTable';
 import type { ClassRow, NewStudent, Overview, School } from '../server/types';
@@ -30,6 +32,8 @@ export default function Dashboard({ email, onHome, onSignOut, onAccountDeleted }
   const [classId, setClassId] = useState<string | null>(null);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  /** droit de créer une école (code d'invitation) : demandé seulement tant qu'aucune école n'existe */
+  const [mayCreate, setMayCreate] = useState<boolean | null>(null);
 
   /** Exécute une action serveur ; les erreurs s'affichent, une session perdue renvoie à la connexion. */
   const act = useCallback(
@@ -74,6 +78,18 @@ export default function Dashboard({ email, onHome, onSignOut, onAccountDeleted }
     if (schoolId) void loadClasses(schoolId);
   }, [schoolId, loadClasses]);
 
+  const noSchool = schools !== null && schools.length === 0;
+  useEffect(() => {
+    if (!noSchool) return;
+    let live = true;
+    void T.teacherAccess()
+      .then((a) => live && setMayCreate(a.allowed))
+      .catch(() => live && setMayCreate(true)); // on ne sait pas : le serveur refusera lui-même si besoin
+    return () => {
+      live = false;
+    };
+  }, [noSchool]);
+
   const school = schools?.find((s) => s.id === schoolId) ?? null;
   const cls = classes?.find((c) => c.id === classId) ?? null;
 
@@ -106,9 +122,12 @@ export default function Dashboard({ email, onHome, onSignOut, onAccountDeleted }
       <div className="rule" aria-hidden="true" />
 
       {err && <Notice kind="error">{err}</Notice>}
+      <ServerNotice mode="teacher" />
 
       {schools === null ? (
         <p className="mt-4 text-[15px]">Chargement…</p>
+      ) : schools.length === 0 && mayCreate === false ? (
+        <InviteForm onAccepted={() => setMayCreate(true)} act={act} />
       ) : schools.length === 0 ? (
         <NameForm
           title="Crée ton école"
@@ -216,6 +235,57 @@ function overValue(r: Overview, key: OverKey): SortValue {
 }
 
 // ───────────────────────── Formulaires simples ─────────────────────────
+
+/** Première connexion d'un enseignant : le site est ouvert sur invitation, il faut le code donné par l'administrateur. */
+function InviteForm({ onAccepted, act }: { onAccepted: () => void; act: Act }) {
+  const [code, setCode] = useState('');
+  const [bad, setBad] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const go = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setBad(false);
+    const ok = await act(() => T.redeemInvitation(code));
+    setBusy(false);
+    if (ok === true) onAccepted();
+    else if (ok === false) setBad(true);
+  };
+  return (
+    <form className="form mt-4" onSubmit={go} aria-label="Code d’invitation">
+      <h2 className="subhead">Code d’invitation</h2>
+      <p className="text-[15px] leading-snug">
+        Pendant la phase de test, la création d’une école est réservée aux enseignants invités. Saisis le code que l’administrateur du site t’a donné.
+      </p>
+      <label className="subhead" htmlFor="inv-code">
+        Ton code
+      </label>
+      <input
+        id="inv-code"
+        className="field"
+        value={code}
+        maxLength={12}
+        size={12}
+        placeholder="XXXX XXXX"
+        autoComplete="off"
+        autoCapitalize="characters"
+        spellCheck={false}
+        onChange={(e) => setCode(e.target.value.toUpperCase())}
+        aria-describedby={bad ? 'inv-bad' : undefined}
+        autoFocus
+      />
+      {bad && (
+        <p id="inv-bad" className="text-[14px]" role="alert">
+          Ce code n’est pas valable : il est faux, expiré ou déjà utilisé. Vérifie-le ou demande-en un nouveau.
+        </p>
+      )}
+      <div>
+        <button type="submit" className="btn btn-primary" disabled={busy || code.replace(/[^A-Z0-9]/gi, '').length < 8}>
+          Valider le code
+        </button>
+      </div>
+    </form>
+  );
+}
 
 function NameForm({
   title,
@@ -475,6 +545,23 @@ function ClassPanel({
     );
   };
 
+  const clearRuns = async () => {
+    if (
+      !window.confirm(
+        `Effacer tous les résultats de la classe « ${cls.name} » ?\nLes élèves et leurs codes sont gardés. Pense à exporter d’abord : l’effacement est définitif.`,
+      )
+    )
+      return;
+    const ok = await act(async () => {
+      await T.clearClassRuns(cls.id);
+      return true;
+    });
+    if (ok) {
+      setMsg('Résultats effacés. Les élèves gardent leur code.');
+      await reload();
+    }
+  };
+
   const PARTS: Array<[typeof part, string]> = [
     ['results', 'Résultats'],
     ['add', 'Ajouter des élèves'],
@@ -493,6 +580,23 @@ function ClassPanel({
       </div>
 
       {msg && <Notice kind="ok">{msg}</Notice>}
+
+      {part === 'results' && endOfYearReminder(new Date()) && (
+        <div className="notice notice-info" role="status">
+          <p>
+            <strong>Fin d’année scolaire.</strong> Exporte les résultats de la classe, puis efface-les : les élèves gardent leur code et repartent de zéro. Sans
+            action de ta part, le serveur efface lui-même les parties de plus de {RETENTION_MONTHS} mois.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button type="button" className="btn btn-ghost" onClick={exportRuns}>
+              Exporter (CSV)
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => void clearRuns()}>
+              Effacer les résultats…
+            </button>
+          </div>
+        </div>
+      )}
 
       {part === 'results' && (
         <section className="sec sec-fill" aria-labelledby="res-h">
@@ -722,6 +826,21 @@ function ClassPanel({
       )}
 
       {part === 'session' && <SessionsPanel cls={cls} act={act} />}
+
+      {part === 'danger' && (
+        <section className="sec danger-sec" aria-labelledby="clr-h">
+          <h2 id="clr-h" className="subhead">
+            Effacer les résultats de {cls.name}
+          </h2>
+          <p className="mt-2 text-[14px] leading-snug">
+            Efface les scores et l’historique de la classe, mais garde les élèves et leurs codes (idéal pour repartir de zéro à la rentrée). Pense à exporter
+            d’abord. Les parties de plus de {RETENTION_MONTHS} mois sont de toute façon effacées par le serveur.
+          </p>
+          <button type="button" className="btn btn-ghost mt-2" onClick={() => void clearRuns()}>
+            Effacer les résultats
+          </button>
+        </section>
+      )}
 
       {part === 'danger' && (
         <section className="sec danger-sec" aria-labelledby="del-h">

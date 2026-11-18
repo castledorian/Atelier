@@ -24,6 +24,18 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.11',
+    date: '18 novembre 2026',
+    iso: '2026-11-18',
+    title: 'Un serveur plus sûr et des données mieux gardées',
+    changes: [
+      { kind: 'better', text: 'Envoi des parties : les limites se comptent maintenant sur l’heure de réception par le serveur, plus sur l’heure annoncée par le navigateur.' },
+      { kind: 'new', text: 'Espace enseignant : un code d’invitation, donné par l’administrateur, est demandé pour créer une école (les enseignants déjà inscrits ne sont pas concernés).' },
+      { kind: 'new', text: 'Fin d’année : rappel dès le 15 juin pour exporter puis effacer les résultats de la classe (bouton « Effacer les résultats », les élèves gardent leur code).' },
+      { kind: 'better', text: 'Confidentialité : les parties de plus de 13 mois et les élèves sans activité depuis plus de 13 mois sont effacés automatiquement.' },
+    ],
+  },
+  {
     version: '1.10',
     date: '17 novembre 2026',
     iso: '2026-11-17',

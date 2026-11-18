@@ -78,17 +78,6 @@ export async function submitRun(token: string, r: RunPayload): Promise<{ status:
         p_mode: r.mode,
         p_kind: r.kind,
         ...(r.balance ? { p_balance: r.balance } : {}),
-      }).catch((e) => {
-        // Base pas encore mise à jour (mise-a-jour-seances.sql) : la fonction n'accepte pas le résumé d'équilibrage → on renvoie la partie sans lui.
-        if (r.balance && e instanceof ApiError && e.status === 404) {
-          return rpc<{ ok?: boolean; error?: string; attempts_used?: number }>('submit_run', {
-            ...base,
-            p_game: r.game,
-            p_mode: r.mode,
-            p_kind: r.kind,
-          });
-        }
-        throw e;
       });
   if (res.ok) return { status: 'ok', attemptsUsed: res.attempts_used };
   if (res.error === 'rate_limited') throw new ApiError('network'); // on réessaiera plus tard

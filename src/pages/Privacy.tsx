@@ -104,8 +104,8 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
         <h3 className="font-bold">Administrateur du site</h3>
         <p>
           Le responsable du site peut consulter, en lecture seule, la liste des écoles, des classes, des prénoms ou pseudos des élèves, leurs parties, les adresses e-mail des
-          enseignants et les parties refusées par la vérification des scores. Il ne voit <strong>jamais les codes personnels</strong> des élèves et ne peut rien modifier par cet
-          espace. Chaque consultation est enregistrée (qui, quand, quoi) pendant un an, et ces accès servent uniquement à l’assistance, à la sécurité et au bon fonctionnement du site.
+          enseignants et les parties refusées par la vérification des scores. Il ne voit <strong>jamais les codes personnels</strong> des élèves et ne peut modifier aucune donnée d’élève par cet
+          espace (il peut seulement inviter des enseignants). Chaque consultation est enregistrée (qui, quand, quoi) pendant un an, et ces accès servent uniquement à l’assistance, à la sécurité et au bon fonctionnement du site.
         </p>
         <h3 className="font-bold">Données techniques</h3>
         <p>
@@ -162,8 +162,9 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
 
       <Section id="p-duree" title="Combien de temps ?">
         <p>
-          Les données restent tant que l’enseignant ne les supprime pas. <strong>Nous recommandons de supprimer les classes en fin d’année scolaire</strong> (bouton « Supprimer » dans
-          l’espace enseignant) ; la suppression est définitive et efface aussi les résultats. L’enseignant peut aussi supprimer lui-même son compte (espace enseignant → « Mon compte ») : son adresse e-mail et son mot de passe sont alors effacés, ainsi que les écoles dont il est le seul enseignant.
+          <strong>Les parties et les élèves sont effacés automatiquement au bout de 13 mois</strong> : les résultats de plus de 13 mois, puis les élèves créés depuis plus de 13 mois qui
+          n’ont plus aucune partie. <strong>En fin d’année scolaire (à partir du 15 juin), l’espace enseignant propose d’exporter puis d’effacer les résultats de la classe</strong> ; l’enseignant peut
+          aussi supprimer la classe ou l’école à tout moment : la suppression est définitive. L’enseignant peut aussi supprimer lui-même son compte (espace enseignant → « Mon compte ») : son adresse e-mail et son mot de passe sont alors effacés, ainsi que les écoles dont il est le seul enseignant.
         </p>
       </Section>
 

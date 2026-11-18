@@ -5,6 +5,8 @@ import { ApiError, explain } from '../server/api';
 import { GAME_NAME, adminBalance, adminItemStats, adminLogs, adminOverview, adminSchool } from '../server/admin';
 import type { AdminBalance as AdminBalanceData, AdminItems, AdminLogs, AdminOverview, AdminRun, AdminSchool } from '../server/admin';
 import AdminBalance from './AdminBalance';
+import AdminInvitations from './AdminInvitations';
+import { ServerNotice } from '../components/ServerNotice';
 import { Frame, Notice } from './Frame';
 
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -13,7 +15,7 @@ const when = (ms: number | null | undefined) =>
 const dur = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)} h ${Math.round((s % 3600) / 60)} min` : s >= 60 ? `${Math.round(s / 60)} min` : `${s} s`);
 const game = (g: string | null) => (g ? (GAME_NAME[g] ?? g) : '—');
 
-type Tab = 'overview' | 'school' | 'balance' | 'logs';
+type Tab = 'overview' | 'school' | 'balance' | 'logs' | 'invites';
 
 interface Props {
   email: string;
@@ -21,7 +23,7 @@ interface Props {
   onSignOut: () => void;
 }
 
-/** Espace administrateur : tout voir (écoles, classes, élèves, parties, inscriptions, anomalies), rien modifier. */
+/** Espace administrateur : tout voir (écoles, classes, élèves, parties, inscriptions, anomalies) et inviter des enseignants ; aucune donnée d'élève n'est modifiable. */
 export default function Admin({ email, onHome, onSignOut }: Props) {
   const [tab, setTab] = useState<Tab>('overview');
   const [ov, setOv] = useState<AdminOverview | null>(null);
@@ -112,7 +114,7 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
       <div className="dash-head">
         <div>
           <p className="eyebrow">Administration du site</p>
-          <h1 className="title-sm">Tout voir, rien modifier</h1>
+          <h1 className="title-sm">Suivre et inviter</h1>
         </div>
         <div className="dash-who">
           <span className="text-[14px] text-ink/70">{email}</span>
@@ -132,6 +134,7 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
             ['school', 'École'],
             ['balance', 'Équilibrage'],
             ['logs', 'Journal'],
+            ['invites', 'Invitations'],
           ] as [Tab, string][]
         ).map(([id, label]) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} className="seg-b" onClick={() => setTab(id)} disabled={id === 'school' && !sch && tab !== 'school'}>
@@ -140,8 +143,11 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
         ))}
       </div>
 
-      <p className="adm-note">Les codes d’accès des élèves ne sont jamais affichés. Chaque consultation de cet espace est enregistrée (qui, quand, quoi).</p>
+      <p className="adm-note">Les codes d’accès des élèves ne sont jamais affichés. Chaque consultation de cet espace et chaque invitation sont enregistrées (qui, quand, quoi).</p>
       {err && <Notice kind="error">{err}</Notice>}
+      <ServerNotice mode="admin" />
+
+      {tab === 'invites' && <AdminInvitations onSignOut={onSignOut} />}
 
       {tab === 'overview' &&
         (!ov ? (

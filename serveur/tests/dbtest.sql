@@ -23,6 +23,8 @@ insert into auth.users (id, email) values ('aaaaaaaa-0000-0000-0000-000000000001
 create temp table ctx (k text primary key, v text);
 grant all on ctx to anon, authenticated;
 
+-- les tests d'avant l'invitation partent d'un site ouvert ; l'inscription sur invitation est testée en fin de fichier
+update private.app_settings set value = 'off' where key = 'invite_only';
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 insert into ctx select 'schoolA', public.create_school('  École   A ')::text;
 insert into ctx select 'classA', (public.create_class((select v::uuid from ctx where k='schoolA'), 'CM2 A')->>'id');
@@ -409,5 +411,88 @@ select pg_temp.eq('bilan d''équilibrage : 50 réussites, 28 erreurs', (select x
 select pg_temp.as_admin();
 select pg_temp.eq('les consultations des compteurs sont tracées', (select count(*) >= 2 from private.admin_audit where action in ('item_stats','balance')), true);
 
+
+
+-- ───────────────────────── Fiabilité (1.11) ─────────────────────────
+
+-- Les limites se comptent sur l'heure de RÉCEPTION : des parties antidatées ne les contournent pas
+select pg_temp.as_anon();
+do $$
+declare r jsonb; ok_n int := 0; limited boolean := false; i int;
+begin
+  for i in 1..70 loop
+    r := public.submit_run((select v from ctx where k='tok_nina'), 'back' || lpad(i::text, 6, '0'), 'typing', 'standard', 'game', 100, 1, 30, 95, 40, 60,
+                           (extract(epoch from now() - interval '20 days') * 1000)::bigint);
+    if r->>'ok' = 'true' then ok_n := ok_n + 1;
+    elsif r->>'error' = 'rate_limited' then limited := true; exit;
+    else raise exception 'ÉCHEC : réponse inattendue %', r; end if;
+  end loop;
+  if not limited then raise exception 'ÉCHEC : 70 envois antidatés n''ont pas été limités'; end if;
+  if ok_n > 60 then raise exception 'ÉCHEC : % envois acceptés en une minute (60 au plus)', ok_n; end if;
+  raise notice 'ok  envois antidatés limités après % parties (heure de réception)', ok_n;
+end $$;
+select pg_temp.as_admin();
+select pg_temp.eq('l''heure de réception n''est pas celle du navigateur', (select count(*) from public.runs where received_at < now() - interval '1 day'), 0::bigint);
+select pg_temp.eq('l''heure annoncée est gardée pour l''affichage', (select count(*) > 0 from public.runs where client_id like 'back%' and played_at < now() - interval '19 days'), true);
+
+-- Version du serveur : lue dans la base ; seul le nettoyage automatique (pg_cron) manque ici
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select pg_temp.eq('server_version : rien ne manque sauf pg_cron (absent des tests)', public.server_version()->'missing', '["nettoyage_auto"]'::jsonb);
+select pg_temp.as_anon();
+select pg_temp.fails($q$select public.server_version()$q$, 'permission denied');
+-- une vieille mise à jour rejouée par erreur est détectée
+select pg_temp.as_admin();
+create function pg_temp.old_submit() returns void language plpgsql as $$ begin null; end $$;
+alter function public.submit_run(text, text, text, text, text, integer, integer, numeric, numeric, integer, integer, bigint, jsonb) rename to submit_run_new;
+create function public.submit_run(p_token text, p_client_id text, p_game text, p_mode text, p_kind text, p_score integer, p_wave integer, p_wpm numeric, p_acc numeric, p_correct integer, p_duration integer, p_played_ms bigint default null, p_balance jsonb default null)
+  returns jsonb language sql as $$ select '{"ok": true}'::jsonb $$;
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select pg_temp.eq('server_version : envoi sans contrôle détecté', (public.server_version()->'missing') @> '["securite","fiabilite"]'::jsonb, true);
+select pg_temp.as_admin();
+drop function public.submit_run(text, text, text, text, text, integer, integer, numeric, numeric, integer, integer, bigint, jsonb);
+alter function public.submit_run_new(text, text, text, text, text, integer, integer, numeric, numeric, integer, integer, bigint, jsonb) rename to submit_run;
+
+-- Inscription sur invitation
+insert into auth.users (id, email) values ('dddddddd-0000-0000-0000-000000000004','d@ecole-d.fr'), ('eeeeeeee-0000-0000-0000-000000000005','e@ecole-e.fr');
+update private.app_settings set value = 'on' where key = 'invite_only';
+select pg_temp.as_user('dddddddd-0000-0000-0000-000000000004');
+select pg_temp.eq('sans invitation : pas le droit de créer une école', public.my_teacher_access(), '{"invite_only": true, "allowed": false}'::jsonb);
+select pg_temp.fails($q$select public.create_school('École D')$q$, 'invitation_required');
+select pg_temp.eq('mauvais code refusé', public.redeem_invitation('ZZZZ-ZZZZ'), false);
+select pg_temp.fails($q$select public.admin_create_invitation('x', 1, 30)$q$, 'forbidden');
+select pg_temp.fails($q$select public.admin_invitations()$q$, 'forbidden');
+select pg_temp.as_user('cccccccc-0000-0000-0000-000000000003');
+insert into ctx select 'invite', public.admin_create_invitation('Collègues de test', 1, 30);
+select pg_temp.eq('code d''invitation : 8 caractères', (select char_length(v) from ctx where k='invite'), 8);
+select pg_temp.eq('l''administrateur voit l''invitation', (select x->>'uses' || '/' || (x->>'max_uses') from jsonb_array_elements(public.admin_invitations()->'items') x limit 1), '0/1');
+select pg_temp.eq('un administrateur peut créer une école sans invitation', public.my_teacher_access()->>'allowed', 'true');
+select pg_temp.as_user('dddddddd-0000-0000-0000-000000000004');
+select pg_temp.eq('bon code accepté (minuscules et tiret tolérés)', public.redeem_invitation(lower(substr((select v from ctx where k='invite'),1,4)||'-'||substr((select v from ctx where k='invite'),5))), true);
+select pg_temp.eq('après invitation : école créée', (public.create_school('École D') is not null), true);
+select pg_temp.as_user('eeeeeeee-0000-0000-0000-000000000005');
+select pg_temp.eq('invitation à usage unique : épuisée', public.redeem_invitation((select v from ctx where k='invite')), false);
+select pg_temp.fails($q$select public.create_school('École E')$q$, 'invitation_required');
+-- limite d'essais : 8 refus par 10 minutes
+do $$ declare i int; begin for i in 1..7 loop perform public.redeem_invitation('QQQQQQQQ'); end loop; end $$;
+select pg_temp.fails($q$select public.redeem_invitation('QQQQQQQQ')$q$, 'rate_limited');
+select pg_temp.as_user('cccccccc-0000-0000-0000-000000000003');
+select public.admin_revoke_invitation((select v from ctx where k='invite'));
+select public.admin_set_invite_only(false);
+select pg_temp.as_user('eeeeeeee-0000-0000-0000-000000000005');
+select pg_temp.eq('invitations désactivées : tout le monde peut créer une école', public.my_teacher_access()->>'allowed', 'true');
+select pg_temp.as_admin();
+select pg_temp.eq('les actions d''invitation sont tracées', (select count(*) >= 3 from private.admin_audit where action in ('invitation_create','invitation_revoke','invite_only')), true);
+select pg_temp.eq('un enseignant déjà installé garde son droit si les invitations reviennent', (select private.can_create_school('aaaaaaaa-0000-0000-0000-000000000001')), true);
+
+-- Conservation limitée : les vieilles parties et les élèves sans activité partent
+update public.runs set received_at = now() - interval '500 days' where client_id = 'run0000004';
+update public.students set created_at = now() - interval '500 days' where name = 'Max';
+select pg_temp.eq('nettoyage : une partie de plus de 13 mois effacée', (private.purge_old_data()->>'runs')::int >= 1, true);
+select pg_temp.eq('nettoyage : la partie ancienne a disparu', (select count(*) from public.runs where client_id = 'run0000004'), 0::bigint);
+select pg_temp.eq('nettoyage : les parties récentes sont gardées', (select count(*) > 0 from public.runs where client_id like 'back%'), true);
+select pg_temp.eq('nettoyage : un élève ancien sans partie est effacé', (select count(*) from public.students where name = 'Max'), 0::bigint);
+select pg_temp.as_anon();
+select pg_temp.fails($q$select private.purge_old_data()$q$, 'permission denied');
+select pg_temp.as_admin();
 
 \echo TOUS LES TESTS SQL PASSENT

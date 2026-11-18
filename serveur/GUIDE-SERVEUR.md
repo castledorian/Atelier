@@ -276,6 +276,19 @@ Reconnectez-vous sur le site : un bouton **Administration** apparaît sur l'accu
 
 **Garde-fous** : l'envoi exige un élève connecté qui vient de jouer une partie libre du même jeu (30 minutes), est limité à 60 envois par heure et par élève, 120 entrées et 12 000 caractères par envoi, et 3 000 exercices précis par jeu et niveau. Les entrées mal formées sont ignorées une à une.
 
+## Mise à jour « fiabilité » (version 1.11) : limites d'envoi, invitations, nettoyage, vérification de la base
+
+**À faire une fois**, **en dernier** : dans Supabase → SQL Editor, collez et exécutez `serveur/mise-a-jour-fiabilite.sql` (sans danger si répété). Ne rejouez jamais `mise-a-jour-seances.sql` ou `mise-a-jour-securite.sql` après elle : ils remettraient une ancienne version de l'envoi des parties. Une installation neuve avec `schema.sql` est déjà à jour.
+
+**Ordre des mises à jour d'une base déjà installée** (chacune une seule fois) : `seances` → `classement` → `orthographe` → `niveau` → `securite` → `admin` → `exercices` → `memoire` → `compte` → **`fiabilite`**. Le site vous le dit lui-même : dans l'espace administrateur, un bandeau rouge liste les fichiers qui manquent et l'ordre à suivre (la base répond toute seule à la question « qu'est-ce qui est installé ? »). Il vérifie même que les fonctions d'envoi des parties contrôlent bien les parties, au cas où une ancienne mise à jour aurait été rejouée.
+
+**Ce que ça change.**
+
+- **Limites d'envoi fiables.** Elles se comptent sur l'heure de **réception** par le serveur (`runs.received_at`), pas sur l'heure annoncée par le navigateur : au plus 60 parties par minute, 200 par heure, 1 500 par jour et par élève. L'heure du navigateur est gardée pour l'affichage (parties jouées hors ligne).
+- **Inscription sur invitation.** N'importe qui peut encore créer un compte (e-mail confirmé), mais **ne peut pas créer d'école** sans code d'invitation : il ne peut donc ni enregistrer de données ni créer d'élèves. Espace administrateur → onglet **Invitations** : « Créer un code » (nombre d'utilisations, durée), à transmettre à l'enseignant, qui le saisit à sa première connexion. Les enseignants déjà installés ne sont pas touchés. Interrupteur « Désactiver » dans le même onglet pour ouvrir à nouveau l'inscription. Aucun service extérieur (pas de CAPTCHA) : le site garde sa promesse « aucun contenu d'un autre site ».
+- **Conservation limitée (RGPD).** Chaque nuit, `private.purge_old_data()` efface les parties de plus de 13 mois (400 jours) et les élèves créés depuis plus de 13 mois qui n'ont plus de partie. La programmation utilise l'extension **pg_cron** : si le fichier affiche l'avis « pg_cron indisponible », activez-la (Supabase → Database → Extensions → `pg_cron`), puis relancez le fichier ; le bandeau de l'espace administrateur reste affiché tant que le nettoyage n'est pas programmé. Pour lancer un nettoyage tout de suite : `select private.purge_old_data();`.
+- **Fin d'année.** À partir du 15 juin, l'espace enseignant affiche un rappel (exporter en CSV, puis « Effacer les résultats » : les élèves gardent leur code). Le même bouton existe toute l'année dans l'onglet « Supprimer » de la classe.
+
 ## Niveaux de classe et difficultés (CP → CM2) : comment c'est réglé
 
 - **Les 3 difficultés (Apprenti, Standard, Expert) existent maintenant dans les 4 jeux.** Apprenti = initiation (beaucoup de temps ou de vies, erreurs peu coûteuses), Standard = référence de la classe, Expert = les plus rapides ou les plus sûrs d'eux.

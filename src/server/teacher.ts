@@ -127,6 +127,23 @@ export const listSchools = () =>
 export const createSchool = (name: string) =>
   authed((t) => rpc<string>('create_school', { p_name: name }, t));
 
+/**
+ * Peut-on créer une école ? Depuis la 1.11 il faut un code d'invitation donné par l'administrateur (sauf si l'administrateur
+ * a désactivé cette règle). Une base pas encore mise à jour (fonction absente) n'impose rien.
+ */
+export async function teacherAccess(): Promise<{ inviteOnly: boolean; allowed: boolean }> {
+  try {
+    const r = await authed((t) => rpc<{ invite_only?: boolean; allowed?: boolean }>('my_teacher_access', {}, t));
+    return { inviteOnly: r.invite_only === true, allowed: r.allowed !== false };
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return { inviteOnly: false, allowed: true };
+    throw e;
+  }
+}
+
+/** Saisie d'un code d'invitation : vrai si le code est valable (et le droit de créer une école est alors accordé). */
+export const redeemInvitation = (code: string) => authed((t) => rpc<boolean>('redeem_invitation', { p_code: code }, t));
+
 export const deleteSchool = (id: string) => authed((t) => rpc('delete_school', { p_school: id }, t));
 
 export const listClasses = (school: string) =>
@@ -163,6 +180,9 @@ export const addStudents = (cls: string, names: string[]) =>
 export const classOverview = (cls: string) => authed((t) => rpc<Overview[]>('class_overview', { p_class: cls }, t));
 
 export const resetCode = (student: string) => authed((t) => rpc<string>('reset_student_code', { p_student: student }, t));
+
+/** Efface les résultats de la classe (les élèves et leurs codes sont gardés) : fin d'année. */
+export const clearClassRuns = (cls: string) => authed((t) => remove('runs', `class_id=eq.${cls}`, t));
 
 export const deleteStudent = (id: string) => authed((t) => remove('students', `id=eq.${id}`, t));
 

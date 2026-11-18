@@ -125,6 +125,28 @@ export const adminBalance = () => authed((t) => rpc<AdminBalance>('admin_balance
 export const adminItemStats = () => authed((t) => rpc<AdminItems>('admin_item_stats', {}, t));
 export const adminLogs = (limit = 200) => authed((t) => rpc<AdminLogs>('admin_logs', { p_limit: limit }, t));
 
+// ───────────────────────── Invitations d'enseignants ─────────────────────────
+
+export interface AdminInvitation {
+  code: string;
+  label: string;
+  max_uses: number;
+  uses: number;
+  revoked: boolean;
+  expires: number;
+  created: number;
+}
+export interface AdminInvitations {
+  invite_only: boolean;
+  items: AdminInvitation[];
+}
+export const adminInvitations = () => authed((t) => rpc<AdminInvitations>('admin_invitations', {}, t));
+/** Crée une invitation et renvoie son code (8 caractères). */
+export const adminCreateInvitation = (label: string, maxUses: number, days: number) =>
+  authed((t) => rpc<string>('admin_create_invitation', { p_label: label, p_max: maxUses, p_days: days }, t));
+export const adminRevokeInvitation = (code: string) => authed((t) => rpc('admin_revoke_invitation', { p_code: code }, t));
+export const adminSetInviteOnly = (on: boolean) => authed((t) => rpc('admin_set_invite_only', { p_on: on }, t));
+
 export const GAME_NAME: Record<string, string> = {
   typing: 'Frappe !',
   math: 'Course à l’encre',

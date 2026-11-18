@@ -98,6 +98,7 @@ export function explain(e: unknown): string {
     confirmation_mismatch: 'L’adresse e-mail recopiée n’est pas la bonne. Rien n’a été supprimé.',
     limit_reached: 'Limite atteinte pour cette école.',
     too_many: 'Trop de noms d’un coup (60 maximum).',
+    invitation_required: 'La création d’une école demande un code d’invitation. Demande-le à l’administrateur du site.',
   };
   if (map[code]) return map[code];
   if (/password/i.test(code)) return 'Mot de passe refusé (8 caractères minimum).';
