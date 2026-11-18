@@ -69,22 +69,32 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
   }, [token, studentId]);
   return (
     <Frame>
-      <p className="eyebrow">Jeux pour apprendre</p>
-      <h1 className="title" aria-label="L’atelier">
-        {'ATELIER'.split('').map((ch, i) => (
-          <span key={i} aria-hidden="true" style={{ animationDelay: `${80 + i * 70}ms` }}>
-            {ch}
-          </span>
-        ))}
-      </h1>
+      <div className="home-head">
+        <div className="home-brand">
+          <p className="eyebrow">Jeux pour apprendre</p>
+          <h1 className="title" aria-label="L’atelier">
+            {'ATELIER'.split('').map((ch, i) => (
+              <span key={i} aria-hidden="true" style={{ animationDelay: `${80 + i * 70}ms` }}>
+                {ch}
+              </span>
+            ))}
+          </h1>
+        </div>
+        {!student && !teacher && online && (
+          <nav className="acct" aria-label="Connexion">
+            <button type="button" className="acct-btn" aria-label="Connexion élève" onClick={() => onLogin('student')}>
+              Élève
+            </button>
+            <button type="button" className="acct-btn" aria-label="Connexion enseignant" onClick={() => onLogin('teacher')}>
+              Enseignant
+            </button>
+          </nav>
+        )}
+      </div>
       <div className="rule" aria-hidden="true" />
-      {!student && !teacher && (
-        <p className="intro mt-3 text-[15px] leading-snug">
-          Quatre jeux pour s’entraîner du CP au CM2&nbsp;: <strong>taper au clavier, calculer, retenir, corriger l’orthographe</strong>. Gratuit, sans publicité ni cookie.
-        </p>
-      )}
 
-      <section className="who" aria-label="Connexion">
+      {(student || teacher || !online) && (
+      <section className="who" aria-label="Compte">
         {student ? (
           <>
             <p>
@@ -122,24 +132,11 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
               </button>
             </div>
           </>
-        ) : online ? (
-          <>
-            <p className="text-[15px] leading-snug">
-              Connecte-toi pour retrouver tes scores, te comparer à ta classe et à ton école.
-            </p>
-            <div className="who-actions">
-              <button type="button" className="btn btn-primary" onClick={() => onLogin('student')}>
-                Je suis élève
-              </button>
-              <button type="button" className="btn btn-ghost" onClick={() => onLogin('teacher')}>
-                Je suis enseignant
-              </button>
-            </div>
-          </>
         ) : (
           <p className="text-[14px] leading-snug text-ink/75">Tes scores restent sur cet appareil.</p>
         )}
       </section>
+      )}
 
       <h2 className="subhead mt-[var(--sp)]" id="grade-h">
         Ma classe

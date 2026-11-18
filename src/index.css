@@ -4828,3 +4828,43 @@ th[aria-sort='descending'] .th-sort {
     display: none !important;
   }
 }
+
+/* Accueil : en-tête avec la connexion discrète à droite du logo */
+.home-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 14px;
+}
+.home-brand {
+  min-width: 0;
+}
+.acct {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding-top: 2px;
+}
+.acct-btn {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid rgba(27, 25, 21, 0.35);
+  background: transparent;
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(27, 25, 21, 0.78);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.acct-btn:hover {
+  border-color: var(--color-ribbon);
+  color: var(--color-ribbon);
+}
+@media (pointer: coarse) {
+  .acct-btn {
+    min-height: 44px;
+  }
+}
