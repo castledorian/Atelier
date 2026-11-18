@@ -39,7 +39,7 @@ const longDate = (t: number) => {
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 };
 
-export default function Cave({ onBack, studentName }: { onBack: () => void; studentName?: string | null }) {
+export default function Cave({ onBack, studentName, isTeacher = false }: { onBack: () => void; studentName?: string | null; isTeacher?: boolean }) {
   const [boss, setBoss] = useState(() => markSeen());
   const [names, setNames] = useState<string[]>(() => (studentName ? addName(studentName) : loadNames()));
   const [fight, setFight] = useState<null | { real: boolean }>(null);
@@ -166,30 +166,33 @@ export default function Cave({ onBack, studentName }: { onBack: () => void; stud
             )}
           </div>
 
-          <details className="fold sec">
-            <summary>Pour l’enseignant</summary>
-            <div className="fold-in">
-              <p className="text-[15px] leading-snug">
-                La créature grossit avec les fautes de toutes les parties jouées sur cet appareil, et faiblit quand les élèves retravaillent une
-                règle. Le combat final est écrit d’avance&nbsp;: <strong>la classe gagne toujours</strong>, après un moment où tout semble perdu.
-                Rien n’est envoyé au serveur, rien n’est relié à un élève.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" className="btn btn-ghost" onClick={() => setFight({ real: false })}>
-                  Essayer le combat (sans le compter)
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={() => {
-                    if (window.confirm('Remettre la grotte à zéro ? La créature redevient une goutte et le combat sera à refaire.')) setBoss(resetBoss());
-                  }}
-                >
-                  Remettre la grotte à zéro
-                </button>
+          {/* Réservé au compte enseignant : les élèves ne doivent pas voir qu'un combat d'essai existe, ni qu'il est écrit d'avance */}
+          {isTeacher && (
+            <details className="fold sec">
+              <summary>Pour l’enseignant</summary>
+              <div className="fold-in">
+                <p className="text-[15px] leading-snug">
+                  La créature grossit avec les fautes de toutes les parties jouées sur cet appareil, et faiblit quand les élèves retravaillent une
+                  règle. Le combat final est écrit d’avance&nbsp;: <strong>la classe gagne toujours</strong>, après un moment où tout semble perdu.
+                  Rien n’est envoyé au serveur, rien n’est relié à un élève.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" className="btn btn-ghost" onClick={() => setFight({ real: false })}>
+                    Essayer le combat (sans le compter)
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => {
+                      if (window.confirm('Remettre la grotte à zéro ? La créature redevient une goutte et le combat sera à refaire.')) setBoss(resetBoss());
+                    }}
+                  >
+                    Remettre la grotte à zéro
+                  </button>
+                </div>
               </div>
-            </div>
-          </details>
+            </details>
+          )}
         </>
       )}
     </Frame>
