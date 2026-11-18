@@ -24,6 +24,16 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.19',
+    date: '18 novembre 2026',
+    iso: '2026-11-18',
+    title: 'Toutes les fautes nourrissent la grotte, et l’observation d’un élève est complète',
+    changes: [
+      { kind: 'better', text: 'Les fautes des élèves nourrissent maintenant le monstre de la classe en ligne dans tous les cas : même une partie sans aucune bonne réponse, ou une règle revue en duel d’orthographe, est comptée. Hors connexion, les compteurs sont gardés puis envoyés dès que le réseau revient (nécessite de rejouer mise-a-jour-grotte.sql).' },
+      { kind: 'new', text: 'Observation d’un élève en lecture seule, complète : son accueil et ses séances tels qu’il les voit, sa grotte en direct et la liste de toutes ses parties. Rien ne peut être modifié ni joué.' },
+    ],
+  },
+  {
     version: '1.18',
     date: '18 novembre 2026',
     iso: '2026-11-18',

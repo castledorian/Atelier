@@ -57,12 +57,80 @@ export async function sendItemStats(token: string, game: 'math' | 'spelling', le
   }
 }
 
-/** Compteurs de la grotte pour une partie déjà envoyée. Facultatif : toute erreur est ignorée. */
-export async function sendCave(token: string, clientId: string, ink: number, power: number): Promise<void> {
+// ───────────────────────── Grotte : compteurs de la classe ─────────────────────────
+
+/** Compteurs qui n'ont pas pu partir (réseau coupé) : gardés sur l'appareil, renvoyés dès que possible, sans doublon (même identifiant). */
+const DROPS_KEY = 'atelier.cave.drops.v1';
+interface Drop {
+  studentId: string;
+  clientId: string;
+  ink: number;
+  power: number;
+}
+const readDrops = (): Drop[] => {
+  try {
+    const v = JSON.parse(localStorage.getItem(DROPS_KEY) ?? '[]');
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+};
+const writeDrops = (d: Drop[]) => {
+  try {
+    localStorage.setItem(DROPS_KEY, JSON.stringify(d.slice(-60)));
+  } catch {
+    /* stockage refusé : la grotte est un bonus */
+  }
+};
+
+/** Un envoi : « done » (reçu ou définitivement refusé) ou « retry » (à renvoyer plus tard). */
+async function postDrop(token: string, d: Drop): Promise<'done' | 'retry'> {
+  try {
+    const r = await rpc<{ ok?: boolean; error?: string }>('cave_drop', { p_token: token, p_client_id: d.clientId, p_ink: Math.round(d.ink), p_power: Math.round(d.power) });
+    if (r.ok || r.error === 'invalid_data') return 'done';
+    return 'retry';
+  } catch (e) {
+    // base pas encore mise à jour (fonction absente) : inutile de réessayer
+    return e instanceof ApiError && e.status === 404 ? 'done' : 'retry';
+  }
+}
+
+/**
+ * Compteurs de la grotte hors ligne de partie (partie sans bonne réponse, règle revue en duel) : les fautes comptent aussi quand la partie
+ * n'est pas envoyée. Facultatif et sans bruit : en cas d'échec on garde le compteur pour plus tard.
+ */
+export async function dropCave(studentId: string, token: string, clientId: string, ink: number, power: number): Promise<void> {
+  if (ink === 0 && power === 0) return;
+  const d: Drop = { studentId, clientId, ink, power };
+  if ((await postDrop(token, d)) === 'retry') writeDrops([...readDrops().filter((x) => x.clientId !== clientId), d]);
+}
+
+/** Renvoie les compteurs restés en attente pour cet élève. */
+export async function flushDrops(studentId: string, token: string): Promise<void> {
+  const box = readDrops();
+  if (box.length === 0) return;
+  const left: Drop[] = [];
+  let offline = false;
+  for (const d of box) {
+    if (d.studentId !== studentId || offline) {
+      left.push(d);
+      continue;
+    }
+    if ((await postDrop(token, d)) === 'retry') {
+      offline = true;
+      left.push(d);
+    }
+  }
+  writeDrops(left);
+}
+
+/** Compteurs de la grotte pour une partie déjà envoyée. Facultatif : un échec garde le compteur pour plus tard. */
+export async function sendCave(token: string, clientId: string, ink: number, power: number, studentId?: string): Promise<void> {
   try {
     await rpc('cave_report', { p_token: token, p_client_id: clientId, p_ink: Math.round(ink), p_power: Math.round(power) });
-  } catch {
-    /* la grotte est un bonus : elle ne doit jamais gêner la partie */
+  } catch (e) {
+    // réseau coupé : on le renverra comme compteur isolé ; fonction absente (ancienne base) : on laisse tomber
+    if (studentId && !(e instanceof ApiError && e.status === 404)) writeDrops([...readDrops().filter((x) => x.clientId !== `r-${clientId}`), { studentId, clientId: `r-${clientId}`, ink, power }]);
   }
 }
 
@@ -90,7 +158,7 @@ export async function submitRun(token: string, r: RunPayload): Promise<{ status:
       });
   if (res.ok) {
     // grotte de la classe : envoi à part, facultatif (ancienne base, réseau coupé : on n'en dit rien)
-    if (r.cave && !r.sessionId) void sendCave(token, r.clientId, r.cave.ink, r.cave.power);
+    if (r.cave && !r.sessionId) void sendCave(token, r.clientId, r.cave.ink, r.cave.power, loadStudent()?.token === token ? loadStudent()?.student.id : undefined);
     return { status: 'ok', attemptsUsed: res.attempts_used };
   }
   if (res.error === 'rate_limited') throw new ApiError('network'); // on réessaiera plus tard

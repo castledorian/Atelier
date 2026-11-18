@@ -536,6 +536,11 @@ select pg_temp.eq('cave_report accepté', public.cave_report((select v from ctx 
 select pg_temp.eq('cave_report : second envoi sans effet', public.cave_report((select v from ctx where k='tok_nina'),'renew000001',99,99)->>'ok','true');
 select pg_temp.eq('grotte de la classe : encre', public.cave_get((select v from ctx where k='tok_nina'))->>'ink','7');
 select pg_temp.eq('grotte de la classe : puissance', public.cave_get((select v from ctx where k='tok_nina'))->>'power','3');
+select pg_temp.eq('cave_drop : partie sans bonne réponse comptée', public.cave_drop((select v from ctx where k='tok_nina'),'drop-0000001',5,0)->>'ok','true');
+select pg_temp.eq('cave_drop : même identifiant, aucun doublon', public.cave_drop((select v from ctx where k='tok_nina'),'drop-0000001',5,0)->>'ok','true');
+select pg_temp.eq('cave_drop : identifiant invalide refusé', public.cave_drop((select v from ctx where k='tok_nina'),'../x',5,0)->>'error','invalid_data');
+select pg_temp.eq('cave_drop : mauvais jeton refusé', public.cave_drop('nimportequoi','drop-0000002',5,0)->>'error','invalid_session');
+select pg_temp.eq('grotte de la classe : encre avec la goutte (7 + 5)', public.cave_get((select v from ctx where k='tok_nina'))->>'ink','12');
 select pg_temp.eq('jeton d''observation refusé à un anonyme', public.cave_get('obs:'||gen_random_uuid()::text)->>'error','invalid_session');
 select pg_temp.fails($$select public.admin_observe('student', gen_random_uuid())$$, 'permission denied');
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');

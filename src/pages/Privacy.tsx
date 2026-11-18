@@ -139,7 +139,7 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
         </p>
         <p>
           «&nbsp;La grotte&nbsp;» (réservée aux élèves et enseignants connectés) est celle de <strong>la classe</strong>&nbsp;: à la fin d’une partie libre, le nombre de fautes et de réussites est
-          ajouté à la ligne de la partie déjà enregistrée (aucune autre donnée), et le serveur n’en montre que la <strong>somme par classe</strong>. Les prénoms repris des classes par l’enseignant pour le jeu
+          ajouté à la ligne de la partie déjà enregistrée (aucune autre donnée) ; pour une partie sans bonne réponse, qui n’est pas enregistrée, seul ce compteur est envoyé, et le serveur n’en montre que la <strong>somme par classe</strong>. Les prénoms repris des classes par l’enseignant pour le jeu
           final restent <strong>sur l’appareil, et uniquement là</strong>. L’enseignant peut remettre la grotte de sa classe à zéro, et ces compteurs disparaissent avec les parties (conservation limitée, voir plus haut).
         </p>
         <p>

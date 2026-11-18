@@ -1,5 +1,5 @@
 import { ApiError } from './api';
-import { sendRun } from './student';
+import { flushDrops, sendRun } from './student';
 import type { RunPayload } from './types';
 
 /** Parties jouées sans réseau : gardées sur l'appareil puis envoyées dès que possible (sans doublon : même clientId). */
@@ -31,6 +31,7 @@ export function enqueue(studentId: string, run: RunPayload) {
 
 /** Envoie ce qui est en attente pour cet élève. Renvoie le nombre envoyé. */
 export async function flush(studentId: string, token: string): Promise<number> {
+  await flushDrops(studentId, token); // compteurs de la grotte restés en attente
   const box = read();
   if (box.length === 0) return 0;
   const left: Pending[] = [];

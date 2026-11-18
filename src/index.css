@@ -5146,6 +5146,19 @@ th[aria-sort='descending'] .th-sort {
 }
 
 /* ───────── Mode observation (administrateur, lecture seule) ───────── */
+.observe-top {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  padding: 0.5rem 0.75rem 0.35rem;
+  background: #fffaf0;
+  border-bottom: 2px solid #8a5a00;
+}
+.observe-top .observe-bar {
+  margin-bottom: 0.4rem;
+}
 .observe-bar {
   display: flex;
   flex-wrap: wrap;
@@ -5186,4 +5199,13 @@ th[aria-sort='descending'] .th-sort {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem 0.75rem;
+}
+.observe-top .seg-b {
+  color: #3d2900;
+  background: #fffaf0;
+  border-color: #3d2900;
+}
+.observe-top .seg-b[aria-selected='true'] {
+  color: #fffaf0;
+  background: #3d2900;
 }

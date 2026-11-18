@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { BackButton } from '../components/BackButton';
 import { downloadText, toCsv } from '../game/history';
 import { ApiError, explain } from '../server/api';
-import { GAME_NAME, adminBalance, adminObserve, adminItemStats, adminLogs, adminOverview, adminSchool } from '../server/admin';
+import { GAME_NAME, adminBalance, adminObserve, observeStudent, adminItemStats, adminLogs, adminOverview, adminSchool } from '../server/admin';
 import type { AdminBalance as AdminBalanceData, AdminItems, AdminLogs, AdminOverview, AdminRun, AdminSchool } from '../server/admin';
 import AdminBalance from './AdminBalance';
 import AdminInvitations from './AdminInvitations';
@@ -10,6 +10,8 @@ import { ServerNotice } from '../components/ServerNotice';
 import { Frame, Notice } from './Frame';
 import Cave from './Cave';
 import Dashboard from './Dashboard';
+import ObserveStudent from './ObserveStudent';
+import type { StudentAccount } from '../server/types';
 
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 const when = (ms: number | null | undefined) =>
@@ -21,7 +23,7 @@ const game = (g: string | null) => (g ? (GAME_NAME[g] ?? g) : '—');
 type Watch =
   | { kind: 'teacher'; schoolId: string; schoolName: string }
   | { kind: 'class'; classId: string; label: string }
-  | { kind: 'student'; studentId: string; name: string; label: string };
+  | { kind: 'student'; studentId: string; name: string; label: string; account?: StudentAccount };
 
 type Tab = 'overview' | 'school' | 'balance' | 'logs' | 'invites';
 
@@ -95,12 +97,12 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
       const ok = await act(
         async () => {
           if (w.kind === 'teacher') await adminObserve('school', w.schoolId);
-          else if (w.kind === 'student') await adminObserve('student', w.studentId);
-          return true;
+          else if (w.kind === 'student') w = { ...w, account: await observeStudent(w.studentId) };
+          return w;
         },
         'La mise à jour « grotte » n’a pas encore été exécutée sur le serveur (serveur/mise-a-jour-grotte.sql, voir le guide).',
       );
-      if (ok) setWatch(w);
+      if (ok) setWatch(ok);
     },
     [act],
   );
@@ -135,15 +137,7 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
     return <Dashboard email={email} onHome={() => setWatch(null)} onSignOut={onSignOut} onAccountDeleted={() => setWatch(null)} observe={{ schoolId: watch.schoolId, schoolName: watch.schoolName, onQuit: () => setWatch(null) }} />;
   }
   if (watch?.kind === 'class') return <Cave onBack={() => setWatch(null)} observe={{ source: { kind: 'class', classId: watch.classId }, label: watch.label, onQuit: () => setWatch(null) }} />;
-  if (watch?.kind === 'student') {
-    return (
-      <Cave
-        onBack={() => setWatch(null)}
-        studentName={watch.name}
-        observe={{ source: { kind: 'observe-student', studentId: watch.studentId }, label: watch.label, onQuit: () => setWatch(null) }}
-      />
-    );
-  }
+  if (watch?.kind === 'student' && watch.account) return <ObserveStudent account={watch.account} label={watch.label} onQuit={() => setWatch(null)} />;
 
   return (
     <Frame wide fill>

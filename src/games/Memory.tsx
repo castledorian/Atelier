@@ -23,7 +23,7 @@ import { loadSettings, saveSettings } from '../game/storage';
 import type { Settings, TextSize } from '../game/storage';
 import { explain } from '../server/api';
 import { enqueue, flush } from '../server/outbox';
-import { fetchBoard, sendRun } from '../server/student';
+import { dropCave, fetchBoard, sendRun } from '../server/student';
 import type { BoardRow, RunPayload, Scope, SessionInfo, StudentAccount } from '../server/types';
 
 /**
@@ -166,7 +166,10 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
           enqueue(acct.student.id, payload);
           if (id === live.current.recId) setCloud('queued');
         });
-    } else setCloud('off');
+    } else {
+      if (acct && payload.cave && !payload.sessionId) void dropCave(acct.student.id, acct.token, id, payload.cave.ink, payload.cave.power);
+      setCloud('off');
+    }
     live.current.overAt = performance.now();
     const prog = recordProgress(memBoard(result.mode, result.diff), result.won ? PAGES : result.page - 1, result.maxSpan);
     setRun({ result, rank, id, record, prevSpan: prog.before.lastSpan, stampsBefore: prog.before.stamps, stampsAfter: prog.after.stamps });

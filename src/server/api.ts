@@ -23,8 +23,19 @@ function headers(token?: string): Record<string, string> {
   return h;
 }
 
+/**
+ * Observation par l'administrateur : les lectures « au nom d'un élève » (jeton « obs:… ») doivent porter l'identité de l'administrateur,
+ * que le serveur vérifie. Le relais n'existe que pendant l'observation (voir ObserveStudent).
+ */
+let observerAuth: (() => Promise<string>) | null = null;
+export const setObserverAuth = (f: (() => Promise<string>) | null) => {
+  observerAuth = f;
+};
+const isObserving = (body: unknown) => !!body && typeof body === 'object' && typeof (body as { p_token?: unknown }).p_token === 'string' && (body as { p_token: string }).p_token.startsWith('obs:');
+
 export async function request(path: string, init: { method?: string; body?: unknown; token?: string; prefer?: string } = {}, ms = 12000): Promise<unknown> {
   if (!serverEnabled()) throw new ApiError('no_server');
+  if (!init.token && observerAuth && isObserving(init.body)) init = { ...init, token: await observerAuth() };
   const ctl = new AbortController();
   const timer = window.setTimeout(() => ctl.abort(), ms);
   try {

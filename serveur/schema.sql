@@ -1286,7 +1286,7 @@ begin
     'sessions',    v_login like '%30 days%' and v_run like '%student_sessions%' and v_ses like '%student_sessions%',
     'codes',       exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'students' and column_name = 'code_hash')
                    and v_login like '%code_hash%',
-    'grotte',      to_regprocedure('public.cave_get(text)') is not null and to_regprocedure('public.admin_observe(text,uuid)') is not null,
+    'grotte',      to_regprocedure('public.cave_get(text)') is not null and to_regprocedure('public.cave_drop(text,text,integer,integer)') is not null and to_regprocedure('public.admin_observe(text,uuid)') is not null,
     'nettoyage_auto', v_cron
   );
   return jsonb_build_object(
@@ -1358,6 +1358,39 @@ language sql stable as $$
     8, 1, 0, 0, 0, 'Europe/Paris')
 $$;
 
+-- Compteurs de grotte qui ne passent pas par une ligne de partie : une partie sans aucune bonne réponse (donc non envoyée) mais pleine de fautes,
+-- ou une règle revue en duel. Un envoi par identifiant (sans doublon) ; sans lien avec le classement ni les résultats.
+create table if not exists public.cave_drops (
+  id          bigint generated always as identity primary key,
+  class_id    uuid not null references public.classes(id) on delete cascade,
+  student_id  uuid not null references public.students(id) on delete cascade,
+  client_id   text not null,
+  ink         integer not null,
+  power       integer not null,
+  received_at timestamptz not null default now(),
+  unique (student_id, client_id)
+);
+create index if not exists cave_drops_class_idx on public.cave_drops (class_id, received_at);
+alter table public.cave_drops enable row level security;   -- aucune politique : inaccessible depuis le navigateur
+revoke all on public.cave_drops from anon, authenticated;
+
+create or replace function public.cave_drop(p_token text, p_client_id text, p_ink integer, p_power integer) returns jsonb
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_sid uuid := private.student_from_token(p_token); v_s public.students%rowtype;
+begin
+  if v_sid is null then return jsonb_build_object('error', 'invalid_session'); end if;
+  if p_client_id !~ '^[A-Za-z0-9_-]{6,60}$' then return jsonb_build_object('error', 'invalid_data'); end if;
+  if (select count(*) from public.cave_drops where student_id = v_sid and received_at > now() - interval '1 hour') > 120 then
+    return jsonb_build_object('error', 'rate_limited');
+  end if;
+  select * into v_s from public.students where id = v_sid;
+  insert into public.cave_drops (class_id, student_id, client_id, ink, power)
+  values (v_s.class_id, v_sid, p_client_id, least(500, greatest(-100, coalesce(p_ink, 0))), least(500, greatest(0, coalesce(p_power, 0))))
+  on conflict (student_id, client_id) do nothing;
+  delete from public.cave_drops where received_at < now() - interval '400 days';
+  return jsonb_build_object('ok', true);
+end $$;
+
 create or replace function private.cave_state(p_classes uuid[]) returns jsonb
 language plpgsql stable security definer set search_path = public, pg_temp as $$
 declare
@@ -1365,6 +1398,9 @@ declare
   v_ink   bigint;
   v_pow   bigint;
   v_games bigint;
+  v_dink  bigint;
+  v_dpow  bigint;
+  v_dn    bigint;
   v_n     integer := coalesce(array_length(p_classes, 1), 0);
   v_won   integer;
   v_at    timestamptz;
@@ -1375,10 +1411,16 @@ begin
   left join public.class_cave c on c.class_id = r.class_id
   where r.class_id = any(p_classes) and r.cave_ink is not null
     and r.received_at >= greatest(v_start, coalesce(c.reset_at, '-infinity'::timestamptz));
+  select coalesce(sum(d.ink), 0), coalesce(sum(d.power), 0), count(*) filter (where d.ink >= 0)
+    into v_dink, v_dpow, v_dn
+  from public.cave_drops d
+  left join public.class_cave c on c.class_id = d.class_id
+  where d.class_id = any(p_classes)
+    and d.received_at >= greatest(v_start, coalesce(c.reset_at, '-infinity'::timestamptz));
   select count(*), max(c.won_at) into v_won, v_at
   from public.class_cave c where c.class_id = any(p_classes) and c.won_at >= v_start;
   return jsonb_build_object(
-    'ink', greatest(0, v_ink), 'power', greatest(0, v_pow), 'games', v_games,
+    'ink', greatest(0, v_ink + v_dink), 'power', greatest(0, v_pow + v_dpow), 'games', v_games + v_dn,
     'won_at', case when v_n > 0 and v_won = v_n then (extract(epoch from v_at) * 1000)::bigint end,
     'classes', v_n);
 end $$;
@@ -1785,6 +1827,7 @@ revoke all on function private.cave_start()                     from public, ano
 revoke all on function private.cave_state(uuid[])               from public, anon, authenticated;
 revoke all on function public.cave_report(text, text, integer, integer) from public;
 revoke all on function public.cave_get(text)                    from public;
+revoke all on function public.cave_drop(text, text, integer, integer) from public;
 revoke all on function public.cave_win(text)                    from public;
 revoke all on function public.teacher_cave(uuid[])              from public, anon;
 revoke all on function public.teacher_cave_win(uuid[])          from public, anon;
@@ -1792,6 +1835,7 @@ revoke all on function public.teacher_cave_reset(uuid[])        from public, ano
 revoke all on function public.admin_observe(text, uuid)         from public, anon;
 grant execute on function public.cave_report(text, text, integer, integer) to anon, authenticated;
 grant execute on function public.cave_get(text)                 to anon, authenticated;
+grant execute on function public.cave_drop(text, text, integer, integer) to anon, authenticated;
 grant execute on function public.cave_win(text)                 to anon, authenticated;
 grant execute on function public.teacher_cave(uuid[])           to authenticated;
 grant execute on function public.teacher_cave_win(uuid[])       to authenticated;

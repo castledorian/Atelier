@@ -14,7 +14,7 @@ import { DUEL_SIZE, activeRules, dayKey, loadStore, recordDuel, recordGame, save
 import { effectiveGrade, levelOf } from '../game/grade';
 import { Sfx } from '../game/audio';
 import { addLog } from '../game/progress';
-import { calmBoss, feedBoss } from '../game/boss/state';
+import { CALM, calmBoss, feedBoss } from '../game/boss/state';
 import { newRunId } from '../game/history';
 import { spellingOutcome, summarize } from '../game/itemstats';
 import type { ItemOutcome } from '../game/itemstats';
@@ -25,7 +25,7 @@ import { BOSS_AT, HINT, RETRY_MAX, ROUNDS, choicesFor, duelItems, hpFor, isFault
 import type { EnemyRole, Item, RoundOutcome } from '../game/spelling/engine';
 import { addSpellingScore, loadSpellingPrefs, loadSpellingScores, saveSpellingPrefs } from '../game/spelling/scores';
 import { enqueue, flush } from '../server/outbox';
-import { sendItemStats, sendRun } from '../server/student';
+import { dropCave, sendItemStats, sendRun } from '../server/student';
 import type { RunPayload, SessionInfo, StudentAccount } from '../server/types';
 import { Frame } from '../pages/Frame';
 import { MenuScene, SpellingMenu } from './SpellingMenu';
@@ -285,7 +285,10 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
         const d = recordDuel(loadStore(), s.duel.rule, won, dayKey());
         saveStore(d.store);
         // règle revue : la créature de la grotte perd un peu d'encre
-        if (won) calmBoss();
+        if (won) {
+          calmBoss();
+          if (account && !sesRef.current.sess) void dropCave(account.student.id, account.token, `duel-${id}`, -CALM, 0);
+        }
         encre = { top: null, promoted: [], duel: { rule: s.duel.rule, before: d.before, after: d.after, won } };
         setOver({ score: 0, okRounds: s.okRounds, total, bestStreak: 0, rank: -1, record: false, level: s.level, diff: s.diff, missed: [], dead: false, defeated: total, hpLeft: 0, maxHp: 0, ...encre });
         sfx.play('victory');
@@ -355,7 +358,10 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
               enqueue(acct.student.id, payload);
               setCloud('queued');
             });
-        } else setCloud('off');
+        } else {
+          if (acct && payload.cave && !payload.sessionId) void dropCave(acct.student.id, acct.token, id, payload.cave.ink, payload.cave.power);
+          setCloud('off');
+        }
         // L'Encre : les fautes de la partie, rangées par règle, sur cet appareil seulement
         const r = recordGame(loadStore(), rulesOf('orthographe'), s.faults);
         saveStore(r.store);

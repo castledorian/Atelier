@@ -1,5 +1,6 @@
 import { rpc } from './api';
 import { freshToken } from './teacher';
+import type { StudentAccount } from './types';
 
 // ───────────────────────── Espace administrateur (lecture seule) ─────────────────────────
 // Toutes ces fonctions sont refusées par le serveur à un compte qui n'est pas dans public.site_admins.
@@ -156,3 +157,9 @@ export const GAME_NAME: Record<string, string> = {
 
 /** Note le début d'une observation dans le journal de l'administration (le serveur refuse si le compte n'est pas administrateur). */
 export const adminObserve = (kind: 'school' | 'student', id: string) => authed((t) => rpc<unknown>('admin_observe', { p_kind: kind, p_target: id }, t));
+
+/** Début d'observation d'un élève : renvoie de quoi reconstituer son compte (jeton d'observation « obs: » : lecture seule, refusé par toute fonction qui écrit). */
+export async function observeStudent(id: string): Promise<StudentAccount> {
+  const r = (await adminObserve('student', id)) as { student: StudentAccount['student']; class: StudentAccount['class']; school: StudentAccount['school'] };
+  return { token: `obs:${r.student.id}`, student: r.student, class: r.class, school: r.school };
+}

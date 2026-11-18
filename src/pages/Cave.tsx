@@ -56,7 +56,7 @@ interface Props {
   /** jeton de l'élève connecté (pour lire la grotte de sa classe) */
   token?: string | null;
   /** administrateur : on regarde la grotte de quelqu'un d'autre, en lecture seule */
-  observe?: { source: CaveSource; label: string; onQuit: () => void };
+  observe?: { source: CaveSource; label: string; onQuit: () => void; /** le bandeau est déjà affiché par la page qui contient celle-ci */ embedded?: boolean };
 }
 
 /** Rafraîchissement de la grotte : plus vite quand on observe en direct. */
@@ -154,7 +154,7 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
 
   return (
     <Frame dark>
-      {observe && <ObserveBar label={observe.label} onQuit={observe.onQuit} />}
+      {observe && !observe.embedded && <ObserveBar label={observe.label} onQuit={observe.onQuit} />}
       <div className="card-top">
         <BackButton label={readOnly ? 'Retour à l’administration' : undefined} onClick={onBack} />
       </div>

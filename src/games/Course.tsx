@@ -37,7 +37,7 @@ import { loadSettings, saveSettings } from '../game/storage';
 import type { Settings, TextSize } from '../game/storage';
 import { explain } from '../server/api';
 import { enqueue, flush } from '../server/outbox';
-import { fetchBoard, sendItemStats, sendRun } from '../server/student';
+import { dropCave, fetchBoard, sendItemStats, sendRun } from '../server/student';
 import type { BoardRow, RunPayload, Scope, SessionInfo, StudentAccount } from '../server/types';
 
 /**
@@ -209,7 +209,11 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
           enqueue(acct.student.id, payload);
           if (id === live.current.recId) setCloud('queued');
         });
-    } else setCloud('off');
+    } else {
+      // partie sans bonne réponse : non envoyée, mais ses fautes nourrissent quand même la grotte de la classe
+      if (acct && payload.cave && !payload.sessionId) void dropCave(acct.student.id, acct.token, id, payload.cave.ink, payload.cave.power);
+      setCloud('off');
+    }
     live.current.drill = result.drill;
     live.current.overAt = performance.now();
     setRun({ result, rank, id, record, encre });

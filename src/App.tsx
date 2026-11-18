@@ -26,7 +26,7 @@ import {
 } from './game/storage';
 import type { ScoreEntry, Settings } from './game/storage';
 import { enqueue, flush } from './server/outbox';
-import { fetchMyRuns, sendRun } from './server/student';
+import { dropCave, fetchMyRuns, sendRun } from './server/student';
 import type { RunPayload, SessionInfo, StudentAccount } from './server/types';
 
 type Screen = 'menu' | 'play' | 'pause' | 'over' | 'progress';
@@ -156,7 +156,12 @@ export default function App({ account, onHome, onSessionLost, install, session, 
     }
     // Compte élève : toute partie (même entraînement) est envoyée au serveur ; seules les parties classées comptent au classement.
     const sendToServer = () => {
-      if (!acct || stats.correct === 0) return false;
+      if (!acct) return false;
+      if (stats.correct === 0) {
+        // aucune bonne réponse : la partie n'est pas envoyée, mais ses fautes nourrissent quand même la grotte de la classe
+        if (payload.cave && !payload.sessionId) void dropCave(acct.student.id, acct.token, recId, payload.cave.ink, payload.cave.power);
+        return false;
+      }
       setCloudStatus('sending');
       void sendRun(acct.token, payload)
         .then((r) => {
