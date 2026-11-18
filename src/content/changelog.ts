@@ -24,6 +24,17 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.13',
+    date: '18 novembre 2026',
+    iso: '2026-11-18',
+    title: 'Codes d’élèves protégés',
+    changes: [
+      { kind: 'better', text: 'Le serveur ne garde plus les codes des élèves : seule une empreinte est conservée. Un code s’affiche une fois, à la création ou au renouvellement : pense à imprimer la fiche tout de suite.' },
+      { kind: 'new', text: 'Nouveau bouton « Nouveaux codes pour la classe » pour réimprimer toutes les fiches d’un coup.' },
+      { kind: 'better', text: 'Le serveur garde la liste des mises à jour appliquées, et le site les vérifie pour les administrateurs.' },
+    ],
+  },
+  {
     version: '1.12',
     date: '18 novembre 2026',
     iso: '2026-11-18',

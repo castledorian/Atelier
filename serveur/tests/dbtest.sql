@@ -115,7 +115,8 @@ select pg_temp.eq('la partie truquée n''est pas enregistrée', (select count(*)
 -- ═══ Enseignant A : lit ses résultats, jamais ceux de B ═══
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 select pg_temp.eq('A voit les parties de sa classe uniquement', (select count(distinct student_id) from public.runs), 2::bigint);
-select pg_temp.eq('A voit les codes de ses élèves', (select count(*) from public.students where access_code is not null), 4::bigint);
+select pg_temp.eq('les codes ne sont plus stockés en clair', (select count(*) from public.students where access_code is not null), 0::bigint);
+select pg_temp.eq('chaque élève a une empreinte de code', (select count(*) from public.students where code_hash is not null), (select count(*) from public.students));
 select pg_temp.eq('aperçu de classe : 4 élèves', jsonb_array_length(public.class_overview((select v::uuid from ctx where k='classA'))), 4);
 select pg_temp.eq('aperçu : meilleur score Léa (parties classées uniquement)', (select (e->>'best_typing')::int from jsonb_array_elements(public.class_overview((select v::uuid from ctx where k='classA'))) e where e->>'name'='Léa'), 2500);
 select pg_temp.eq('aperçu : 4 parties + 1 entraînement', (select (e->>'games')||'/'||(e->>'drills') from jsonb_array_elements(public.class_overview((select v::uuid from ctx where k='classA'))) e where e->>'name'='Léa'), '3/1');
@@ -506,6 +507,21 @@ select pg_temp.as_admin();
 select pg_temp.eq('session prolongée par l''envoi d''une partie', (select expires_at > now() + interval '29 days' from public.student_sessions where token_hash = private.hash_token((select v from ctx where k='tok_nina'))), true);
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 select pg_temp.eq('server_version : sessions de 30 jours détectées', (public.server_version()->'features'->>'sessions'), 'true');
+select pg_temp.as_admin();
+
+
+-- Codes hachés : régénération d'une classe, rien en clair, ancien code refusé
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+insert into ctx select 'regen', public.reset_class_codes((select v::uuid from ctx where k='classX'))::text;
+select pg_temp.eq('reset_class_codes : un code par élève', jsonb_array_length((select v::jsonb from ctx where k='regen')), (select count(*)::int from public.students where class_id = (select v::uuid from ctx where k='classX')));
+select pg_temp.eq('les nouveaux codes ne sont pas stockés', (select count(*) from public.students where access_code is not null), 0::bigint);
+select pg_temp.as_anon();
+select pg_temp.eq('ancien code refusé après régénération de la classe', public.student_login((select v from ctx where k='code_ana'))->>'error', 'invalid_code');
+select pg_temp.eq('nouveau code accepté (hors majuscules et espaces)', public.student_login(' ' || lower((select v::jsonb->0->>'access_code' from ctx where k='regen')) || ' ')->'student'->>'name', (select v::jsonb->0->>'name' from ctx where k='regen'));
+select pg_temp.as_user('bbbbbbbb-0000-0000-0000-000000000002');
+select pg_temp.fails($$select public.reset_class_codes('$$||(select v from ctx where k='classX')||$$'::uuid)$$, 'forbidden');
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select pg_temp.eq('server_version : codes hachés détectés', (public.server_version()->'features'->>'codes'), 'true');
 select pg_temp.as_admin();
 
 \echo TOUS LES TESTS SQL PASSENT

@@ -34,6 +34,7 @@ export const STEPS: Array<[string, Step]> = [
   ['invitations', { file: 'mise-a-jour-fiabilite.sql', why: 'inscription sur invitation', critical: true }],
   ['nettoyage', { file: 'mise-a-jour-fiabilite.sql', why: 'effacement des anciennes données', critical: true }],
   ['sessions', { file: 'mise-a-jour-fiabilite.sql', why: 'sessions élèves plus courtes', critical: false }],
+  ['codes', { file: 'mise-a-jour-codes.sql', why: 'codes élèves non stockés en clair', critical: false }],
 ];
 
 export interface Todo {

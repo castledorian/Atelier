@@ -66,6 +66,10 @@ npm run build    # site complet dans dist/
 
 Pas de publicité, de cookie ni de statistique d'audience. Sans connexion, rien ne quitte l'appareil. Avec un code d'élève : prénom ou pseudo, classe et résultats uniquement, supprimables par l'enseignant. Voir la page *Confidentialité* du site et `src/legal.ts`.
 
+## Sécurité
+
+Voir `SECURITY.md` pour signaler une faille et pour ce qui est protégé.
+
 ## Licence
 
 © 2026 Dorian Peglion — tous droits réservés pour les textes, illustrations et le code propres à Atelier. Les bibliothèques et polices utilisées restent sous leurs licences d'origine (voir la page *Crédits et licences* du site).

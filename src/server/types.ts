@@ -105,7 +105,8 @@ export interface ClassWeek {
 export interface Overview {
   id: string;
   name: string;
-  access_code: string;
+  /** vide (null) pour les élèves dont le code n'est plus stocké en clair : il faut alors en créer un nouveau */
+  access_code: string | null;
   games: number;
   drills: number;
   best_typing: number | null;

@@ -1,0 +1,13 @@
+Copyright (c) 2026 Dorian Peglion. Tous droits réservés.
+All rights reserved.
+
+Le code source, les textes, les exercices et les illustrations de ce dépôt sont la propriété de leur auteur.
+Le dépôt est consultable, mais aucune licence de réutilisation n'est accordée : toute copie, modification,
+redistribution ou utilisation commerciale du contenu, en tout ou en partie, requiert l'autorisation écrite préalable de l'auteur.
+
+Exceptions :
+ - l'utilisation du site publié, en ligne, par les élèves, les enseignants et les familles, dans le cadre scolaire ;
+ - les bibliothèques tierces (React, Vite, Tailwind CSS, polices @fontsource…) restent soumises à leurs propres licences,
+   indiquées dans leurs paquets (dossier node_modules après installation) et sur la page « Crédits » du site.
+
+Pour toute demande d'autorisation : voir l'adresse de contact de la page « Confidentialité » du site.

@@ -53,7 +53,8 @@ create table public.students (
   school_id    uuid not null references public.schools(id) on delete cascade,
   class_id     uuid not null references public.classes(id) on delete cascade,
   name         text not null check (char_length(name) between 1 and 24),
-  access_code  text not null unique check (access_code ~ '^[A-Z0-9]{8}$'),
+  code_hash    text not null unique,            -- empreinte du code (voir private.code_hash) : le code n'est jamais stocké
+  access_code  text unique check (access_code is null or access_code ~ '^[A-Z0-9]{8}$'),   -- ancien code lisible (installations migrées) ; vide pour les nouveaux élèves
   created_at   timestamptz not null default now()
 );
 create index on public.students (class_id);
@@ -127,6 +128,23 @@ begin
   return out;
 end $$;
 
+-- Empreinte d'un code élève : SHA-256 du code mêlé à un secret du serveur (« poivre », table app_settings).
+create function private.code_hash(p text) returns text
+language plpgsql stable security definer set search_path = public, pg_temp as $$
+begin
+  return encode(sha256(convert_to((select value from private.app_settings where key = 'code_pepper') || ':' || private.norm_code(p), 'UTF8')), 'hex');
+end $$;
+
+-- À lancer volontairement sur une installation migrée : efface les codes encore lisibles (voir mise-a-jour-codes.sql).
+create function private.wipe_plain_codes() returns bigint
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_n bigint;
+begin
+  update public.students set access_code = null where access_code is not null;
+  get diagnostics v_n = row_count;
+  return v_n;
+end $$;
+
 create function private.hash_token(p text) returns text
 language sql immutable as $$ select encode(sha256(convert_to(coalesce(p, ''), 'UTF8')), 'hex') $$;
 
@@ -172,7 +190,7 @@ begin
     return jsonb_build_object('error', 'rate_limited');
   end if;
 
-  select * into v_s from public.students where access_code = private.norm_code(p_code);
+  select * into v_s from public.students where code_hash = private.code_hash(p_code);
   if not found then
     insert into private.login_attempts (ip) values (v_ip);
     return jsonb_build_object('error', 'invalid_code');
@@ -315,8 +333,8 @@ begin
       v_tries := v_tries + 1;
       v_code := private.new_code();
       begin
-        insert into public.students (school_id, class_id, name, access_code)
-        values (v_c.school_id, p_class, v_n, v_code) returning id into v_id;
+        insert into public.students (school_id, class_id, name, code_hash)
+        values (v_c.school_id, p_class, v_n, private.code_hash(v_code)) returning id into v_id;
         exit;
       exception when unique_violation then
         if v_tries >= 10 then raise; end if;
@@ -342,7 +360,7 @@ begin
     v_tries := v_tries + 1;
     v_code := private.new_code();
     begin
-      update public.students set access_code = v_code where id = p_student;
+      update public.students set code_hash = private.code_hash(v_code), access_code = null where id = p_student;
       exit;
     exception when unique_violation then
       if v_tries >= 10 then raise; end if;
@@ -350,6 +368,37 @@ begin
   end loop;
   delete from public.student_sessions where student_id = p_student;
   return v_code;
+end $$;
+
+-- Nouveaux codes pour TOUTE une classe (pour réimprimer les fiches) : les anciens codes et les connexions en cours cessent de fonctionner.
+create function public.reset_class_codes(p_class uuid) returns jsonb
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  v_c     public.classes%rowtype;
+  v_st    record;
+  v_code  text;
+  v_tries int;
+  v_out   jsonb := '[]'::jsonb;
+begin
+  select * into v_c from public.classes where id = p_class;
+  if not found then raise exception 'forbidden' using errcode = '42501'; end if;
+  perform private.assert_member(v_c.school_id);
+  for v_st in select id, name from public.students where class_id = p_class order by lower(name) loop
+    v_tries := 0;
+    loop
+      v_tries := v_tries + 1;
+      v_code := private.new_code();
+      begin
+        update public.students set code_hash = private.code_hash(v_code), access_code = null where id = v_st.id;
+        exit;
+      exception when unique_violation then
+        if v_tries >= 10 then raise; end if;
+      end;
+    end loop;
+    v_out := v_out || jsonb_build_object('id', v_st.id, 'name', v_st.name, 'access_code', v_code);
+  end loop;
+  delete from public.student_sessions where student_id in (select id from public.students where class_id = p_class);
+  return v_out;
 end $$;
 
 -- Tableau de bord d'une classe : un résumé par élève (calculé côté serveur, quel que soit le nombre de parties).
@@ -1007,6 +1056,18 @@ create table if not exists private.app_settings (
 );
 alter table private.app_settings enable row level security;
 insert into private.app_settings (key, value) values ('invite_only', 'on') on conflict (key) do nothing;
+-- secret du serveur mêlé aux codes élèves avant l'empreinte (voir private.code_hash)
+insert into private.app_settings (key, value)
+values ('code_pepper', replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''))
+on conflict (key) do nothing;
+
+-- Registre des mises à jour appliquées (affiché par public.server_version()).
+create table if not exists private.schema_migrations (
+  id         text primary key,
+  applied_at timestamptz not null default now()
+);
+alter table private.schema_migrations enable row level security;
+insert into private.schema_migrations (id) values ('2026-11-fiabilite'), ('2026-11-codes') on conflict (id) do nothing;
 
 create table if not exists private.invitations (
   code       text primary key check (code ~ '^[A-Z0-9]{8}$'),
@@ -1223,11 +1284,15 @@ begin
     'invitations', to_regclass('private.invitations') is not null and to_regprocedure('public.redeem_invitation(text)') is not null,
     'nettoyage',   to_regprocedure('private.purge_old_data()') is not null,
     'sessions',    v_login like '%30 days%' and v_run like '%student_sessions%' and v_ses like '%student_sessions%',
+    'codes',       exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'students' and column_name = 'code_hash')
+                   and v_login like '%code_hash%',
     'nettoyage_auto', v_cron
   );
   return jsonb_build_object(
-    'version', 11,
+    'version', 12,
     'features', f,
+    'migrations', coalesce((select jsonb_agg(id order by id) from private.schema_migrations), '[]'::jsonb),
+    'plain_codes', (select count(*) from public.students where access_code is not null),
     'missing', coalesce((select jsonb_agg(k order by k) from jsonb_each(f) as e(k, v) where v = 'false'::jsonb), '[]'::jsonb));
 end $$;
 
@@ -1253,6 +1318,7 @@ grant execute on function public.create_school(text)               to authentica
 grant execute on function public.create_class(uuid, text)          to authenticated;
 grant execute on function public.add_students(uuid, text[])        to authenticated;
 grant execute on function public.reset_student_code(uuid)          to authenticated;
+grant execute on function public.reset_class_codes(uuid)          to authenticated;
 grant execute on function public.delete_school(uuid)               to authenticated;
 grant execute on function public.admin_check()                to authenticated;
 grant execute on function public.admin_overview()             to authenticated;
@@ -1502,6 +1568,8 @@ begin
 end $$;
 
 revoke all on function private.merge_picks(jsonb, jsonb) from public, anon, authenticated;
+revoke all on function private.code_hash(text) from public, anon, authenticated;
+revoke all on function private.wipe_plain_codes() from public, anon, authenticated;
 revoke all on function private.store_items(text, text, text, integer, jsonb) from public, anon, authenticated;
 revoke all on function public.submit_item_stats(text, text, text, text, integer, jsonb) from public;
 revoke all on function public.admin_balance() from public;

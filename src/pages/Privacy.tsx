@@ -75,7 +75,7 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
         <h3 className="font-bold">Élève, avec un code</h3>
         <ul className={ul}>
           <li>Le prénom ou pseudo (24 caractères au maximum), choisi par l’enseignant, le nom de la classe et celui de l’école.</li>
-          <li>Un code d’accès de 8 caractères, créé au hasard, qui sert de « clé » de connexion.</li>
+          <li>Un code d’accès de 8 caractères, créé au hasard, qui sert de « clé » de connexion. Le serveur n’en garde qu’une empreinte : même l’éditeur ne peut pas le relire.</li>
           <li>Les résultats de chaque partie&nbsp;: jeu, mode, score, niveau atteint, vitesse et précision de frappe, durée, date.</li>
           <li>
             Pour les séances de classe (un jeu réglé par l’enseignant)&nbsp;: le nombre d’essais utilisés et le résultat de chaque essai. Seul le meilleur score compte pour l’évaluation&nbsp;;
@@ -117,7 +117,7 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
       <Section id="p-classements" title="Qui voit quoi ?">
         <ul className={ul}>
           <li>
-            <strong>L’enseignant</strong> voit, pour ses classes, les prénoms, les codes et les résultats de ses élèves (tableau de bord, export CSV).
+            <strong>L’enseignant</strong> voit, pour ses classes, les prénoms et les résultats de ses élèves (tableau de bord, export CSV). Il ne voit le code d’un élève qu’au moment où il le crée ou le renouvelle (pour l’imprimer) ; ensuite, il peut en créer un nouveau.
           </li>
           <li>
             <strong>Un élève connecté</strong> voit le prénom (ou le pseudo) et le score des élèves de sa classe, et de son école s’il ouvre le classement de l’école. Il ne voit ni

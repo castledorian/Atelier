@@ -12,7 +12,7 @@ Vous n'avez rien à installer, aucun script à copier. Il suffit d'un compte gra
 
 1. Dans l'onglet **Ajouter des élèves** de la classe, tapez ou collez **un prénom par ligne** (ou un pseudo : jamais de nom de famille).
 2. Chaque élève reçoit un **code personnel de 8 caractères** (ex. `KQ7M 2XAB`).
-3. **Imprimer les codes** sort une fiche à découper à distribuer. Un code perdu ? **Nouveau code** (l'ancien cesse de fonctionner).
+3. **Imprimer les codes** sort une fiche à découper à distribuer. **Imprimez-la tout de suite** : pour la sécurité des élèves, un code n'est affiché qu'à sa création et ne peut plus être relu ensuite. Un code perdu ? **Nouveau code** (l'ancien cesse de fonctionner) ; pour réimprimer toute la classe : **Nouveaux codes pour la classe** (tous les anciens cessent de fonctionner).
 
 ## 3. Les élèves jouent
 

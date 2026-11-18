@@ -137,11 +137,11 @@ Une vraie application des **magasins** (App Store, Google Play) est possible plu
 - **Pro** : sauvegardes quotidiennes conservées 7 jours (*Database → Backups*).
 - **Sauvegarde à vous (recommandée, 1 fois par mois)** : *Project Settings → Database → Connection string* (mode « Session pooler ») puis, sur un ordinateur où PostgreSQL est installé :
   ```
-  pg_dump "postgresql://postgres.xxxx:MOTDEPASSE@aws-0-eu-west-3.pooler.supabase.com:5432/postgres" --schema=public --no-owner -f sauvegarde-AAAA-MM.sql
+  pg_dump "postgresql://postgres.xxxx:MOTDEPASSE@aws-0-eu-west-3.pooler.supabase.com:5432/postgres" --schema=public --schema=private --no-owner -f sauvegarde-AAAA-MM.sql
   ```
-  Gardez le fichier hors de Supabase (disque, cloud personnel). Il contient des données d'élèves : traitez-le comme tel.
+  Gardez le fichier hors de Supabase (disque, cloud personnel). Il contient des données d'élèves **et le secret qui protège les codes** (schéma `private`, d'où le second `--schema`) : traitez-le comme un mot de passe. Sans ce secret, une restauration rendrait tous les codes élèves inutilisables (il faudrait les renouveler).
 - **Export enseignant** : bouton *Exporter (CSV)* de chaque classe.
-- **Changer d'hébergeur** : créez un nouveau projet, relancez `schema.sql`, importez la sauvegarde, changez `config.ts`. Les codes élèves et les scores sont conservés.
+- **Changer d'hébergeur** : créez un nouveau projet, relancez `schema.sql`, importez la sauvegarde, changez `config.ts`. Les codes élèves (leurs empreintes) et les scores sont conservés, à condition que la sauvegarde contienne le schéma `private` (secret `code_pepper`) ; la sauvegarde recrée tout elle-même : restaurez-la dans un projet vide, sans lancer `schema.sql` avant.
 
 ## 10. Protection des données (RGPD) — à lire si le site sert à de vraies écoles
 
@@ -165,7 +165,7 @@ Une vraie application des **magasins** (App Store, Google Play) est possible plu
 
 **Limites actuelles à connaître**
 - N'importe qui peut créer un compte enseignant (on ne vérifie pas le métier). Chaque compte est limité à 3 écoles, 60 classes par école, 1 500 élèves par école. En cas d'abus, Supabase permet de désactiver les inscriptions ou d'ajouter un captcha (demande un petit développement).
-- Le code élève est la seule clé : il faut le garder privé comme un mot de passe. 8 caractères parmi 31 → ~850 milliards de combinaisons, avec frein sur les essais ratés. L'enseignant peut le renouveler en un clic.
+- Le code élève est la seule clé : il faut le garder privé comme un mot de passe. 8 caractères parmi 31 → ~850 milliards de combinaisons, avec frein sur les essais ratés. Le serveur n'en garde que l'empreinte. L'enseignant peut le renouveler en un clic.
 - Un élève sur un appareil partagé reste connecté tant qu'il joue (la session expire après 30 jours sans partie) : **« Changer d'élève »** (accueil) le déconnecte.
 - Pas encore : inviter un second enseignant dans la même école (chacun voit ses propres écoles), changement d'adresse email depuis l'interface, statistiques d'école globales.
 
@@ -278,15 +278,17 @@ Reconnectez-vous sur le site : un bouton **Administration** apparaît sur l'accu
 
 ## Mise à jour « fiabilité » (version 1.11) : limites d'envoi, invitations, nettoyage, vérification de la base
 
-**À faire une fois**, **en dernier** : dans Supabase → SQL Editor, collez et exécutez `serveur/mise-a-jour-fiabilite.sql` (sans danger si répété). Ne rejouez jamais `mise-a-jour-seances.sql` ou `mise-a-jour-securite.sql` après elle : ils remettraient une ancienne version de l'envoi des parties. Une installation neuve avec `schema.sql` est déjà à jour.
+**À faire une fois** (puis, juste après, `mise-a-jour-codes.sql` : voir plus bas) : dans Supabase → SQL Editor, collez et exécutez `serveur/mise-a-jour-fiabilite.sql` (sans danger si répété). Ne rejouez jamais `mise-a-jour-seances.sql` ou `mise-a-jour-securite.sql` après elle : ils remettraient une ancienne version de l'envoi des parties. Une installation neuve avec `schema.sql` est déjà à jour.
 
-**Ordre des mises à jour d'une base déjà installée** (chacune une seule fois) : `seances` → `classement` → `orthographe` → `niveau` → `securite` → `admin` → `exercices` → `memoire` → `compte` → **`fiabilite`**. Le site vous le dit lui-même : dans l'espace administrateur, un bandeau rouge liste les fichiers qui manquent et l'ordre à suivre (la base répond toute seule à la question « qu'est-ce qui est installé ? »). Il vérifie même que les fonctions d'envoi des parties contrôlent bien les parties, au cas où une ancienne mise à jour aurait été rejouée.
+**Ordre des mises à jour d'une base déjà installée** (chacune une seule fois) : `seances` → `classement` → `orthographe` → `niveau` → `securite` → `admin` → `exercices` → `memoire` → `compte` → `fiabilite` → **`codes`**. Le site vous le dit lui-même : dans l'espace administrateur, un bandeau rouge liste les fichiers qui manquent et l'ordre à suivre (la base répond toute seule à la question « qu'est-ce qui est installé ? »). Il vérifie même que les fonctions d'envoi des parties contrôlent bien les parties, au cas où une ancienne mise à jour aurait été rejouée.
 
 **Ce que ça change.**
 
 - **Limites d'envoi fiables.** Elles se comptent sur l'heure de **réception** par le serveur (`runs.received_at`), pas sur l'heure annoncée par le navigateur : au plus 60 parties par minute, 200 par heure, 1 500 par jour et par élève. L'heure du navigateur est gardée pour l'affichage (parties jouées hors ligne).
 - **Inscription sur invitation.** N'importe qui peut encore créer un compte (e-mail confirmé), mais **ne peut pas créer d'école** sans code d'invitation : il ne peut donc ni enregistrer de données ni créer d'élèves. Espace administrateur → onglet **Invitations** : « Créer un code » (nombre d'utilisations, durée), à transmettre à l'enseignant, qui le saisit à sa première connexion. Les enseignants déjà installés ne sont pas touchés. Interrupteur « Désactiver » dans le même onglet pour ouvrir à nouveau l'inscription. Aucun service extérieur (pas de CAPTCHA) : le site garde sa promesse « aucun contenu d'un autre site ».
 - **Conservation limitée (RGPD).** Chaque nuit, `private.purge_old_data()` efface les parties de plus de 13 mois (400 jours) et les élèves créés depuis plus de 13 mois qui n'ont plus de partie. La programmation utilise l'extension **pg_cron** : si le fichier affiche l'avis « pg_cron indisponible », activez-la (Supabase → Database → Extensions → `pg_cron`), puis relancez le fichier ; le bandeau de l'espace administrateur reste affiché tant que le nettoyage n'est pas programmé. Pour lancer un nettoyage tout de suite : `select private.purge_old_data();`.
+- **Codes élèves non stockés en clair (version 1.13).** Fichier `mise-a-jour-codes.sql`, à lancer APRÈS `mise-a-jour-fiabilite.sql`. Le serveur ne garde plus qu'une **empreinte** (SHA-256 du code mêlé à un secret du serveur, `private.app_settings` clé `code_pepper`) : une copie de la table des élèves ne livre pas les codes. Le code n'est affiché qu'à la création de l'élève ou à son renouvellement (« Nouveau »), et la classe entière peut être renouvelée d'un coup (« Nouveaux codes pour la classe ») pour réimprimer les fiches. **Transition sans risque :** les codes distribués avant la mise à jour continuent de fonctionner et restent lisibles tant que vous n'avez pas lancé `select private.wipe_plain_codes();` (SQL Editor) — à faire quand les enseignants ont imprimé leurs fiches ; irréversible. Honnêteté sur la limite : le secret est dans la même base ; un vol de la base ENTIÈRE (sauvegarde complète) permettrait donc encore une attaque par force brute sur les empreintes. La protection est réelle contre les fuites partielles (table seule, export, erreur de droits), pas contre la perte de tout le projet Supabase.
+- **Registre des mises à jour.** `private.schema_migrations` liste les fichiers récents appliqués (`2026-11-codes`…) ; `public.server_version()` les renvoie avec le nombre de codes encore lisibles (`plain_codes`).
 - **Fin d'année.** À partir du 15 juin, l'espace enseignant affiche un rappel (exporter en CSV, puis « Effacer les résultats » : les élèves gardent leur code). Le même bouton existe toute l'année dans l'onglet « Supprimer » de la classe.
 
 ## Niveaux de classe et difficultés (CP → CM2) : comment c'est réglé

@@ -179,6 +179,7 @@ export const addStudents = (cls: string, names: string[]) =>
 
 export const classOverview = (cls: string) => authed((t) => rpc<Overview[]>('class_overview', { p_class: cls }, t));
 
+export const resetClassCodes = (cls: string) => authed((t) => rpc<NewStudent[]>('reset_class_codes', { p_class: cls }, t));
 export const resetCode = (student: string) => authed((t) => rpc<string>('reset_student_code', { p_student: student }, t));
 
 /** Efface les résultats de la classe (les élèves et leurs codes sont gardés) : fin d'année. */

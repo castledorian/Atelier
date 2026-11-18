@@ -482,6 +482,10 @@ function ClassPanel({
   const shown = useSorted(rows, sort, overValue);
   const [names, setNames] = useState('');
   const [fresh, setFresh] = useState<NewStudent[] | null>(null);
+  /** Codes connus uniquement dans cette page (jamais conservés ailleurs) : le serveur ne garde que leur empreinte. */
+  const [cards, setCards] = useState<Record<string, string>>({});
+  const codeOf = (r: Overview): string | null => cards[r.id] ?? r.access_code ?? null;
+  const remember = (list: NewStudent[]) => setCards((c) => ({ ...c, ...Object.fromEntries(list.map((s) => [s.id, s.access_code])) }));
   const [msg, setMsg] = useState('');
   const [confirm, setConfirm] = useState<string | null>(null);
   /** une seule partie de la classe à la fois : la page reste courte */
@@ -510,6 +514,7 @@ function ClassPanel({
     const created = await act(() => T.addStudents(cls.id, list));
     if (created) {
       setFresh(created);
+      remember(created);
       setNames('');
       setMsg(`${created.length} élève${created.length > 1 ? 's' : ''} ajouté${created.length > 1 ? 's' : ''}.`);
       const r = await act(() => T.classOverview(cls.id));
@@ -611,8 +616,29 @@ function ClassPanel({
               <button type="button" className="btn btn-ghost" onClick={exportRuns}>
                 Exporter (CSV)
               </button>
-              <button type="button" className="btn btn-ghost" disabled={!rows?.length} onClick={() => window.print()}>
+              <button type="button" className="btn btn-ghost" disabled={!(rows ?? []).some((r) => codeOf(r))} onClick={() => window.print()}>
                 Imprimer les codes
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                disabled={!rows?.length}
+                onClick={async () => {
+                  if (confirm !== 'class-codes') {
+                    setConfirm('class-codes');
+                    setMsg('Cela change le code de TOUS les élèves de la classe : les anciennes fiches ne marcheront plus. Clique encore pour confirmer.');
+                    return;
+                  }
+                  setConfirm(null);
+                  const all = await act(() => T.resetClassCodes(cls.id));
+                  if (all) {
+                    remember(all);
+                    setMsg('Nouveaux codes créés. Clique sur « Imprimer les codes » maintenant : ils ne seront plus affichés ensuite.');
+                    await reload();
+                  }
+                }}
+              >
+                {confirm === 'class-codes' ? 'Confirmer : nouveaux codes' : 'Nouveaux codes pour la classe'}
               </button>
             </div>
           </div>
@@ -721,7 +747,7 @@ function ClassPanel({
                   {(shown ?? []).map((r) => (
                     <tr key={r.id}>
                       <td>{r.name}</td>
-                      <td className="mono">{nice(r.access_code)}</td>
+                      <td className="mono">{codeOf(r) ? nice(codeOf(r) as string) : <span className="text-ink/60">Masqué</span>}</td>
                       <td className="num c-mid">{r.games}</td>
                       <td className="num">{r.best_typing != null ? fmt(r.best_typing) : '–'}</td>
                       <td className="num c-mid">{r.best_math != null ? fmt(r.best_math) : '–'}</td>
@@ -737,7 +763,8 @@ function ClassPanel({
                           onClick={async () => {
                             const code = await act(() => T.resetCode(r.id));
                             if (code) {
-                              setMsg(`Nouveau code de ${r.name} : ${nice(String(code))} (l’ancien ne fonctionne plus).`);
+                              remember([{ id: r.id, name: r.name, access_code: String(code) }]);
+                              setMsg(`Nouveau code de ${r.name} : ${nice(String(code))} (l’ancien ne fonctionne plus). Note-le : il ne sera plus affiché.`);
                               await reload();
                             }
                           }}
@@ -818,7 +845,13 @@ function ClassPanel({
                 ))}
               </ul>
               <p className="mt-1 text-[14px] text-ink/75">
-                Retrouve-les à tout moment dans l’onglet « Résultats ». « Imprimer les codes » sort une fiche à découper.
+                Note-les ou imprime la fiche maintenant : pour la sécurité des élèves, le serveur ne garde qu’une empreinte et ne pourra plus les
+                afficher (tu pourras toujours en créer un nouveau).
+              </p>
+              <p className="mt-1">
+                <button type="button" className="btn btn-ghost" onClick={() => window.print()}>
+                  Imprimer les codes
+                </button>
               </p>
             </div>
           )}
@@ -872,12 +905,14 @@ function ClassPanel({
         </h2>
         <p>Pour jouer : ouvre le site, choisis « Je suis élève » et tape ton code.</p>
         <div className="print-cards">
-          {(rows ?? []).map((r) => (
-            <div key={r.id} className="print-card">
-              <strong>{r.name}</strong>
-              <span className="mono">{nice(r.access_code)}</span>
-            </div>
-          ))}
+          {(rows ?? [])
+            .filter((r) => codeOf(r))
+            .map((r) => (
+              <div key={r.id} className="print-card">
+                <strong>{r.name}</strong>
+                <span className="mono">{nice(codeOf(r) as string)}</span>
+              </div>
+            ))}
         </div>
       </section>
     </>
