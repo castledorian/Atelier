@@ -162,7 +162,7 @@ function Pages() {
     return <Admin email={teacher.email} onHome={home} onSignOut={teacherLost} />;
   }
 
-  if (view === 'cave' && CAVE_ON) return <Cave onBack={home} studentName={student?.student.name ?? null} isTeacher={teacher !== null} />;
+  if (view === 'cave' && CAVE_ON && (student || teacher)) return <Cave onBack={home} studentName={student?.student.name ?? null} isTeacher={teacher !== null} />;
 
   if (view === 'sessions' && student) {
     return (
@@ -207,7 +207,7 @@ function Pages() {
       }}
       onDashboard={() => setView('dashboard')}
       onAdmin={admin ? () => setView('admin') : undefined}
-      onCave={() => CAVE_ON && setView('cave')}
+      onCave={() => CAVE_ON && (student || teacher) && setView('cave')}
       onInfo={setView}
       onLogout={logout}
       install={install}

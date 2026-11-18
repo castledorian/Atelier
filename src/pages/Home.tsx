@@ -235,7 +235,7 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
         </div>
       </div>}
 
-      {CAVE_ON && grade !== null && (
+      {CAVE_ON && (student || teacher) && grade !== null && (
         <button type="button" className="cave-door" onClick={onCave}>
           <span className="cave-door-art" aria-hidden="true">
             <span className="cave-door-drop" data-size={inkLevel(boss)} />

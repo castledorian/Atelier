@@ -24,6 +24,15 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.14',
+    date: '18 novembre 2026',
+    iso: '2026-11-18',
+    title: 'La grotte de fin d’année',
+    changes: [
+      { kind: 'new', text: 'La grotte, pour les élèves et enseignants connectés : une créature d’encre grossit à chaque faute de l’année et faiblit à chaque règle retravaillée. En juin, toute la classe descend l’affronter. Tout reste sur l’appareil.' },
+    ],
+  },
+  {
     version: '1.13',
     date: '18 novembre 2026',
     iso: '2026-11-18',

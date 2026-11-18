@@ -8,13 +8,13 @@
  * Tout est gardé SUR L'APPAREIL (localStorage) : aucun prénom, aucun compteur n'est envoyé au serveur.
  * Les prénoms du combat final sont saisis par la classe (ou l'enseignant) et restent sur cet appareil.
  *
- * ⚠ FONCTION MASQUÉE POUR L'INSTANT : mettre CAVE_ON à true pour la remettre en service.
- * Tant qu'elle est à false, la porte n'apparaît pas sur l'accueil, la page n'est pas accessible
+ * Visible seulement pour un élève ou un enseignant connecté (sans compte, la porte n'apparaît pas).
+ * Mettre CAVE_ON à false la masque pour tout le monde : la porte disparaît, la page est inaccessible
  * et plus rien n'est compté (aucune donnée n'est écrite sur l'appareil).
  */
 
 /** Interrupteur unique de la grotte : passer à `true` pour la rendre de nouveau visible. */
-export const CAVE_ON = false;
+export const CAVE_ON = true;
 
 export interface BossState {
   /** année scolaire en cours, ex. « 2026-2027 » (tout repart à zéro à la rentrée) */
