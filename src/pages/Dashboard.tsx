@@ -1,5 +1,5 @@
 import { BackButton } from '../components/BackButton';
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Frame, Notice } from './Frame';
 import { SessionsPanel } from './SessionsTeacher';
@@ -8,6 +8,7 @@ import { ApiError, explain } from '../server/api';
 import { GRADES } from '../game/grade';
 import * as T from '../server/teacher';
 import { Check } from '../components/Screens';
+import { ObserveBar, ReadOnlyZone } from '../components/ObserveBar';
 import { ServerNotice } from '../components/ServerNotice';
 import { endOfYearReminder, RETENTION_MONTHS } from '../server/retention';
 import { SortTh, useSort, useSorted } from '../components/SortTable';
@@ -23,9 +24,11 @@ interface Props {
   onHome: () => void;
   onSignOut: () => void;
   onAccountDeleted: () => void;
+  /** administrateur du site : on regarde l'espace d'une école, sans rien pouvoir modifier */
+  observe?: { schoolId: string; schoolName: string; onQuit: () => void };
 }
 
-export default function Dashboard({ email, onHome, onSignOut, onAccountDeleted }: Props) {
+export default function Dashboard({ email, onHome, onSignOut, onAccountDeleted, observe }: Props) {
   const [schools, setSchools] = useState<School[] | null>(null);
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [classes, setClasses] = useState<ClassRow[] | null>(null);
@@ -52,12 +55,17 @@ export default function Dashboard({ email, onHome, onSignOut, onAccountDeleted }
 
   const loadSchools = useCallback(
     async (select?: string) => {
-      const list = await act(T.listSchools);
+      const list = observe
+        ? await act(async () => {
+            const s = await T.getSchool(observe.schoolId);
+            return s ? [s] : [];
+          })
+        : await act(T.listSchools);
       if (!list) return;
       setSchools(list);
       setSchoolId((cur) => select ?? (cur && list.some((s) => s.id === cur) ? cur : (list[0]?.id ?? null)));
     },
-    [act],
+    [act, observe],
   );
   useEffect(() => {
     void loadSchools();
@@ -100,27 +108,33 @@ export default function Dashboard({ email, onHome, onSignOut, onAccountDeleted }
     setBusy(false);
   };
 
+  const Zone = observe ? ReadOnlyZone : Fragment;
+
   return (
     <Frame wide fill>
       <div className="card-top">
-        <BackButton onClick={onHome} />
+        <BackButton label={observe ? 'Retour à l’administration' : undefined} onClick={observe ? observe.onQuit : onHome} />
       </div>
+      {observe && <ObserveBar label={`espace enseignant de « ${observe.schoolName} »`} onQuit={observe.onQuit} />}
       <div className="dash-head">
         <div>
           <p className="eyebrow">Espace enseignant</p>
           <h1 className="title-sm">{school ? school.name : 'Mon école'}</h1>
         </div>
-        <div className="dash-who">
-          <span className="text-[14px] text-ink/70">{email}</span>
-          <div className="who-actions">
-            <button type="button" className="link" onClick={onSignOut}>
-              Se déconnecter
-            </button>
+        {!observe && (
+          <div className="dash-who">
+            <span className="text-[14px] text-ink/70">{email}</span>
+            <div className="who-actions">
+              <button type="button" className="link" onClick={onSignOut}>
+                Se déconnecter
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
       <div className="rule" aria-hidden="true" />
 
+      <Zone>
       {err && <Notice kind="error">{err}</Notice>}
       <ServerNotice mode="teacher" />
 
@@ -203,7 +217,8 @@ export default function Dashboard({ email, onHome, onSignOut, onAccountDeleted }
         </>
       )}
 
-      <AccountPanel email={email} act={act} onDeleted={onAccountDeleted} />
+      {!observe && <AccountPanel email={email} act={act} onDeleted={onAccountDeleted} />}
+      </Zone>
     </Frame>
   );
 }

@@ -7,7 +7,7 @@ import type { ClassRow, School } from '../server/types';
  * dans la grotte ; leurs élèves deviennent les combattants (plus besoin d'ajouter ou de retirer les prénoms un à un).
  * Les prénoms sont gardés sur cet appareil uniquement, comme avant.
  */
-export default function CaveClasses({ onNames, count }: { onNames: (names: string[]) => void; count: number }) {
+export default function CaveClasses({ onNames, count, onPick }: { onNames: (names: string[]) => void; count: number; onPick?: (ids: string[]) => void }) {
   const [groups, setGroups] = useState<Array<{ school: School; classes: ClassRow[] }> | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
   const [error, setError] = useState('');
@@ -33,6 +33,7 @@ export default function CaveClasses({ onNames, count }: { onNames: (names: strin
   const toggle = async (id: string) => {
     const next = picked.includes(id) ? picked.filter((c) => c !== id) : [...picked, id];
     setPicked(next);
+    onPick?.(next);
     setBusy(true);
     setError('');
     try {

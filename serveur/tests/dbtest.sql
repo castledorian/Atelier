@@ -115,8 +115,12 @@ select pg_temp.eq('la partie truquée n''est pas enregistrée', (select count(*)
 -- ═══ Enseignant A : lit ses résultats, jamais ceux de B ═══
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 select pg_temp.eq('A voit les parties de sa classe uniquement', (select count(distinct student_id) from public.runs), 2::bigint);
+select pg_temp.fails($$select access_code from public.students$$, 'permission denied');
+select pg_temp.fails($$select code_hash from public.students$$, 'permission denied');
+select pg_temp.as_admin();
 select pg_temp.eq('les codes ne sont plus stockés en clair', (select count(*) from public.students where access_code is not null), 0::bigint);
 select pg_temp.eq('chaque élève a une empreinte de code', (select count(*) from public.students where code_hash is not null), (select count(*) from public.students));
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 select pg_temp.eq('aperçu de classe : 4 élèves', jsonb_array_length(public.class_overview((select v::uuid from ctx where k='classA'))), 4);
 select pg_temp.eq('aperçu : meilleur score Léa (parties classées uniquement)', (select (e->>'best_typing')::int from jsonb_array_elements(public.class_overview((select v::uuid from ctx where k='classA'))) e where e->>'name'='Léa'), 2500);
 select pg_temp.eq('aperçu : 4 parties + 1 entraînement', (select (e->>'games')||'/'||(e->>'drills') from jsonb_array_elements(public.class_overview((select v::uuid from ctx where k='classA'))) e where e->>'name'='Léa'), '3/1');
@@ -514,7 +518,9 @@ select pg_temp.as_admin();
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 insert into ctx select 'regen', public.reset_class_codes((select v::uuid from ctx where k='classX'))::text;
 select pg_temp.eq('reset_class_codes : un code par élève', jsonb_array_length((select v::jsonb from ctx where k='regen')), (select count(*)::int from public.students where class_id = (select v::uuid from ctx where k='classX')));
+select pg_temp.as_admin();
 select pg_temp.eq('les nouveaux codes ne sont pas stockés', (select count(*) from public.students where access_code is not null), 0::bigint);
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 select pg_temp.as_anon();
 select pg_temp.eq('ancien code refusé après régénération de la classe', public.student_login((select v from ctx where k='code_ana'))->>'error', 'invalid_code');
 select pg_temp.eq('nouveau code accepté (hors majuscules et espaces)', public.student_login(' ' || lower((select v::jsonb->0->>'access_code' from ctx where k='regen')) || ' ')->'student'->>'name', (select v::jsonb->0->>'name' from ctx where k='regen'));
@@ -522,6 +528,41 @@ select pg_temp.as_user('bbbbbbbb-0000-0000-0000-000000000002');
 select pg_temp.fails($$select public.reset_class_codes('$$||(select v from ctx where k='classX')||$$'::uuid)$$, 'forbidden');
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 select pg_temp.eq('server_version : codes hachés détectés', (public.server_version()->'features'->>'codes'), 'true');
+select pg_temp.as_admin();
+
+-- Grotte par classe + observation en lecture seule de l'administrateur
+select pg_temp.as_anon();
+select pg_temp.eq('cave_report accepté', public.cave_report((select v from ctx where k='tok_nina'),'renew000001',7,3)->>'ok','true');
+select pg_temp.eq('cave_report : second envoi sans effet', public.cave_report((select v from ctx where k='tok_nina'),'renew000001',99,99)->>'ok','true');
+select pg_temp.eq('grotte de la classe : encre', public.cave_get((select v from ctx where k='tok_nina'))->>'ink','7');
+select pg_temp.eq('grotte de la classe : puissance', public.cave_get((select v from ctx where k='tok_nina'))->>'power','3');
+select pg_temp.eq('jeton d''observation refusé à un anonyme', public.cave_get('obs:'||gen_random_uuid()::text)->>'error','invalid_session');
+select pg_temp.fails($$select public.admin_observe('student', gen_random_uuid())$$, 'permission denied');
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select pg_temp.fails($$select public.admin_observe('school', gen_random_uuid())$$, 'forbidden');
+select pg_temp.fails($$select public.teacher_cave_reset(array[gen_random_uuid()])$$, 'forbidden');
+select pg_temp.as_user('cccccccc-0000-0000-0000-000000000003');
+select pg_temp.eq('admin : voit la grotte d''une classe', (public.cave_get('obs:'||(select id::text from public.students where name = (select name from public.students where class_id=(select class_id from public.runs where client_id='renew000001') limit 1) limit 1))->>'ink') is not null, true);
+select pg_temp.eq('admin : observe un élève', public.admin_observe('student', (select student_id from public.runs where client_id='renew000001'))->'student'->>'name' is not null, true);
+select pg_temp.eq('admin : lit les écoles', (select count(*) > 0 from public.schools), true);
+select pg_temp.fails($$select access_code from public.students$$, 'permission denied');
+select pg_temp.fails($$select code_hash from public.students$$, 'permission denied');
+update public.students set name = 'x' where true;
+delete from public.runs where true;
+select pg_temp.as_admin();
+select pg_temp.eq('admin : aucune modification d''élève possible', (select count(*) from public.students where name = 'x'), 0::bigint);
+select pg_temp.eq('admin : aucune partie supprimée', (select count(*) from public.runs where client_id='renew000001'), 1::bigint);
+select pg_temp.as_user('cccccccc-0000-0000-0000-000000000003');
+select pg_temp.fails($$select public.teacher_cave_reset(array[(select class_id from public.runs where client_id='renew000001')])$$, 'forbidden');
+select pg_temp.fails($$select public.teacher_cave_win(array[(select class_id from public.runs where client_id='renew000001')])$$, 'forbidden');
+select pg_temp.fails($$select public.reset_class_codes((select class_id from public.runs where client_id='renew000001'))$$, 'forbidden');
+select pg_temp.eq('admin : ne voit pas le code en clair dans l''aperçu', (select count(*) from jsonb_array_elements(public.class_overview((select class_id from public.runs where client_id='renew000001'))) e where e->>'access_code' is not null), 0::bigint);
+select pg_temp.eq('admin : enseignant, résultats de séance en lecture', public.list_class_sessions((select class_id from public.runs where client_id='renew000001')) is not null, true);
+select pg_temp.as_admin();
+select pg_temp.eq('admin : l''observation est journalisée', (select count(*) from private.admin_audit where action='observe_student'), 1::bigint);
+select pg_temp.as_user('cccccccc-0000-0000-0000-000000000003');
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select pg_temp.eq('enseignant : voit la grotte de ses classes', public.teacher_cave(null)->>'classes' is not null, true);
 select pg_temp.as_admin();
 
 \echo TOUS LES TESTS SQL PASSENT

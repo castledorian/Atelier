@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackButton } from '../components/BackButton';
 import BossFight from '../components/BossFight';
 import CaveClasses from '../components/CaveClasses';
 import CaveScene from '../components/CaveScene';
 import { InkEnemy } from '../components/InkEnemy';
+import { ObserveBar } from '../components/ObserveBar';
 import { Frame } from './Frame';
 import {
   BOSS_NAMES,
@@ -23,17 +24,23 @@ import {
   powerLevel,
   resetBoss,
   saveNames,
+  schoolYear,
   winBoss,
 } from '../game/boss/state';
 import type { BossPhase } from '../game/boss/state';
 import { CaveSound } from '../game/caveSound';
 import { loadSettings } from '../game/storage';
+import { fetchCave, sendCaveReset, sendCaveWin } from '../server/cave';
+import type { CaveServer, CaveSource } from '../server/cave';
+import type { BossState } from '../game/boss/state';
 
 /**
  * « La grotte » : la créature d'encre de l'année, et le grand combat de fin d'année.
  *
- * Ce qu'elle montre vient uniquement de cet appareil : les fautes et les réussites comptées pendant les parties,
- * et les prénoms saisis par la classe. Rien n'est envoyé, rien n'est relié à un élève en particulier.
+ * La créature est celle de la CLASSE : le serveur additionne les fautes et les réussites des parties libres (compteurs anonymes,
+ * jamais reliés à un élève en particulier) et la page se met à jour toute seule. Sans serveur (ou si la mise à jour SQL « grotte » manque),
+ * elle retombe sur les compteurs gardés sur l'appareil. Les prénoms du combat final restent sur l'appareil.
+ * En mode observation (administrateur), la page est en lecture seule : ni combat, ni réglage, ni son.
  */
 
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
@@ -42,9 +49,58 @@ const longDate = (t: number) => {
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 };
 
-export default function Cave({ onBack, studentName, isTeacher = false }: { onBack: () => void; studentName?: string | null; isTeacher?: boolean }) {
-  const [boss, setBoss] = useState(() => markSeen());
-  const [names, setNames] = useState<string[]>(() => (studentName ? addName(studentName) : loadNames()));
+interface Props {
+  onBack: () => void;
+  studentName?: string | null;
+  isTeacher?: boolean;
+  /** jeton de l'élève connecté (pour lire la grotte de sa classe) */
+  token?: string | null;
+  /** administrateur : on regarde la grotte de quelqu'un d'autre, en lecture seule */
+  observe?: { source: CaveSource; label: string; onQuit: () => void };
+}
+
+/** Rafraîchissement de la grotte : plus vite quand on observe en direct. */
+const POLL_MS = 10000;
+const POLL_OBSERVE_MS = 4000;
+
+export default function Cave({ onBack, studentName, isTeacher = false, token = null, observe }: Props) {
+  const readOnly = observe !== undefined;
+  const [localBoss, setBoss] = useState(() => (readOnly ? loadBoss() : markSeen()));
+  const [names, setNames] = useState<string[]>(() => (readOnly ? [] : studentName ? addName(studentName) : loadNames()));
+  /** classes cochées par l'enseignant (vide = toutes les siennes) */
+  const [picked, setPicked] = useState<string[]>([]);
+  /** undefined = pas encore su ; null = le serveur n'a pas de grotte (ancienne base) : on retombe sur l'appareil */
+  const [remote, setRemote] = useState<CaveServer | null | undefined>(undefined);
+
+  const source: CaveSource | null = observe ? observe.source : isTeacher ? { kind: 'teacher', classes: picked } : token ? { kind: 'student', token } : null;
+  const sourceKey = JSON.stringify(source);
+
+  const refresh = useCallback(async () => {
+    if (!source) return;
+    try {
+      const r = await fetchCave(source);
+      setRemote((prev) => r ?? prev ?? null);
+    } catch {
+      /* session perdue : la page garde ce qu'elle montre */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceKey]);
+
+  useEffect(() => {
+    if (!source) return;
+    void refresh();
+    const id = window.setInterval(() => {
+      if (!document.hidden) void refresh();
+    }, readOnly ? POLL_OBSERVE_MS : POLL_MS);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refresh, readOnly]);
+
+  const boss: BossState = remote
+    ? { year: schoolYear(), ink: remote.ink, power: remote.power, games: remote.games, wonAt: remote.won_at, seen: true }
+    : readOnly
+      ? { year: schoolYear(), ink: 0, power: 0, games: 0, wonAt: null, seen: true }
+      : localBoss;
   const [fight, setFight] = useState<null | { real: boolean }>(null);
   const sound = useMemo(() => loadSettings().sound, []);
   const fighting = fight !== null;
@@ -64,11 +120,11 @@ export default function Cave({ onBack, studentName, isTeacher = false }: { onBac
 
   // Ambiance sonore : grondement lointain et gouttes d'eau qui résonnent, sauf pendant le combat (qui a ses propres sons)
   useEffect(() => {
-    if (!sound || fighting) return;
+    if (!sound || fighting || readOnly) return;
     const cave = new CaveSound();
     cave.start();
     return () => cave.stop();
-  }, [sound, fighting]);
+  }, [sound, fighting, readOnly]);
 
   if (fight) {
     return (
@@ -82,7 +138,10 @@ export default function Cave({ onBack, studentName, isTeacher = false }: { onBac
           power={power}
           sound={sound}
           onDone={() => {
-            if (fight.real) setBoss(winBoss());
+            if (fight.real) {
+              setBoss(winBoss());
+              if (source && !readOnly && (source.kind === 'student' || source.kind === 'teacher')) void sendCaveWin(source).then(refresh);
+            }
             setFight(null);
           }}
         />
@@ -95,10 +154,16 @@ export default function Cave({ onBack, studentName, isTeacher = false }: { onBac
 
   return (
     <Frame dark>
+      {observe && <ObserveBar label={observe.label} onQuit={observe.onQuit} />}
       <div className="card-top">
-        <BackButton onClick={onBack} />
+        <BackButton label={readOnly ? 'Retour à l’administration' : undefined} onClick={onBack} />
       </div>
       <h1 className="sr-only">La grotte</h1>
+      {readOnly && remote === null && (
+        <p className="notice notice-error" role="alert">
+          La grotte n’est pas disponible sur le serveur : la mise à jour « grotte » n’a pas encore été exécutée, ou le réseau est coupé.
+        </p>
+      )}
 
       {phase === 'won' ? (
         <Victory boss={boss} names={names} onReplay={() => setFight({ real: false })} />
@@ -122,7 +187,7 @@ export default function Cave({ onBack, studentName, isTeacher = false }: { onBac
             </p>
           </div>
 
-          {phase === 'final' && (
+          {phase === 'final' && !readOnly && (
             <div className="mt-[var(--sp)] flex justify-center">
               <button type="button" className="btn btn-primary" onClick={() => setFight({ real: true })}>
                 Descendre dans la grotte
@@ -131,17 +196,19 @@ export default function Cave({ onBack, studentName, isTeacher = false }: { onBac
           )}
 
           {/* Réservé au compte enseignant : les élèves ne doivent pas voir qu'un combat d'essai existe, ni qu'il est écrit d'avance */}
-          {isTeacher && (
+          {isTeacher && !readOnly && (
             <details className="fold sec">
               <summary>Pour l’enseignant</summary>
               <div className="fold-in">
                 <p className="text-[15px] leading-snug">
-                  La créature grossit avec les fautes de toutes les parties jouées sur cet appareil (ses points de vie montent d’un point par faute) et
-                  faiblit quand les élèves retravaillent une règle. {phase === 'final' ? '' : `Le grand combat s’ouvre en juin (dans ${left} mois). `}Le combat final est
-                  écrit d’avance&nbsp;: <strong>la classe gagne toujours</strong>, après un moment où tout semble perdu. Rien n’est envoyé au serveur, rien n’est relié à un élève.
+                  {remote
+                    ? 'La créature est celle de la classe : elle grossit avec les fautes de toutes les parties libres jouées par les élèves, sur tous leurs appareils (ses points de vie montent d’un point par faute), et faiblit quand ils retravaillent une règle. '
+                    : 'La créature grossit avec les fautes de toutes les parties jouées sur cet appareil (ses points de vie montent d’un point par faute) et faiblit quand les élèves retravaillent une règle. '}
+                  {phase === 'final' ? '' : `Le grand combat s’ouvre en juin (dans ${left} mois). `}Le combat final est écrit d’avance&nbsp;:{' '}
+                  <strong>la classe gagne toujours</strong>, après un moment où tout semble perdu. Les compteurs ne sont reliés à aucun élève en particulier.
                 </p>
                 <Gauges boss={boss} ink={ink} power={power} />
-                <CaveClasses count={names.length} onNames={(list) => setNames(saveNames(list))} />
+                <CaveClasses count={names.length} onNames={(list) => setNames(saveNames(list))} onPick={setPicked} />
                 <div className="flex flex-wrap gap-2">
                   <button type="button" className="btn btn-ghost" onClick={() => setFight({ real: false })}>
                     Essayer le combat (sans le compter)
@@ -150,7 +217,10 @@ export default function Cave({ onBack, studentName, isTeacher = false }: { onBac
                     type="button"
                     className="btn btn-ghost"
                     onClick={() => {
-                      if (window.confirm('Remettre la grotte à zéro ? La créature redevient une goutte et le combat sera à refaire.')) setBoss(resetBoss());
+                      if (window.confirm('Remettre la grotte à zéro ? La créature redevient une goutte et le combat sera à refaire.')) {
+                        setBoss(resetBoss());
+                        void sendCaveReset(picked).then(() => refresh());
+                      }
                     }}
                   >
                     Remettre la grotte à zéro

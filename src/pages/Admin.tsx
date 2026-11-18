@@ -2,18 +2,26 @@ import { useCallback, useEffect, useState } from 'react';
 import { BackButton } from '../components/BackButton';
 import { downloadText, toCsv } from '../game/history';
 import { ApiError, explain } from '../server/api';
-import { GAME_NAME, adminBalance, adminItemStats, adminLogs, adminOverview, adminSchool } from '../server/admin';
+import { GAME_NAME, adminBalance, adminObserve, adminItemStats, adminLogs, adminOverview, adminSchool } from '../server/admin';
 import type { AdminBalance as AdminBalanceData, AdminItems, AdminLogs, AdminOverview, AdminRun, AdminSchool } from '../server/admin';
 import AdminBalance from './AdminBalance';
 import AdminInvitations from './AdminInvitations';
 import { ServerNotice } from '../components/ServerNotice';
 import { Frame, Notice } from './Frame';
+import Cave from './Cave';
+import Dashboard from './Dashboard';
 
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 const when = (ms: number | null | undefined) =>
   ms ? new Date(ms).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
 const dur = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)} h ${Math.round((s % 3600) / 60)} min` : s >= 60 ? `${Math.round(s / 60)} min` : `${s} s`);
 const game = (g: string | null) => (g ? (GAME_NAME[g] ?? g) : '—');
+
+/** Ce que l'administrateur observe en ce moment (lecture seule). */
+type Watch =
+  | { kind: 'teacher'; schoolId: string; schoolName: string }
+  | { kind: 'class'; classId: string; label: string }
+  | { kind: 'student'; studentId: string; name: string; label: string };
 
 type Tab = 'overview' | 'school' | 'balance' | 'logs' | 'invites';
 
@@ -33,6 +41,7 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
   const [q, setQ] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [watch, setWatch] = useState<Watch | null>(null);
 
   const act = useCallback(
     async <R,>(f: () => Promise<R>, missing?: string): Promise<R | undefined> => {
@@ -80,6 +89,22 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
     [act],
   );
 
+  /** Entre en observation : le début est noté dans le journal ; si le serveur refuse, on n'entre pas. */
+  const observe = useCallback(
+    async (w: Watch) => {
+      const ok = await act(
+        async () => {
+          if (w.kind === 'teacher') await adminObserve('school', w.schoolId);
+          else if (w.kind === 'student') await adminObserve('student', w.studentId);
+          return true;
+        },
+        'La mise à jour « grotte » n’a pas encore été exécutée sur le serveur (serveur/mise-a-jour-grotte.sql, voir le guide).',
+      );
+      if (ok) setWatch(w);
+    },
+    [act],
+  );
+
   useEffect(() => {
     void loadOverview();
   }, [loadOverview]);
@@ -105,6 +130,20 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
     );
 
   const max = Math.max(1, ...(ov?.daily.map((d) => d.runs) ?? [1]));
+
+  if (watch?.kind === 'teacher') {
+    return <Dashboard email={email} onHome={() => setWatch(null)} onSignOut={onSignOut} onAccountDeleted={() => setWatch(null)} observe={{ schoolId: watch.schoolId, schoolName: watch.schoolName, onQuit: () => setWatch(null) }} />;
+  }
+  if (watch?.kind === 'class') return <Cave onBack={() => setWatch(null)} observe={{ source: { kind: 'class', classId: watch.classId }, label: watch.label, onQuit: () => setWatch(null) }} />;
+  if (watch?.kind === 'student') {
+    return (
+      <Cave
+        onBack={() => setWatch(null)}
+        studentName={watch.name}
+        observe={{ source: { kind: 'observe-student', studentId: watch.studentId }, label: watch.label, onQuit: () => setWatch(null) }}
+      />
+    );
+  }
 
   return (
     <Frame wide fill>
@@ -240,6 +279,11 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
           <>
             <h2 className="subhead mt-3">{sch.school.name}</h2>
             <p className="adm-note">Créée le {when(sch.school.created)}</p>
+            <p className="observe-row">
+              <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => void observe({ kind: 'teacher', schoolId: sch.school.id, schoolName: sch.school.name })}>
+                Voir l’espace enseignant (lecture seule)
+              </button>
+            </p>
             <h3 className="font-bold mt-2">Enseignants</h3>
             <div className="adm-wrap">
               <table className="adm-table">
@@ -266,8 +310,13 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
             {sch.classes.length === 0 && <p className="mt-3 text-[15px]">Aucune classe créée.</p>}
             {sch.classes.map((c) => (
               <section key={c.id} className="mt-3" aria-label={`Classe ${c.name}`}>
-                <h3 className="font-bold">
-                  {c.name} {c.grade ? <small>({c.grade.toUpperCase()})</small> : null} <small>· {c.students.length} élève{c.students.length > 1 ? 's' : ''}</small>
+                <h3 className="font-bold observe-row">
+                  <span>
+                    {c.name} {c.grade ? <small>({c.grade.toUpperCase()})</small> : null} <small>· {c.students.length} élève{c.students.length > 1 ? 's' : ''}</small>
+                  </span>
+                  <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => void observe({ kind: 'class', classId: c.id, label: `grotte de la classe ${c.name} (${sch.school.name})` })}>
+                    Voir la grotte de la classe
+                  </button>
                 </h3>
                 <div className="adm-wrap">
                   <table className="adm-table">
@@ -278,6 +327,7 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
                         <th>Temps de jeu</th>
                         <th>Dernière partie</th>
                         <th>Ajouté le</th>
+                        <th>Observer</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -288,6 +338,11 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
                           <td>{dur(s.seconds)}</td>
                           <td>{when(s.last_played)}</td>
                           <td>{when(s.created)}</td>
+                          <td>
+                            <button type="button" className="link" disabled={busy} onClick={() => void observe({ kind: 'student', studentId: s.id, name: s.name, label: `écran de l’élève ${s.name} — ${c.name}, ${sch.school.name}` })}>
+                              Voir son écran
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>

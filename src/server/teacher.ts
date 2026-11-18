@@ -121,8 +121,22 @@ export function takeAuthHash(): { session: TeacherSession; type: string } | null
 
 const authed = async <T>(f: (token: string) => Promise<T>): Promise<T> => f(await freshToken());
 
+/**
+ * Les écoles dont le compte est membre. On passe par les appartenances (lisibles par leur seul propriétaire) :
+ * l'administrateur du site, qui peut lire toutes les écoles pour les observer, ne voit ainsi dans son espace que les siennes.
+ */
 export const listSchools = () =>
-  authed((t) => select<School[]>('schools', 'select=id,name&order=created_at', t));
+  authed(async (t) => {
+    const rows = await select<Array<{ schools: (School & { created_at: string }) | null }>>('school_members', 'select=schools(id,name,created_at)', t);
+    return rows
+      .flatMap((r) => (r.schools ? [r.schools] : []))
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
+      .map(({ id, name }) => ({ id, name }));
+  });
+
+/** Une école précise, par son identifiant (observation en lecture seule par l'administrateur). */
+export const getSchool = (id: string) =>
+  authed(async (t) => (await select<School[]>('schools', `select=id,name&id=eq.${id}`, t))[0] ?? null);
 
 export const createSchool = (name: string) =>
   authed((t) => rpc<string>('create_school', { p_name: name }, t));

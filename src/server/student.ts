@@ -57,6 +57,15 @@ export async function sendItemStats(token: string, game: 'math' | 'spelling', le
   }
 }
 
+/** Compteurs de la grotte pour une partie déjà envoyée. Facultatif : toute erreur est ignorée. */
+export async function sendCave(token: string, clientId: string, ink: number, power: number): Promise<void> {
+  try {
+    await rpc('cave_report', { p_token: token, p_client_id: clientId, p_ink: Math.round(ink), p_power: Math.round(power) });
+  } catch {
+    /* la grotte est un bonus : elle ne doit jamais gêner la partie */
+  }
+}
+
 /** Envoie une partie (libre ou de séance). Lève en cas de réseau ; renvoie l'état d'essais pour une séance. */
 export async function submitRun(token: string, r: RunPayload): Promise<{ status: SendStatus; attemptsUsed?: number }> {
   const base = {
@@ -79,7 +88,11 @@ export async function submitRun(token: string, r: RunPayload): Promise<{ status:
         p_kind: r.kind,
         ...(r.balance ? { p_balance: r.balance } : {}),
       });
-  if (res.ok) return { status: 'ok', attemptsUsed: res.attempts_used };
+  if (res.ok) {
+    // grotte de la classe : envoi à part, facultatif (ancienne base, réseau coupé : on n'en dit rien)
+    if (r.cave && !r.sessionId) void sendCave(token, r.clientId, r.cave.ink, r.cave.power);
+    return { status: 'ok', attemptsUsed: res.attempts_used };
+  }
   if (res.error === 'rate_limited') throw new ApiError('network'); // on réessaiera plus tard
   if (res.error === 'invalid_session') return { status: 'invalid_session' };
   if (res.error === 'cheat') {

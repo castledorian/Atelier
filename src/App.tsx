@@ -128,6 +128,7 @@ export default function App({ account, onHome, onSessionLost, install, session, 
       duration: Math.round(stats.time),
       playedMs: Date.now(),
     };
+    if (!sesRef.current.sess) payload.cave = { ink: stats.errors, power: stats.correct };
     if (sesRef.current.sess) {
       // séance de classe : l'essai compte pour l'évaluation, il ne va ni dans l'historique ni dans les classements libres
       sesRef.current.submit(payload, () => {

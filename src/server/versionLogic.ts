@@ -35,6 +35,7 @@ export const STEPS: Array<[string, Step]> = [
   ['nettoyage', { file: 'mise-a-jour-fiabilite.sql', why: 'effacement des anciennes données', critical: true }],
   ['sessions', { file: 'mise-a-jour-fiabilite.sql', why: 'sessions élèves plus courtes', critical: false }],
   ['codes', { file: 'mise-a-jour-codes.sql', why: 'codes élèves non stockés en clair', critical: false }],
+  ['grotte', { file: 'mise-a-jour-grotte.sql', why: 'grotte partagée par classe et observation en lecture seule', critical: false }],
 ];
 
 export interface Todo {

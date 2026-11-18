@@ -138,8 +138,13 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
           les lettres les plus ratées. Rien n’est envoyé au serveur ni relié à un élève&nbsp;; la page a son bouton pour tout effacer.
         </p>
         <p>
-          «&nbsp;La grotte&nbsp;» (réservée aux élèves et enseignants connectés) fonctionne de la même façon&nbsp;: le nombre de fautes et de réussites des parties jouées sur l’appareil et les
-          prénoms des élèves repris de leurs classes par l’enseignant pour le jeu final restent <strong>sur l’appareil, et uniquement là</strong>. Rien n’est envoyé au serveur ; la grotte a son bouton pour tout remettre à zéro.
+          «&nbsp;La grotte&nbsp;» (réservée aux élèves et enseignants connectés) est celle de <strong>la classe</strong>&nbsp;: à la fin d’une partie libre, le nombre de fautes et de réussites est
+          ajouté à la ligne de la partie déjà enregistrée (aucune autre donnée), et le serveur n’en montre que la <strong>somme par classe</strong>. Les prénoms repris des classes par l’enseignant pour le jeu
+          final restent <strong>sur l’appareil, et uniquement là</strong>. L’enseignant peut remettre la grotte de sa classe à zéro, et ces compteurs disparaissent avec les parties (conservation limitée, voir plus haut).
+        </p>
+        <p>
+          Pour vérifier que le site fonctionne, l’administrateur du site peut <strong>regarder</strong> l’espace d’une école ou l’écran d’un élève, <strong>en lecture seule</strong>&nbsp;: le serveur lui
+          interdit toute modification, et chaque observation est inscrite dans le journal de l’administration (qui, quand, quoi). Les codes d’accès des élèves ne lui sont jamais montrés.
         </p>
         <p>
           Sur un ordinateur partagé, l’élève utilise <strong>« Changer d’élève »</strong> en fin de séance. On peut tout effacer avec les réglages du navigateur (« effacer les données du

@@ -338,6 +338,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
         if (rounds > 0) {
           addLog('spelling', { t: Date.now(), ok: okCount, err: rounds - okCount, score: s.score, board });
           feedBoss(okCount, rounds - okCount);
+          payload.cave = { ink: rounds - okCount, power: okCount };
         }
         if (acct && s.score > 0) {
           setCloud('sending');

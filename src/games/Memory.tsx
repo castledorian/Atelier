@@ -150,6 +150,7 @@ export default function Memory({ account, onHome, onSessionLost, session, onSess
     if (total > 0) {
       addLog('memory', { t: Date.now(), ok: result.correct, err: result.wrong, score: result.score, board: memBoard(result.mode, result.diff), span: result.maxSpan });
       feedBoss(result.correct, result.wrong);
+      payload.cave = { ink: result.wrong, power: result.correct };
     }
     if (acct && result.correct > 0) {
       setCloud('sending');

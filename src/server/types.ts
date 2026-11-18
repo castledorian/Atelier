@@ -35,6 +35,8 @@ export interface RunPayload {
   sessionId?: string;
   /** résumé anonyme pour régler la difficulté (jamais lié à l'élève) */
   balance?: Record<string, unknown>;
+  /** de quoi nourrir (ou calmer, si l'encre est négative) la grotte de la classe ; envoyé à part, sans effet sur la partie */
+  cave?: { ink: number; power: number };
 }
 
 /** Séance de classe vue par l'élève. */

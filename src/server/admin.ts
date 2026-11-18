@@ -153,3 +153,6 @@ export const GAME_NAME: Record<string, string> = {
   memory: 'Mémoire d’encre',
   spelling: 'Chasse aux fautes',
 };
+
+/** Note le début d'une observation dans le journal de l'administration (le serveur refuse si le compte n'est pas administrateur). */
+export const adminObserve = (kind: 'school' | 'student', id: string) => authed((t) => rpc<unknown>('admin_observe', { p_kind: kind, p_target: id }, t));

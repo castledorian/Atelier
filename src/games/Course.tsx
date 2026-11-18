@@ -10,7 +10,7 @@ import { Check } from '../components/Screens';
 import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
 import { Sfx } from '../game/audio';
 import { addLog } from '../game/progress';
-import { calmBoss, feedBoss } from '../game/boss/state';
+import { CALM, calmBoss, feedBoss } from '../game/boss/state';
 import { CourseGame } from '../game/course/engine';
 import type { CourseResult } from '../game/course/engine';
 import { ruleInfo, ruleOfCalc, rulesOf } from '../game/encre/rules';
@@ -186,9 +186,13 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
     if (!result.drill && total > 0) {
       addLog('math', { t: Date.now(), ok: result.correct, err: result.wrong, score: result.score, board: boardKey(result.level, result.diff) });
       feedBoss(result.correct, result.wrong);
+      payload.cave = { ink: result.wrong, power: result.correct };
     }
     // entraînement ciblé réussi : la règle revue retire de l'encre à la créature de la grotte
-    if (result.drill && result.cleared) calmBoss();
+    if (result.drill && result.cleared) {
+      calmBoss();
+      payload.cave = { ink: -CALM, power: 0 };
+    }
     if (acct && result.correct > 0) {
       setCloud('sending');
       sendRun(acct.token, payload)

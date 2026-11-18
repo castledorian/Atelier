@@ -24,6 +24,17 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.18',
+    date: '18 novembre 2026',
+    iso: '2026-11-18',
+    title: 'Une grotte par classe, et l’observation pour l’administrateur',
+    changes: [
+      { kind: 'new', text: 'La grotte est désormais celle de la classe : tous les appareils d’une classe voient le même monstre, qui grandit avec les fautes de tous les élèves et se met à jour tout seul (nécessite la mise à jour « grotte » du serveur ; sans elle, la grotte reste locale comme avant).' },
+      { kind: 'new', text: 'L’administrateur peut observer, en lecture seule, l’espace enseignant d’une école, la grotte d’une classe ou l’écran d’un élève, avec un bandeau « Observation en lecture seule ». Le serveur refuse toute modification venant de l’administrateur, et chaque observation est notée dans le journal.' },
+      { kind: 'better', text: 'Les codes d’accès des élèves ne sont plus lisibles depuis le navigateur, même par les enseignants (ils ne s’affichent qu’à la création ou au renouvellement).' },
+    ],
+  },
+  {
     version: '1.17',
     date: '18 novembre 2026',
     iso: '2026-11-18',
