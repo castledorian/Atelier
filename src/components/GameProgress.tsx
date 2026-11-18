@@ -13,7 +13,7 @@ import type { GameLog, ProgressGame, Trend } from '../game/progress';
  * Tout vient de l'appareil de l'élève ; rien n'est envoyé.
  */
 
-type Kind = Extract<ProgressGame, 'math' | 'spelling' | 'memory'>;
+type Kind = Extract<ProgressGame, 'math' | 'spelling' | 'memory' | 'lexique'>;
 
 const FAMILY: Partial<Record<Kind, Family>> = { math: 'calcul', spelling: 'orthographe' };
 
@@ -38,7 +38,13 @@ const TREND_TEXT_MEMORY: Record<Trend, string> = {
   down: 'Un peu moins bien ces derniers temps. Respire, regarde bien la suite en entier, puis refais-la dans ta tête.',
 };
 
-const GAME_NAME: Record<Kind, string> = { math: 'calculs', spelling: 'phrases', memory: 'manches' };
+const GAME_NAME: Record<Kind, string> = { math: 'calculs', spelling: 'phrases', memory: 'manches', lexique: 'manches' };
+const TREND_TEXT_LEXIQUE: Record<Trend, string> = {
+  none: TREND_TEXT.none,
+  up: TREND_TEXT.up,
+  flat: 'Tu es régulier. Relis la liste « Mots à revoir » : les relations ratées reviendront plus facilement.',
+  down: 'Un peu moins bien ces derniers temps. Prends le temps de lire la consigne avant de taper, et relis les mots à revoir.',
+};
 
 export function GameProgress({ game, onTrain, extra }: { game: Kind; onTrain?: (rule: RuleId) => void; extra?: ReactNode }) {
   const [log, setLog] = useState<GameLog[]>(() => loadLog(game));
@@ -78,7 +84,7 @@ export function GameProgress({ game, onTrain, extra }: { game: Kind; onTrain?: (
         </div>
       </dl>
       <p className="prog-trend" role="status">
-        <span aria-hidden="true">{sum.trend === 'up' ? '↗' : sum.trend === 'down' ? '↘' : '→'}</span> {(game === 'memory' ? TREND_TEXT_MEMORY : TREND_TEXT)[sum.trend]}
+        <span aria-hidden="true">{sum.trend === 'up' ? '↗' : sum.trend === 'down' ? '↘' : '→'}</span> {(game === 'memory' ? TREND_TEXT_MEMORY : game === 'lexique' ? TREND_TEXT_LEXIQUE : TREND_TEXT)[sum.trend]}
       </p>
 
       {last.length > 0 && (

@@ -7,6 +7,7 @@ import BreakNotice from './components/BreakNotice';
 import CheatNotice from './components/CheatNotice';
 import { useInstall } from './install';
 import Course from './games/Course';
+import Lexique from './games/Lexique';
 import Memory from './games/Memory';
 import Spelling from './games/Spelling';
 import Admin from './pages/Admin';
@@ -26,7 +27,7 @@ import { loadTeacher, saveTeacher, signOut, takeAuthHash } from './server/teache
 import type { TeacherSession } from './server/teacher';
 import type { SessionInfo, StudentAccount } from './server/types';
 
-type View = 'home' | 'login' | 'dashboard' | 'admin' | 'cave' | InfoView | 'sessions' | 'typing' | 'math' | 'memory' | 'spelling';
+type View = 'home' | 'login' | 'dashboard' | 'admin' | 'cave' | InfoView | 'sessions' | 'typing' | 'math' | 'memory' | 'spelling' | 'lexique';
 
 // Lien reçu par email (confirmation d'inscription / mot de passe oublié) : lu une seule fois, au chargement de la page.
 const ARRIVAL = serverEnabled() ? takeAuthHash() : null;
@@ -178,7 +179,7 @@ function Pages() {
     );
   }
 
-  if (view === 'typing' || view === 'math' || view === 'memory' || view === 'spelling') {
+  if (view === 'typing' || view === 'math' || view === 'memory' || view === 'spelling' || view === 'lexique') {
     const props = { key: active?.id ?? 'free', account: student, onHome: home, onSessionLost: sessionLost, session: active, onSessions: toSessions };
     const { key, ...rest } = props;
     return (
@@ -187,6 +188,7 @@ function Pages() {
         {view === 'math' && <Course key={key} {...rest} />}
         {view === 'memory' && <Memory key={key} {...rest} />}
         {view === 'spelling' && <Spelling key={key} {...rest} />}
+        {view === 'lexique' && <Lexique key={key} {...rest} />}
         {active === null && <BreakNotice key={view} />}
       </>
     );

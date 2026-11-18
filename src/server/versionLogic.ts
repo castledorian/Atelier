@@ -36,6 +36,7 @@ export const STEPS: Array<[string, Step]> = [
   ['sessions', { file: 'mise-a-jour-fiabilite.sql', why: 'sessions élèves plus courtes', critical: false }],
   ['codes', { file: 'mise-a-jour-codes.sql', why: 'codes élèves non stockés en clair', critical: false }],
   ['grotte', { file: 'mise-a-jour-grotte.sql', why: 'grotte partagée par classe et observation en lecture seule', critical: false }],
+  ['lexique', { file: 'mise-a-jour-lexique.sql', why: 'jeu « Mots en orbite » (séances, contrôle des parties, record)', critical: false }],
 ];
 
 export interface Todo {

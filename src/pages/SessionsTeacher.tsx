@@ -10,8 +10,10 @@ import { downloadText, fmtDate, toCsv } from '../game/history';
 import { MEM_DIFFS, MODES, PAGES, PAGE_TITLES } from '../game/memory/rounds';
 import type { MemDiff, Mode } from '../game/memory/rounds';
 import { AVAILABLE } from '../game/grade';
-import { GAME_NAMES, describeConfig, parseMath, parseMemory, parseTyping } from '../game/sessionConfig';
+import { GAME_NAMES, describeConfig, parseLexique, parseMath, parseMemory, parseTyping } from '../game/sessionConfig';
 import type { GameKind } from '../game/sessionConfig';
+import { LEX_DIFFS, LEX_LEVELS, LEX_RELS } from '../game/lexique/rounds';
+import type { LexDiff, LexLevel, Rel } from '../game/lexique/rounds';
 import type { Settings } from '../game/storage';
 import * as T from '../server/teacher';
 import type { ClassRow, ClassSession, SessionResultRow } from '../server/types';
@@ -19,7 +21,7 @@ import type { ClassRow, ClassSession, SessionResultRow } from '../server/types';
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 type Act = <R>(f: () => Promise<R>) => Promise<R | undefined>;
 
-const GAMES: GameKind[] = ['typing', 'math', 'spelling', 'memory'];
+const GAMES: GameKind[] = ['typing', 'math', 'spelling', 'memory', 'lexique'];
 const TYPING_DIFFS: Array<[Difficulty, string]> = [
   ['apprenti', 'Apprenti'],
   ['standard', 'Standard'],
@@ -40,6 +42,9 @@ interface Draft {
   mode: Mode;
   memDiff: MemDiff;
   startPage: number;
+  lexRel: Rel;
+  lexDiff: LexDiff;
+  lexLevel: LexLevel;
 }
 
 const blank = (): Draft => ({
@@ -54,12 +59,16 @@ const blank = (): Draft => ({
   mode: 'suite',
   memDiff: 'standard',
   startPage: 0,
+  lexRel: 'melange',
+  lexDiff: 'standard',
+  lexLevel: 'cm1',
 });
 
 function draftOf(s: ClassSession): Draft {
   const t = parseTyping(s.config);
   const m = parseMath(s.config);
   const y = parseMemory(s.config);
+  const x = parseLexique(s.config);
   return {
     id: s.id,
     title: s.title,
@@ -73,12 +82,16 @@ function draftOf(s: ClassSession): Draft {
     mode: y.mode,
     memDiff: y.diff,
     startPage: y.startPage,
+    lexRel: x.rel,
+    lexDiff: x.diff,
+    lexLevel: x.level,
   };
 }
 
 function configOf(d: Draft): Record<string, unknown> {
   if (d.game === 'typing') return d.typingDiff === 'perso' ? { diff: 'perso', custom: d.custom } : { diff: d.typingDiff };
   if (d.game === 'math' || d.game === 'spelling') return { level: d.level, diff: d.courseDiff };
+  if (d.game === 'lexique') return { rel: d.lexRel, diff: d.lexDiff, level: d.lexLevel };
   return { mode: d.mode, diff: d.memDiff, startPage: d.startPage };
 }
 
@@ -248,6 +261,12 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
                 <Seg label="Niveau" value={draft.level} options={LEVELS.filter((l) => AVAILABLE.spelling.includes(l.id)).map((l) => [l.id, l.label] as [Level, string])} onChange={(level) => set({ level })} />
                 <Seg label="Difficulté" value={draft.courseDiff} options={COURSE_DIFFS.map((d) => [d.id, d.label] as [CourseDiff, string])} onChange={(courseDiff) => set({ courseDiff })} />
                 <p className="text-[14px] leading-snug text-ink/70">Dix phrases par essai. La difficulté règle le nombre de propositions et la présence de l’indice.</p>
+              </div>
+              <div className={pane('lexique')}>
+                <Seg label="Consigne" value={draft.lexRel} options={LEX_RELS.map((r) => [r.id, r.label] as [Rel, string])} onChange={(lexRel) => set({ lexRel })} />
+                <Seg label="Niveau des mots" value={draft.lexLevel} options={LEX_LEVELS.map((l) => [l.id, l.label] as [LexLevel, string])} onChange={(lexLevel) => set({ lexLevel })} />
+                <Seg label="Difficulté" value={draft.lexDiff} options={LEX_DIFFS.map((d) => [d.id, d.label] as [LexDiff, string])} onChange={(lexDiff) => set({ lexDiff })} />
+                <p className="text-[14px] leading-snug text-ink/70">Synonymes, contraires et familles de mots (préfixes, suffixes). La difficulté règle la vitesse, le nombre de mots et les vies.</p>
               </div>
               <div className={pane('memory')}>
                 <Seg label="Mode" value={draft.mode} options={MODES.map((m) => [m.id, m.label] as [Mode, string])} onChange={(mode) => set({ mode })} />

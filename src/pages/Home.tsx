@@ -20,7 +20,7 @@ import type { TeacherSession } from '../server/teacher';
 interface HomeProps {
   student: StudentAccount | null;
   teacher: TeacherSession | null;
-  onPlay: (game: 'typing' | 'math' | 'memory' | 'spelling') => void;
+  onPlay: (game: 'typing' | 'math' | 'memory' | 'spelling' | 'lexique') => void;
   onSessions: () => void;
   onLogin: (tab: 'student' | 'teacher') => void;
   onDashboard: () => void;
@@ -211,6 +211,16 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
             <span className="gcard-go">Jouer →</span>
           </button>
             <InfoButton onClick={() => setPreview('spelling')} label="Voir un extrait : Chasse aux fautes" />
+          </div>
+        )}
+        {isAvailable('lexique', grade) && (
+          <div className="gwrap">
+            <button type="button" className="gcard" onClick={() => onPlay('lexique')}>
+              <span className="gcard-tag">Vocabulaire</span>
+              <span className="gcard-name">Mots en orbite</span>
+              <span className="gcard-text">Des mots arrivent de partout : relie le mot du centre à son synonyme, son contraire ou sa famille.</span>
+              <span className="gcard-go">Jouer →</span>
+            </button>
           </div>
         )}
         {isAvailable('memory', grade) && (

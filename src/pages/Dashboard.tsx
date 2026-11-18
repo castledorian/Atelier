@@ -224,7 +224,7 @@ export default function Dashboard({ email, onHome, onSignOut, onAccountDeleted, 
 }
 
 /** Colonnes triables du tableau des élèves. */
-type OverKey = 'name' | 'games' | 'typing' | 'math' | 'memory' | 'wpm' | 'acc' | 'time' | 'last';
+type OverKey = 'name' | 'games' | 'typing' | 'math' | 'memory' | 'lexique' | 'wpm' | 'acc' | 'time' | 'last';
 
 function overValue(r: Overview, key: OverKey): SortValue {
   switch (key) {
@@ -238,6 +238,8 @@ function overValue(r: Overview, key: OverKey): SortValue {
       return r.best_math;
     case 'memory':
       return r.best_memory ?? null;
+    case 'lexique':
+      return r.best_lexique ?? null;
     case 'wpm':
       return r.avg_wpm;
     case 'acc':
@@ -540,7 +542,7 @@ function ClassPanel({
   const exportRuns = async () => {
     const runs = await act(() => T.classRuns(cls.id));
     if (!runs) return;
-    const GAME: Record<string, string> = { typing: 'Frappe !', math: 'Course à l’encre', memory: 'Mémoire d’encre', spelling: 'Chasse aux fautes' };
+    const GAME: Record<string, string> = { typing: 'Frappe !', math: 'Course à l’encre', memory: 'Mémoire d’encre', spelling: 'Chasse aux fautes', lexique: 'Mots en orbite' };
     downloadText(
       `resultats-${cls.name.replace(/[^\w-]+/g, '_')}.csv`,
       toCsv(
@@ -741,6 +743,9 @@ function ClassPanel({
                     <SortTh col="memory" sort={sort} onSort={toggle} numeric className="num c-mid">
                       <span className="sr-only">Record </span>Mémoire
                     </SortTh>
+                    <SortTh col="lexique" sort={sort} onSort={toggle} numeric className="num c-mid">
+                      <span className="sr-only">Record </span>Mots
+                    </SortTh>
                     <SortTh col="wpm" sort={sort} onSort={toggle} numeric className="num c-sm">
                       Mots/min
                     </SortTh>
@@ -767,6 +772,7 @@ function ClassPanel({
                       <td className="num">{r.best_typing != null ? fmt(r.best_typing) : '–'}</td>
                       <td className="num c-mid">{r.best_math != null ? fmt(r.best_math) : '–'}</td>
                       <td className="num c-mid">{r.best_memory != null ? fmt(r.best_memory) : '–'}</td>
+                      <td className="num c-mid">{r.best_lexique != null ? fmt(r.best_lexique) : '–'}</td>
                       <td className="num c-sm">{r.avg_wpm != null ? Math.round(r.avg_wpm) : '–'}</td>
                       <td className="num c-lo">{r.avg_acc != null ? `${Math.round(r.avg_acc)} %` : '–'}</td>
                       <td className="num c-lo">{r.seconds ? dur(r.seconds) : '–'}</td>

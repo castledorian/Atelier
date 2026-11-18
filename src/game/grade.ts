@@ -4,7 +4,7 @@
  */
 
 export type Grade = 'cp' | 'ce1' | 'ce2' | 'cm1' | 'cm2';
-export type GameKey = 'typing' | 'math' | 'spelling' | 'memory';
+export type GameKey = 'typing' | 'math' | 'spelling' | 'memory' | 'lexique';
 
 export const GRADES: Array<{ id: Grade; label: string; cycle: string }> = [
   { id: 'cp', label: 'CP', cycle: 'cycle 2' },
@@ -22,6 +22,7 @@ export const AVAILABLE: Record<GameKey, Grade[]> = {
   math: ALL,
   spelling: ['ce1', 'ce2', 'cm1', 'cm2'],
   memory: ALL,
+  lexique: ['ce1', 'ce2', 'cm1', 'cm2'],
 };
 
 export const isGrade = (v: unknown): v is Grade => ALL.includes(v as Grade);

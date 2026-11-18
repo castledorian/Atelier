@@ -10,6 +10,7 @@ const BY_NAME: Record<string, GameKey> = {
   'Course à l’encre': 'math',
   'Chasse aux fautes': 'spelling',
   'Mémoire d’encre': 'memory',
+  'Mots en orbite': 'lexique',
 };
 
 test('Présentation des jeux : les classes annoncées sont celles de AVAILABLE', () => {

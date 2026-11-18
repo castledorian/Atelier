@@ -24,6 +24,19 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.20',
+    date: '18 novembre 2026',
+    iso: '2026-11-18',
+    title: 'Nouveau jeu : Mots en orbite',
+    changes: [
+      { kind: 'new', text: 'Mots en orbite : un mot au centre, des mots ennemis qui arrivent de toutes les directions. On tape celui qui est un synonyme, un contraire ou de la même famille que le mot central.' },
+      { kind: 'new', text: 'Une bonne réponse lance une onde de choc qui détruit toute la vague ; le mot central change et le jeu accélère doucement, comme dans Frappe !' },
+      { kind: 'new', text: 'Morphologie : après chaque bonne réponse, le mot est découpé en préfixe, racine et suffixe (« en- + terr + -er »). Les contraires construits avec in-, im-, dé-, mal-… sont au programme.' },
+      { kind: 'new', text: 'Mots de CE2, CM1 et CM2 ; trois difficultés ; une fiche « Mots à revoir » gardée sur l’appareil ; classements, séances de classe et grotte comme les autres jeux.' },
+      { kind: 'better', text: 'Même moteur de fluidité que Frappe ! : 60 images par seconde, qualité réduite automatiquement sur un ordinateur lent, secousses désactivables, clavier à l’écran sur tablette.' },
+    ],
+  },
+  {
     version: '1.19',
     date: '18 novembre 2026',
     iso: '2026-11-18',

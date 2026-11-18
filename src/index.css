@@ -1531,7 +1531,8 @@ html[data-text='xlarge'] .card .title {
     gap: 2px;
   }
 }
-.games-levels[data-n='2'] {
+.games-levels[data-n='2'],
+.games-levels[data-n='4'] {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 

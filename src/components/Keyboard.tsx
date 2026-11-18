@@ -11,7 +11,8 @@ interface Props {
   fingers?: boolean;
   onKey: (ch: string) => void;
   onRelease: () => void;
-  onChariot: () => void;
+  /** absent : la touche « retour chariot » n'est pas affichée (jeux sans charge) */
+  onChariot?: () => void;
 }
 
 /**
@@ -53,7 +54,7 @@ export const Keyboard = memo(function Keyboard({
     >
       {rows.map((row, i) => (
         <div key={row} className={`kb-row${row.length === 9 ? ' kb-row-inset' : ''}`}>
-          {i === 2 && (
+          {i === 2 && onChariot && (
             <button
               {...common}
               className={`kb-key kb-wide${chargeReady ? ' is-ready' : ''}`}

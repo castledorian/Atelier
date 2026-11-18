@@ -249,11 +249,18 @@ select pg_temp.eq('un autre enseignant ne peut pas masquer', (select hide_board 
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 insert into ctx select 'sessSp', public.save_class_session((select v::uuid from ctx where k='classA'), null, 'Orthographe', 'spelling', '{"level":"cm1","diff":"standard"}', 1, true)::text;
 select pg_temp.eq('séance d''orthographe créée', (select count(*) from jsonb_array_elements(public.list_class_sessions((select v::uuid from ctx where k='classA'))) e where e->>'game'='spelling'), 1::bigint);
+insert into ctx select 'sessLex', public.save_class_session((select v::uuid from ctx where k='classA'), null, 'Vocabulaire', 'lexique', '{"rel":"famille","level":"cm1","diff":"standard"}', 1, true)::text;
+select pg_temp.eq('séance de Mots en orbite créée', (select count(*) from jsonb_array_elements(public.list_class_sessions((select v::uuid from ctx where k='classA'))) e where e->>'game'='lexique'), 1::bigint);
 select pg_temp.as_anon();
 select pg_temp.eq('essai d''orthographe en séance', public.submit_session_run((select v from ctx where k='tok_lea'), (select v::uuid from ctx where k='sessSp'), 'ortho000001', 135, 6, 0, 90, 9, 240)->>'attempts_used', '1');
 select pg_temp.eq('partie libre d''orthographe', public.submit_run((select v from ctx where k='tok_lea'), 'ortho000002', 'spelling', 'cm1', 'game', 120, 4, 0, 80, 8, 200)->>'ok', 'true');
 select pg_temp.eq('refus d''une triche en séance', public.submit_session_run((select v from ctx where k='tok_tom'), (select v::uuid from ctx where k='sessSp'), 'triche00002', 99999, 9, 0, 100, 10, 60)->>'error', 'cheat');
 select pg_temp.eq('classement orthographe', jsonb_array_length(public.class_leaderboard((select v from ctx where k='tok_lea'), 'spelling', 'cm1')->'rows'), 1);
+select pg_temp.eq('partie libre de Mots en orbite', public.submit_run((select v from ctx where k='tok_lea'), 'lexi0000001', 'lexique', 'famille', 'game', 640, 6, 0, 86, 6, 60)->>'ok', 'true');
+select pg_temp.eq('classement Mots en orbite', jsonb_array_length(public.class_leaderboard((select v from ctx where k='tok_lea'), 'lexique', 'famille')->'rows'), 1);
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select pg_temp.eq('tableau de bord : record Mots en orbite', (select max((e->>'best_lexique')::int) from jsonb_array_elements(public.class_overview((select v::uuid from ctx where k='classA'))) e), 640);
+select pg_temp.as_anon();
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 select public.delete_class_session((select v::uuid from ctx where k='sessSp'));
 
@@ -343,6 +350,11 @@ select pg_temp.eq('Mémoire : un vrai score passe', private.run_violation('memor
 select pg_temp.eq('Orthographe : 10 phrases parfaites passent', private.run_violation('spelling', 250, 10, 0, 100, 10, 90) is null, true);
 select pg_temp.eq('Orthographe : score impossible', private.run_violation('spelling', 5000, 10, 0, 100, 10, 90), 'score supérieur au maximum possible');
 select pg_temp.eq('Orthographe : 10 phrases en 5 s', private.run_violation('spelling', 100, 5, 0, 100, 10, 5), 'phrases trop rapides');
+select pg_temp.eq('Mots en orbite : une vraie partie passe', private.run_violation('lexique', 900, 8, 0, 85, 8, 70) is null, true);
+select pg_temp.eq('Mots en orbite : manches trop rapides', private.run_violation('lexique', 300, 40, 0, 100, 40, 10), 'manches trop rapides');
+select pg_temp.eq('Mots en orbite : score impossible', private.run_violation('lexique', 90000, 8, 0, 100, 8, 70), 'score supérieur au maximum possible');
+select pg_temp.eq('Mots en orbite : série supérieure aux bonnes réponses', private.run_violation('lexique', 100, 9, 0, 100, 8, 70), 'plus de manches que de bonnes réponses');
+select pg_temp.eq('version du serveur : Mots en orbite reconnu', (public.server_version()->'features'->>'lexique'), 'true');
 select pg_temp.eq('jeu inconnu', private.run_violation('piratage', 1, 1, 0, 1, 1, 10), 'jeu inconnu');
 
 select pg_temp.eq('refus d''une triche en partie libre', public.submit_run((select v from ctx where k='tok_nina'),'triche00001','math','standard','game',900000,50,0,100,50,100)->>'error', 'cheat');

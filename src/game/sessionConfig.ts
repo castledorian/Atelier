@@ -4,13 +4,15 @@ import { COURSE_DIFFS, LEVELS, isCourseDiff, isLevel } from './course/questions'
 import type { CourseDiff, Level } from './course/questions';
 import { MEM_DIFFS, MODES, PAGES, isMemDiff } from './memory/rounds';
 import type { MemDiff, Mode } from './memory/rounds';
+import { LEX_DIFFS, LEX_LEVELS, LEX_RELS, isLexDiff, isLexLevel, isRel } from './lexique/rounds';
+import type { LexDiff, LexLevel, Rel } from './lexique/rounds';
 
 /**
  * Réglages d'une séance de classe, pour chaque jeu. Les valeurs viennent du serveur : tout est revalidé ici,
  * pour qu'un réglage inconnu ou abîmé retombe toujours sur une partie normale.
  */
 
-export type GameKind = 'typing' | 'math' | 'memory' | 'spelling';
+export type GameKind = 'typing' | 'math' | 'memory' | 'spelling' | 'lexique';
 
 export interface TypingCfg {
   diff: Difficulty;
@@ -26,6 +28,12 @@ export interface MemoryCfg {
   diff: MemDiff;
   /** page du cahier où l'on commence (0 à 5) */
   startPage: number;
+}
+
+export interface LexiqueCfg {
+  rel: Rel;
+  diff: LexDiff;
+  level: LexLevel;
 }
 
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
@@ -49,7 +57,12 @@ export function parseMemory(v: unknown): MemoryCfg {
   return { mode: o.mode === 'cases' ? 'cases' : 'suite', diff: isMemDiff(o.diff) ? o.diff : 'standard', startPage: Math.max(0, Math.min(PAGES - 1, n)) };
 }
 
-export const GAME_NAMES: Record<GameKind, string> = { typing: 'Frappe !', math: 'Course à l’encre', memory: 'Mémoire d’encre', spelling: 'Chasse aux fautes' };
+export function parseLexique(v: unknown): LexiqueCfg {
+  const o = obj(v);
+  return { rel: isRel(o.rel) ? o.rel : 'melange', diff: isLexDiff(o.diff) ? o.diff : 'standard', level: isLexLevel(o.level) ? o.level : 'cm1' };
+}
+
+export const GAME_NAMES: Record<GameKind, string> = { typing: 'Frappe !', math: 'Course à l’encre', memory: 'Mémoire d’encre', spelling: 'Chasse aux fautes', lexique: 'Mots en orbite' };
 
 const DIFF_LABEL: Record<Difficulty, string> = { apprenti: 'Apprenti', standard: 'Standard', expert: 'Expert', perso: 'Personnalisé' };
 
@@ -65,6 +78,10 @@ export function describeConfig(game: GameKind, config: unknown): string[] {
   if (game === 'math' || game === 'spelling') {
     const c = parseMath(config);
     return [LEVELS.find((l) => l.id === c.level)?.label ?? c.level, COURSE_DIFFS.find((d) => d.id === c.diff)?.label ?? c.diff];
+  }
+  if (game === 'lexique') {
+    const c = parseLexique(config);
+    return [LEX_RELS.find((r) => r.id === c.rel)?.label ?? c.rel, LEX_LEVELS.find((l) => l.id === c.level)?.label ?? c.level, LEX_DIFFS.find((d) => d.id === c.diff)?.label ?? c.diff];
   }
   const c = parseMemory(config);
   return [MODES.find((m) => m.id === c.mode)?.label ?? c.mode, MEM_DIFFS.find((d) => d.id === c.diff)?.label ?? c.diff, ...(c.startPage > 0 ? [`départ à la page ${c.startPage + 1}`] : [])];

@@ -69,7 +69,7 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
       <Section id="p-donnees" title="Ce qui est enregistré">
         <h3 className="font-bold">Élève, sans connexion</h3>
         <p>
-          Les scores, la progression (par exemple les tampons de Mémoire d’encre), les réglages et le dernier niveau choisi restent <strong>dans le navigateur de l’appareil</strong>{' '}
+          Les scores, la progression (par exemple les tampons de Mémoire d’encre, ou la liste des mots à revoir de Mots en orbite), les réglages et le dernier niveau choisi restent <strong>dans le navigateur de l’appareil</strong>{' '}
           (« stockage local »). Ils ne sont envoyés à personne.
         </p>
         <h3 className="font-bold">Élève, avec un code</h3>

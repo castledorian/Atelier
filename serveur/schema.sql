@@ -472,7 +472,7 @@ create table if not exists public.class_sessions (
   class_id      uuid not null references public.classes(id) on delete cascade,
   school_id     uuid not null references public.schools(id) on delete cascade,
   title         text not null check (char_length(title) between 1 and 60),
-  game          text not null check (game in ('typing', 'math', 'memory', 'spelling')),
+  game          text not null check (game in ('typing', 'math', 'memory', 'spelling', 'lexique')),
   config        jsonb not null default '{}'::jsonb check (jsonb_typeof(config) = 'object' and octet_length(config::text) < 2000),
   max_attempts  integer not null default 2 check (max_attempts between 1 and 3),
   active        boolean not null default true,
@@ -487,7 +487,7 @@ create index if not exists runs_session_idx on public.runs (session_id, student_
 create table if not exists public.balance_runs (
   id           bigint generated always as identity primary key,
   played_at    timestamptz not null default now(),
-  game         text not null check (game in ('typing', 'math', 'memory', 'spelling')),
+  game         text not null check (game in ('typing', 'math', 'memory', 'spelling', 'lexique')),
   level        text check (level is null or level in ('cp', 'ce1', 'ce2', 'cm1', 'cm2')),
   difficulty   text not null check (difficulty ~ '^[a-z0-9_-]{1,20}$'),   -- apprenti / standard / expert, ou le mode (suite / cases)
   custom       boolean not null default false,                            -- réglages personnalisés ou séance : exclus des moyennes
@@ -578,6 +578,10 @@ begin
     if d < c then return 'phrases trop rapides'; end if;                                  -- lire, toucher et choisir prend au moins 1 s
     if w > c then return 'série plus longue que le nombre de phrases'; end if;
     if s > 25 * c then return 'score supérieur au maximum possible'; end if;              -- 5 + 10 + 10 de série au mieux
+  elsif p_game = 'lexique' then
+    if c > d / 1.2 + 3 then return 'manches trop rapides'; end if;                        -- lire la consigne, repérer le mot et le taper prend plus d'1 s
+    if w > c then return 'plus de manches que de bonnes réponses'; end if;
+    if s > 1300 * c + 100 then return 'score supérieur au maximum possible'; end if;      -- (50 + 10×12 lettres + 60 + 25) × série ×5 = 1 275 au mieux
   else
     return 'jeu inconnu';
   end if;
@@ -770,7 +774,7 @@ begin
   select * into v_c from public.classes where id = p_class;
   if not found then raise exception 'forbidden' using errcode = '42501'; end if;
   perform private.assert_member(v_c.school_id);
-  if char_length(v_t) not between 1 and 60 or p_game not in ('typing', 'math', 'memory', 'spelling')
+  if char_length(v_t) not between 1 and 60 or p_game not in ('typing', 'math', 'memory', 'spelling', 'lexique')
      or p_max not between 1 and 3 or p_config is null or jsonb_typeof(p_config) <> 'object' then
     raise exception 'invalid_name' using errcode = '22023';
   end if;
@@ -840,6 +844,7 @@ begin
              max(r.score) filter (where r.kind = 'game' and r.mode <> 'perso' and r.session_id is null and r.game = 'typing') as best_typing,
              max(r.score) filter (where r.kind = 'game' and r.mode <> 'perso' and r.session_id is null and r.game = 'math')   as best_math,
              max(r.score) filter (where r.kind = 'game' and r.mode <> 'perso' and r.session_id is null and r.game = 'memory') as best_memory,
+             max(r.score) filter (where r.kind = 'game' and r.mode <> 'perso' and r.session_id is null and r.game = 'lexique') as best_lexique,
              round(avg(r.wpm) filter (where r.kind = 'game' and r.game = 'typing'), 1) as avg_wpm,
              round(avg(r.acc) filter (where r.kind = 'game' and r.game = 'typing'), 1) as avg_acc,
              coalesce(sum(r.duration), 0)::integer as seconds,
@@ -1067,7 +1072,7 @@ create table if not exists private.schema_migrations (
   applied_at timestamptz not null default now()
 );
 alter table private.schema_migrations enable row level security;
-insert into private.schema_migrations (id) values ('2026-11-fiabilite'), ('2026-11-codes'), ('2026-11-grotte') on conflict (id) do nothing;
+insert into private.schema_migrations (id) values ('2026-11-fiabilite'), ('2026-11-codes'), ('2026-11-grotte'), ('2026-11-lexique') on conflict (id) do nothing;
 
 create table if not exists private.invitations (
   code       text primary key check (code ~ '^[A-Z0-9]{8}$'),
@@ -1287,10 +1292,11 @@ begin
     'codes',       exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'students' and column_name = 'code_hash')
                    and v_login like '%code_hash%',
     'grotte',      to_regprocedure('public.cave_get(text)') is not null and to_regprocedure('public.cave_drop(text,text,integer,integer)') is not null and to_regprocedure('public.admin_observe(text,uuid)') is not null,
+    'lexique',     v_ov like '%best_lexique%' and exists (select 1 from pg_constraint where conname = 'class_sessions_game_check' and pg_get_constraintdef(oid) like '%lexique%'),
     'nettoyage_auto', v_cron
   );
   return jsonb_build_object(
-    'version', 13,
+    'version', 14,
     'features', f,
     'migrations', coalesce((select jsonb_agg(id order by id) from private.schema_migrations), '[]'::jsonb),
     'plain_codes', (select count(*) from public.students where access_code is not null),

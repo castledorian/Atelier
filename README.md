@@ -12,6 +12,7 @@ Site de petits jeux éducatifs pour l'école primaire (CP → CM2), gratuit, **s
 | **Course à l'encre** | Calcul mental | CP → CM2 | Viser la bonne réponse avant que l'encre ne rattrape la plume |
 | **Chasse aux fautes** | Orthographe | CE1 → CM2 | Repérer puis corriger la faute dans une phrase |
 | **Mémoire d'encre** | Mémoire | CP → CM2 | Retenir une suite (La Suite) ou des places (Les Cases) |
+| **Mots en orbite** | Vocabulaire | CE1 → CM2 | Relier le mot du centre à son synonyme, son contraire ou sa famille (préfixes, suffixes) |
 
 Chaque jeu propose trois difficultés (**Apprenti**, **Standard**, **Expert**) réglées pour chaque classe. La difficulté dépend du temps, jamais de la taille de l'écran. Seuls les jeux adaptés à la classe choisie s'affichent.
 
@@ -32,7 +33,7 @@ React 19, TypeScript, Vite 7, Tailwind CSS 4 (+ feuille de style « cahier » da
 src/
   Shell.tsx            navigation entre accueil, connexion, espaces et jeux
   App.tsx              Frappe !
-  games/               Course à l'encre, Mémoire d'encre, Chasse aux fautes
+  games/               Course à l'encre, Mémoire d'encre, Chasse aux fautes, Mots en orbite
   game/                moteurs et réglages (difficultés, classes, scores, sons, séances)
   pages/               accueil, connexion, espaces enseignant / administrateur, pages d'information
   content/             Nouveautés (changelog), crédits, présentation des jeux
