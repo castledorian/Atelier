@@ -80,63 +80,62 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
             ))}
           </h1>
         </div>
-        {!student && !teacher && online && (
-          <nav className="acct" aria-label="Connexion">
-            <button type="button" className="acct-btn" aria-label="Connexion élève" onClick={() => onLogin('student')}>
-              Élève
+        {student ? (
+          <div className="acct acct-in" role="group" aria-label="Compte élève">
+            <p className="acct-who">
+              Connecté&nbsp;: <strong>{student.student.name}</strong>
+            </p>
+            <p className="acct-sub">
+              {student.class.name} · {student.school.name}
+            </p>
+            <button type="button" className="acct-link" onClick={onLogout}>
+              Changer d’élève
             </button>
-            <button type="button" className="acct-btn" aria-label="Connexion enseignant" onClick={() => onLogin('teacher')}>
-              Enseignant
+          </div>
+        ) : teacher ? (
+          <div className="acct acct-in" role="group" aria-label="Compte enseignant">
+            <p className="acct-who">
+              Enseignant&nbsp;: <strong>{teacher.email || 'connecté'}</strong>
+            </p>
+            <button type="button" className="acct-link" onClick={onLogout}>
+              Se déconnecter
             </button>
-          </nav>
+          </div>
+        ) : (
+          online && (
+            <nav className="acct" aria-label="Connexion">
+              <button type="button" className="acct-btn" aria-label="Connexion élève" onClick={() => onLogin('student')}>
+                Élève
+              </button>
+              <button type="button" className="acct-btn" aria-label="Connexion enseignant" onClick={() => onLogin('teacher')}>
+                Enseignant
+              </button>
+            </nav>
+          )
         )}
       </div>
       <div className="rule" aria-hidden="true" />
 
-      {(student || teacher || !online) && (
-      <section className="who" aria-label="Compte">
-        {student ? (
-          <>
-            <p>
-              Connecté&nbsp;: <strong>{student.student.name}</strong>
-              <span className="text-ink/70">
-                {' '}
-                · {student.class.name} · {student.school.name}
-              </span>
-            </p>
-            <div className="who-actions">
-              <button type="button" className="btn btn-primary" onClick={onSessions}>
-                Mes séances{todo ? ` (${todo} à faire)` : ''}
-              </button>
-              <button type="button" className="link" onClick={onLogout}>
-                Changer d’élève
-              </button>
-            </div>
-          </>
-        ) : teacher ? (
-          <>
-            <p>
-              Enseignant&nbsp;: <strong>{teacher.email || 'connecté'}</strong>
-            </p>
-            <div className="who-actions">
-              <button type="button" className="btn btn-primary" onClick={onDashboard}>
-                Mon espace école
-              </button>
-              {onAdmin && (
-                <button type="button" className="btn btn-ghost" onClick={onAdmin}>
-                  Administration
-                </button>
-              )}
-              <button type="button" className="link" onClick={onLogout}>
-                Se déconnecter
-              </button>
-            </div>
-          </>
-        ) : (
-          <p className="text-[14px] leading-snug text-ink/75">Tes scores restent sur cet appareil.</p>
-        )}
-      </section>
+      {student && (
+        <div className="home-cta">
+          <button type="button" className="btn btn-primary" onClick={onSessions}>
+            Mes séances{todo ? ` (${todo} à faire)` : ''}
+          </button>
+        </div>
       )}
+      {teacher && (
+        <div className="home-cta">
+          <button type="button" className="btn btn-primary" onClick={onDashboard}>
+            Mon espace école
+          </button>
+          {onAdmin && (
+            <button type="button" className="btn btn-ghost" onClick={onAdmin}>
+              Administration
+            </button>
+          )}
+        </div>
+      )}
+      {!student && !teacher && !online && <p className="mt-3 text-[14px] leading-snug text-ink/75">Tes scores restent sur cet appareil.</p>}
 
       <h2 className="subhead mt-[var(--sp)]" id="grade-h">
         Ma classe

@@ -24,6 +24,25 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.16',
+    date: '18 novembre 2026',
+    iso: '2026-11-18',
+    title: 'Un compte plus facile à repérer',
+    changes: [
+      { kind: 'better', text: 'Une fois connecté, ton nom, ta classe et « Changer d’élève » (ou l’adresse e-mail et « Se déconnecter » pour un enseignant) se trouvent en haut à droite.' },
+      { kind: 'better', text: '« Mes séances » et « Mon espace école » ont leur propre bouton, juste sous le titre.' },
+    ],
+  },
+  {
+    version: '1.15',
+    date: '18 novembre 2026',
+    iso: '2026-11-18',
+    title: 'Un accueil plus simple',
+    changes: [
+      { kind: 'better', text: 'Accueil allégé : les boutons « Élève » et « Enseignant » passent en haut à droite, à côté du logo, et le texte de présentation disparaît (tout reste dans les pages en bas).' },
+    ],
+  },
+  {
     version: '1.14',
     date: '18 novembre 2026',
     iso: '2026-11-18',
