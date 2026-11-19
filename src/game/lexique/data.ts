@@ -204,8 +204,32 @@ export const FAMILLES: FamEntry[] = [
   { w: 'pierre', t: 2, r: ['pierr -eux', 'em- pierr -er', 'pierr -aille', 'pierr -erie'], faux: ['pièce', 'piège'] },
   { w: 'eau', t: 2, r: ['aquatique', 'aquarium', 'aqueduc', 'aquarelle'] },
   { w: 'lune', t: 2, r: ['lun -aire', 'a- lun -ir', 'lun -ette', 'lun -atique'] },
+  { w: 'ami', t: 2, r: ['amic -al', 'amic -alement', 'ami -tié'], faux: ['amas', 'amande'] },
+  { w: 'long', t: 2, r: ['long -ueur', 'al- long -er', 'pro- long -er', 'long -uement'], faux: ['longe', 'loin'] },
+  { w: 'noir', t: 2, r: ['noir -âtre', 'noir -ceur', 'noir -cir', 'noir -aud'], faux: ['noyer', 'nourrir'] },
+  { w: 'rouge', t: 2, r: ['roug -eur', 'roug -eâtre', 'roug -ir', 'roug -eole'], faux: ['rouille', 'route'] },
+  { w: 'bon', t: 2, r: ['bon -té', 'bon -bon', 'bon -heur', 'bon -ifier'], faux: ['bonde', 'bond', 'bonnet'] },
+  { w: 'nuit', t: 3, r: ['nuit -ée', 'noct -urne', 'mi- nuit', 'nuit -amment'], faux: ['nuire', 'nuisible'] },
+  { w: 'fer', t: 3, r: ['ferr -aille', 'ferr -eux', 'ferr -er', 'ferr -onnier'], faux: ['ferme', 'fermer', 'fervent'] },
+  { w: 'bois', t: 3, r: ['bois -erie', 'bois -é', 're- bois -er', 'dé- bois -er'], faux: ['boisson', 'boire'] },
+  { w: 'bras', t: 3, r: ['em- brass -er', 'brass -ard', 'brass -ée', 'brass -ière'], faux: ['brasier', 'braise', 'brasserie'] },
+  { w: 'vert', t: 3, r: ['verd -ure', 'verd -âtre', 'verd -ir', 'verd -oyer'], faux: ['verre', 'verrou', 'verser'] },
+  { w: 'clair', t: 3, r: ['clar -té', 'é- clair -er', 'é- clair -age', 'é- clair -cir', 'clair -ière'], faux: ['clan', 'clamer'] },
+  { w: 'plume', t: 3, r: ['plum -age', 'plum -eau', 'plum -ier', 'dé- plum -er', 'plum -ard'], faux: ['pluie', 'plomb'] },
   { w: 'pied', t: 3, r: ['piétiner', 'piéton', 'tré- pied', 'marchepied', 'pédale', 'pédestre'], faux: ['piège', 'pièce'] },
 ];
+
+/**
+ * Mots plus difficiles que le palier de leur fiche : ils ne sont proposés comme bonne réponse qu'à partir du palier indiqué
+ * (2 = CM1, 3 = CM2), et jamais en CE1/CE2. Clés : mot sans accent ni tiret.
+ */
+export const HARD: Record<string, Tier> = {
+  // CE1/CE2 → réponses de CM1 et plus
+  effroi: 2, logis: 2, demeure: 2, habitation: 2, chagrine: 2, entamer: 2, demarrer: 2, fixer: 2, contempler: 2, conclure: 2, achever: 2,
+  malveillant: 2, cruel: 2, serviable: 2, aise: 2, compagnon: 2, minuscule: 2, gigantesque: 2, charmant: 2, etroit: 2,
+  // CM1 → réponses de CM2
+  courroux: 3, las: 3, contree: 3, empoigner: 3, denicher: 3, fracas: 3, ereinte: 3, ardu: 3, camoufler: 3, antique: 3, enjoue: 3,
+};
 
 // ───────────────────────── Outils ─────────────────────────
 

@@ -308,7 +308,7 @@ export default function Lexique({ account, onHome, onSessionLost, session, onSes
     return () => window.removeEventListener('online', go);
   }, [studentId, token]);
 
-  // Pointeur : on saisit le mot central, puis on le relie au bon mot (en glissant, ou en touchant l'un puis l'autre)
+  // Pointeur : un appui sur un mot ennemi le valide ; on peut aussi saisir le mot central et glisser jusqu'au bon mot
   const pos = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
     return [e.clientX - r.left, e.clientY - r.top] as const;
@@ -351,7 +351,7 @@ export default function Lexique({ account, onHome, onSessionLost, session, onSes
             className="absolute inset-0 block h-full w-full"
             style={{ touchAction: 'none' }}
             role="img"
-            aria-label="Zone de jeu : un mot au centre et des mots qui arrivent de toutes les directions. Touche le mot central, puis relie-le au mot qui répond à la consigne. Au clavier : Tab ou les flèches pour choisir un mot, Entrée pour le relier."
+            aria-label="Zone de jeu : un mot au centre et des mots qui arrivent de toutes les directions. Touche le mot qui répond à la consigne, ou tire un fil depuis le mot central. Au clavier : Tab ou les flèches pour choisir un mot, Entrée pour le valider."
             onPointerDown={onDown}
             onPointerMove={onMove}
             onPointerUp={onUp}
@@ -530,7 +530,7 @@ function MenuScreen({ view, setView, grade, level, rel, setRel, diff, setDiff, s
           <li className="howto">
             <kbd className="kbd">◎</kbd>
             <span>
-              Un <strong>mot</strong> est au centre, avec une <strong>consigne</strong> : même sens, contraire ou même famille. Des mots arrivent de partout&nbsp;: <strong>touche le mot central, puis relie-le au bon mot</strong> (en glissant le doigt, ou en touchant l’un puis l’autre).
+              Un <strong>mot</strong> est au centre, avec une <strong>consigne</strong> : même sens, contraire ou même famille. Des mots arrivent de partout&nbsp;: <strong>touche le bon mot</strong> (ou, si tu préfères, maintiens le mot central et glisse jusqu’au bon mot).
             </span>
           </li>
           <li className="howto">
@@ -543,7 +543,7 @@ function MenuScreen({ view, setView, grade, level, rel, setRel, diff, setDiff, s
           </li>
           <li className="howto howto-opt">
             <kbd className="kbd">Tab</kbd>
-            <span>Au clavier&nbsp;: Tab ou les flèches choisissent un mot, Entrée le relie au mot central.</span>
+            <span>Au clavier&nbsp;: Tab ou les flèches choisissent un mot, Entrée le valide.</span>
           </li>
           <li className="howto howto-opt">
             <kbd className="kbd">Échap</kbd>
@@ -645,7 +645,7 @@ function MenuScreen({ view, setView, grade, level, rel, setRel, diff, setDiff, s
             </span>
           </h1>
           <div className="rule" aria-hidden="true" />
-          <p className="tagline menu-opt">Touche le mot du centre et relie-le au bon mot avant qu’il n’arrive&nbsp;!</p>
+          <p className="tagline menu-opt">Touche le bon mot avant que les taches d’encre n’arrivent au centre&nbsp;!</p>
           <div className="tools" data-n="4" role="group" aria-label="Plus d’options">
             <button type="button" className="tool" onClick={() => setView('howto')}>
               <span aria-hidden="true">?</span> Comment jouer

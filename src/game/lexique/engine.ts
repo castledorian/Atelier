@@ -104,6 +104,7 @@ const F_WORD = '"Courier Prime", "Courier New", monospace';
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
+const backOut = (x: number) => 1 + 2.70158 * Math.pow(x - 1, 3) + 1.70158 * Math.pow(x - 1, 2);
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
 function rr(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -165,6 +166,8 @@ export class LexiqueGame {
   private drag = false;
   private px = 0;
   private py = 0;
+  private bx = new Float32Array(10);
+  private by = new Float32Array(10);
   private parts: Part[] = [];
   private texts: Txt[] = [];
   private rings: Ring[] = [];
@@ -270,13 +273,21 @@ export class LexiqueGame {
   private enemyAt(x: number, y: number): Enemy | null {
     let best: Enemy | null = null;
     let bd = Infinity;
-    const hh = this.fs * 0.9;
+    const r = this.blobR();
+    const th = this.fs + 11;
     for (const e of this.enemies) {
       if (e.dead || e.doomed || e.delay > 0) continue;
-      const dx = Math.abs(x - e.x);
-      const dy = Math.abs(y - e.y);
-      if (dx > e.halfW + 12 || dy > hh + 14) continue;
-      const d = dx * dx + dy * dy;
+      // la tache d'encre (cercle) ou l'étiquette (rectangle), avec une marge pour les doigts
+      const bdx = x - e.x;
+      const bdy = y - e.y;
+      const onBlob = bdx * bdx + bdy * bdy <= (r + 14) * (r + 14);
+      const x0 = this.labelX(e);
+      const y0 = e.y + r + 7;
+      const onLabel = x >= x0 - 8 && x <= x0 + e.halfW * 2 + 8 && y >= y0 - 8 && y <= y0 + th + 10;
+      if (!onBlob && !onLabel) continue;
+      const lx = onLabel ? clamp(x, x0, x0 + e.halfW * 2) : e.x;
+      const ly = onLabel ? y0 + th / 2 : e.y;
+      const d = (x - lx) * (x - lx) + (y - ly) * (y - ly);
       if (d < bd) {
         bd = d;
         best = e;
@@ -293,15 +304,14 @@ export class LexiqueGame {
     return !this.paused && this.mode === 'play' && this.phase === 'live' && !this.link;
   }
 
-  /** Appui : sur le mot central on le « saisit » ; une fois saisi, un appui sur un mot qui arrive les relie. */
+  /** Appui : un appui sur un mot qui arrive le valide tout de suite ; un appui sur le mot central le « saisit » pour tirer un fil. */
   downAt(x: number, y: number) {
     if (!this.canPoint()) return;
     this.px = x;
     this.py = y;
-    if (this.armed) {
-      const e = this.enemyAt(x, y);
-      if (e) this.choose(e);
-      else if (!this.onCore(x, y)) this.armed = false;
+    const e = this.enemyAt(x, y);
+    if (e) {
+      this.choose(e);
       this.dirty = true;
       return;
     }
@@ -310,8 +320,8 @@ export class LexiqueGame {
       this.drag = true;
       this.core = 1;
       this.snd('select');
-      this.dirty = true;
-    }
+    } else this.armed = false;
+    this.dirty = true;
   }
 
   /** Déplacement : le fil suit le doigt ; le mot visé est mis en valeur. */
@@ -515,7 +525,7 @@ export class LexiqueGame {
 
   /** Prépare la manche suivante : mot central, consigne, ennemis en attente d'apparition. */
   private beginRound(first: boolean) {
-    const rnd = this.next ?? buildRound(this.rel, this.level, enemyCount(this.diff, this.roundNo), Math.random, this.used);
+    const rnd = this.next ?? buildRound(this.rel, this.level, enemyCount(this.diff, this.roundNo), Math.random, this.used, this.diff);
     this.next = null;
     this.round = rnd;
     this.roundNo++;
@@ -541,9 +551,9 @@ export class LexiqueGame {
     const travel = travelTime(this.diff, this.roundNo - 1);
     const angles = spreadAngles(r.words.length, Math.random);
     c.font = `700 ${this.fs}px ${F_WORD}`;
-    const ey = this.fs * 0.9;
+    const ey = this.blobR() + (7 + this.fs + 11) / 2;
     r.words.forEach((w, i) => {
-      const halfW = c.measureText(w.text.toUpperCase()).width / 2 + 14;
+      const halfW = Math.max(c.measureText(w.text.toUpperCase()).width / 2 + 14, this.blobR() * 1.2);
       const a = angles[i];
       const edge = edgeDistance(this.W, this.H, this.cx, this.cy, a);
       const d0 = Math.max(edge, 40) + halfW + 14;
@@ -619,7 +629,7 @@ export class LexiqueGame {
     this.snd(this.streak > 0 && this.streak % 3 === 0 ? 'bigkill' : 'kill');
     if (this.streak > 0 && this.streak % 3 === 0) this.snd('mult');
     // la manche suivante est prête dès maintenant (la vitesse monte à chaque manche gagnée)
-    this.next = buildRound(this.rel, this.level, enemyCount(this.diff, this.roundNo), Math.random, this.used);
+    this.next = buildRound(this.rel, this.level, enemyCount(this.diff, this.roundNo), Math.random, this.used, this.diff);
   }
 
   private lose(e: Enemy | null) {
@@ -656,7 +666,7 @@ export class LexiqueGame {
     this.target = null;
     this.phase = 'rest';
     this.timer = 0;
-    this.next = buildRound(this.rel, this.level, enemyCount(this.diff, this.roundNo), Math.random, this.used);
+    this.next = buildRound(this.rel, this.level, enemyCount(this.diff, this.roundNo), Math.random, this.used, this.diff);
   }
 
   // ───────────────────────── Mises à jour ─────────────────────────
@@ -983,33 +993,125 @@ export class LexiqueGame {
     c.globalAlpha = 1;
   }
 
+  /** Un œil : blanc + pupille tournée vers le mot central ; en « souffrance » (erreur, dissolution) deux traits en chevron. */
+  private eye(ex: number, ey: number, er: number, lx: number, ly: number, hurt: boolean, side: number, lid: string) {
+    const c = this.ctx;
+    if (hurt) {
+      const s = -side;
+      c.strokeStyle = PAPER_HI;
+      c.lineWidth = Math.max(1.5, er * 0.42);
+      c.lineCap = 'round';
+      c.lineJoin = 'round';
+      c.beginPath();
+      c.moveTo(ex - s * er * 0.8, ey - er * 0.7);
+      c.lineTo(ex + s * er * 0.6, ey);
+      c.lineTo(ex - s * er * 0.8, ey + er * 0.7);
+      c.stroke();
+      c.lineCap = 'butt';
+      c.lineJoin = 'miter';
+      return;
+    }
+    c.fillStyle = PAPER_HI;
+    c.beginPath();
+    c.arc(ex, ey, er, 0, TAU);
+    c.fill();
+    c.fillStyle = INK;
+    c.beginPath();
+    c.arc(ex + lx * er * 0.42, ey + ly * er * 0.42, er * 0.48, 0, TAU);
+    c.fill();
+    c.fillStyle = lid;
+    c.beginPath();
+    c.moveTo(ex + side * er * 1.3, ey - er * 1.05);
+    c.lineTo(ex - side * er * 1.3, ey - er * 0.15);
+    c.lineTo(ex - side * er * 1.3, ey - er * 1.7);
+    c.lineTo(ex + side * er * 1.3, ey - er * 1.7);
+    c.closePath();
+    c.fill();
+  }
+
+  /** Rayon de la tache d'encre d'un ennemi. */
+  private blobR() {
+    return this.fs * 0.95;
+  }
+
+  /** Abscisse du bord gauche de l'étiquette (elle reste toujours dans l'écran). */
+  private labelX(e: Enemy) {
+    const tw = e.halfW * 2;
+    return clamp(e.x - tw / 2, 6, Math.max(6, this.W - tw - 6));
+  }
+
+  /** Un ennemi : une tache d'encre qui ondule, ses yeux regardent le mot central, et son mot le suit juste en dessous. */
   private drawEnemy(e: Enemy, isTarget: boolean) {
     const c = this.ctx;
-    const text = e.w.text.toUpperCase();
-    const h = this.fs * 1.8;
-    const k = 1 + e.pop * 0.1;
+    const t = this.time;
+    const r = this.blobR();
+    const seed = e.phase;
+    const sp = e.age < 0.3 ? Math.max(0.05, backOut(e.age / 0.3)) : 1;
+    const reveal = this.phase === 'rest' && e.w.role === 'answer';
+    const fill = reveal ? GREEN : e.err > 0 ? RED : INK;
+    const k = sp * (1 + e.pop * 0.12);
     c.save();
     c.translate(e.x, e.y);
     c.scale(k, k);
-    const w = e.halfW * 2;
-    // ombre
-    c.fillStyle = 'rgba(27,25,21,.28)';
-    rr(c, -w / 2 + 3, -h / 2 + 4, w, h, 8);
+    const N = 10;
+    const bx = this.bx;
+    const by = this.by;
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * TAU;
+      const w = 1 + 0.1 * Math.sin(t * 2.4 + i * 1.9 + seed) + 0.07 * Math.sin(t * 3.9 - i * 2.7 + seed * 1.7);
+      bx[i] = Math.cos(a) * r * w;
+      by[i] = Math.sin(a) * r * w;
+    }
+    c.fillStyle = fill;
+    c.beginPath();
+    c.moveTo((bx[N - 1] + bx[0]) / 2, (by[N - 1] + by[0]) / 2);
+    for (let i = 0; i < N; i++) {
+      const j = (i + 1) % N;
+      c.quadraticCurveTo(bx[i], by[i], (bx[i] + bx[j]) / 2, (by[i] + by[j]) / 2);
+    }
+    c.closePath();
+    if (this.quality >= 1) {
+      for (let q = 0; q < 3; q++) {
+        const a = seed + q * 2.1 + t * (q === 1 ? -0.5 : 0.4);
+        const d = r * (1.3 + 0.08 * Math.sin(t * 2 + q));
+        const sr = r * (0.09 + q * 0.03);
+        c.moveTo(Math.cos(a) * d + sr, Math.sin(a) * d);
+        c.arc(Math.cos(a) * d, Math.sin(a) * d, sr, 0, TAU);
+      }
+    }
     c.fill();
-    const reveal = this.phase === 'rest' && e.w.role === 'answer';
-    c.fillStyle = reveal ? '#d6ead3' : e.err > 0 ? '#f3c9bd' : isTarget ? PAPER_HI : HEAD;
-    c.strokeStyle = reveal ? GREEN : isTarget || e.err > 0 ? RED : INK;
-    c.lineWidth = isTarget ? 3.5 : 2.5;
-    rr(c, -w / 2, -h / 2, w, h, 8);
-    c.fill();
-    c.stroke();
-    c.font = `700 ${this.fs}px ${F_WORD}`;
-    c.textBaseline = 'middle';
-    c.textAlign = 'left';
-    c.textAlign = 'center';
-    c.fillStyle = INK;
-    c.fillText(text, 0, 1);
+    // les yeux regardent vers le mot central
+    const dx = this.cx - e.x;
+    const dy = this.cy - e.y;
+    const dl = Math.hypot(dx, dy) || 1;
+    const lx = dx / dl;
+    const ly = dy / dl;
+    const er = Math.max(3, r * 0.22);
+    this.eye(-r * 0.34, -r * 0.12, er, lx, ly, e.err > 0 || e.doomed, -1, fill);
+    this.eye(r * 0.34, -r * 0.12, er, lx, ly, e.err > 0 || e.doomed, 1, fill);
     c.restore();
+
+    // l'étiquette : le mot suit l'ennemi
+    const fs = this.fs;
+    const tw = e.halfW * 2;
+    const th = fs + 11;
+    let x0 = this.labelX(e);
+    if (e.err > 0) x0 += Math.sin(this.time * 80) * 4 * Math.min(1, e.err / 0.3);
+    const y0 = e.y + r * k + 7;
+    c.fillStyle = 'rgba(27,25,21,.26)';
+    rr(c, x0 + 2.5, y0 + 3, tw, th, 5);
+    c.fill();
+    c.fillStyle = reveal ? '#d6ead3' : e.err > 0 ? '#f3c9bd' : PAPER_HI;
+    rr(c, x0, y0, tw, th, 5);
+    c.fill();
+    c.strokeStyle = reveal ? GREEN : isTarget || e.err > 0 ? RED : INK;
+    c.lineWidth = isTarget || reveal ? 3 : 1.8;
+    c.stroke();
+    c.font = `700 ${fs}px ${F_WORD}`;
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillStyle = INK;
+    c.fillText(e.w.text.toUpperCase(), x0 + tw / 2, y0 + th / 2 + 1);
   }
 
   private drawCore() {
@@ -1042,12 +1144,6 @@ export class LexiqueGame {
     c.fillStyle = RED;
     c.textBaseline = 'bottom';
     c.fillText(r.prompt, 0, -h / 2 - 6);
-    if (this.mode === 'play' && this.phase === 'live' && this.roundNo <= 2 && !this.armed) {
-      c.textBaseline = 'top';
-      c.fillStyle = 'rgba(27,25,21,.75)';
-      c.font = `${Math.round(this.fs * 0.72)}px ${F_DISP}`;
-      c.fillText('Touche ce mot, puis le bon mot', 0, h / 2 + 8);
-    }
     c.restore();
   }
 

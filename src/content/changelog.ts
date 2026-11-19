@@ -24,6 +24,18 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.21',
+    date: '19 novembre 2026',
+    iso: '2026-11-19',
+    title: 'Mots en orbite : taches d’encre et mots adaptés à la classe',
+    changes: [
+      { kind: 'better', text: 'Mots en orbite : les ennemis sont des taches d’encre, comme dans Frappe !, avec leur mot juste en dessous. Leurs yeux regardent le mot du centre.' },
+      { kind: 'better', text: 'Un seul toucher sur le bon mot suffit à le valider. On peut toujours maintenir le mot central et glisser jusqu’au bon mot ; la phrase d’aide sous le mot central a disparu.' },
+      { kind: 'better', text: 'Mots adaptés à chaque classe : CE1 (mots courts de tous les jours), CE2, CM1, CM2 (mots plus rares, familles plus longues). La difficulté Apprenti / Standard / Expert règle aussi la part de mots difficiles et de pièges.' },
+      { kind: 'new', text: 'Niveau CE1 ; une douzaine de nouvelles familles de mots pour le CM2 ; les mots trop difficiles ne sont plus proposés aux classes plus jeunes.' },
+    ],
+  },
+  {
     version: '1.20',
     date: '18 novembre 2026',
     iso: '2026-11-18',

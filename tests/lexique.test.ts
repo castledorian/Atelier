@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CONTRAIRES, FAMILLES, SYNONYMES, morphOf, norm, plain } from '../src/game/lexique/data';
-import { LEX_TUNE, buildRound, candidates, enemyCount, lexBoard, lossNote, travelTime } from '../src/game/lexique/rounds';
-import type { LexLevel, Rel } from '../src/game/lexique/rounds';
+import { CONTRAIRES, FAMILLES, HARD, SYNONYMES, morphOf, norm, plain } from '../src/game/lexique/data';
+import { LEX_TUNE, SHORT_MAX, buildRound, candidates, enemyCount, lexBoard, lexLevelOf, lossNote, mixOf, travelTime } from '../src/game/lexique/rounds';
+import type { LexDiff, LexLevel, Rel } from '../src/game/lexique/rounds';
 
 const rngOf = (seed: number) => () => {
   seed = (seed * 1664525 + 1013904223) >>> 0;
@@ -37,21 +37,23 @@ test('données : un faux ami de famille n\'est pas aussi une bonne réponse', ()
 
 test('manches : une seule bonne réponse, premières lettres distinctes, centre absent, 3000 tirages', () => {
   const rels: Rel[] = ['synonyme', 'contraire', 'famille', 'melange'];
-  const levels: LexLevel[] = ['ce2', 'cm1', 'cm2'];
+  const levels: LexLevel[] = ['ce1', 'ce2', 'cm1', 'cm2'];
   for (const rel of rels) {
     for (const level of levels) {
       const used = new Set<string>();
       const rng = rngOf(rel.length * 7 + level.length);
       for (let i = 0; i < 250; i++) {
         const count = 3 + (i % 4);
-        const r = buildRound(rel, level, count, rng, used);
+        const diff = (['apprenti', 'standard', 'expert'] as LexDiff[])[i % 3];
+        const r = buildRound(rel, level, count, rng, used, diff);
         assert.equal(r.words.filter((w) => w.role === 'answer').length, 1);
         assert.ok(r.words.length >= 2 && r.words.length <= count, `${r.center}: ${r.words.length}`);
         const firsts = r.words.map((w) => w.key[0]);
         assert.equal(new Set(firsts).size, firsts.length, `première lettre en double : ${r.center}`);
         assert.ok(r.words.every((w) => w.key !== norm(r.center)));
         // aucun piège n'est une réponse acceptée
-        const entry = candidates(r.rel, level).find((e) => e.w === r.center)!;
+        const entry = candidates(r.rel, level, diff).find((e) => e.w === r.center)!;
+        assert.ok(entry, `${level}/${diff}: ${r.center} hors du palier`);
         const ok = new Set(entry.r.map(norm));
         for (const w of r.words) if (w.role !== 'answer') assert.ok(!ok.has(w.key), `${r.center} : « ${w.text} » est aussi valable`);
       }
@@ -129,16 +131,65 @@ test('manches : les « faux amis » de la même initiale que la réponse sont bi
   let faux = 0;
   let total = 0;
   for (let i = 0; i < 400; i++) {
-    const r = buildRound('famille', 'cm1', 4, rng, new Set());
+    const r = buildRound('famille', 'cm1', 4, rng, new Set(), 'expert');
     total++;
     if (r.words.some((w) => w.role === 'faux')) faux++;
     const firsts = r.words.map((w) => w.key[0]);
     assert.equal(new Set(firsts).size, firsts.length, r.center);
   }
-  assert.ok(faux / total > 0.7, `faux amis proposés : ${faux}/${total}`);
+  assert.ok(faux / total > 0.6, `faux amis proposés : ${faux}/${total}`);
 });
 
 test('données : aucun mot trop long pour une étiquette', () => {
   const all = [...SYNONYMES.flatMap((e) => [e.w, ...e.r]), ...CONTRAIRES.flatMap((e) => [e.w, ...e.r]), ...FAMILLES.flatMap((e) => [e.w, ...e.r, ...(e.faux ?? [])])];
   for (const w of all) assert.ok(norm(w).length <= 13, `${w} : ${norm(w).length} lettres`);
+});
+
+
+const LEVELS: LexLevel[] = ['ce1', 'ce2', 'cm1', 'cm2'];
+const DIFFS: LexDiff[] = ['apprenti', 'standard', 'expert'];
+const tierOfEntry = (rel: string, center: string) => ({ synonyme: SYNONYMES, contraire: CONTRAIRES, famille: FAMILLES } as Record<string, Array<{ w: string; t: number }>>)[rel].find((e) => e.w === center)!.t;
+
+test('équilibrage : chaque classe et chaque difficulté a assez de manches de chaque consigne', () => {
+  for (const level of LEVELS)
+    for (const diff of DIFFS)
+      for (const rel of ['synonyme', 'contraire', 'famille'] as const) {
+        const n = candidates(rel, level, diff).length;
+        assert.ok(n >= 8, `${level}/${diff}/${rel} : seulement ${n} manches`);
+      }
+});
+
+test('équilibrage : les paliers respectent la classe et la difficulté', () => {
+  for (const level of LEVELS) {
+    for (const diff of DIFFS) {
+      const mix = mixOf(level, diff);
+      const rng = rngOf(level.length * 31 + diff.length);
+      const used = new Set<string>();
+      const seen = [0, 0, 0];
+      for (let i = 0; i < 300; i++) {
+        const r = buildRound('melange', level, 5, rng, used, diff);
+        const t = tierOfEntry(r.rel, r.center);
+        assert.ok(mix[t - 1] > 0, `${level}/${diff} : « ${r.center} » (palier ${t}) ne devrait pas tomber`);
+        seen[t - 1]++;
+        // une bonne réponse n'est jamais un mot réservé à une classe supérieure
+        const top = mix[2] > 0 ? 3 : mix[1] > 0 ? 2 : 1;
+        const hard = HARD[r.answer.key];
+        if (hard) assert.ok(hard <= top, `${level}/${diff} : réponse « ${r.answer.text} » trop difficile`);
+        if (level === 'ce1') {
+          for (const w of r.words) assert.ok(w.key.length <= SHORT_MAX, `CE1 : « ${w.text} » trop long`);
+          assert.ok(norm(r.center).length <= SHORT_MAX, `CE1 : centre « ${r.center} » trop long`);
+        }
+      }
+      if (level === 'cm2' && diff === 'standard') assert.ok(seen[1] > 40 && seen[2] > 40, `CM2 standard : paliers ${seen}`);
+      if (level === 'cm1' && diff === 'apprenti') assert.ok(seen[0] > seen[1] * 2, `CM1 apprenti doit rester surtout facile : ${seen}`);
+    }
+  }
+});
+
+test('équilibrage : classe → niveau des mots', () => {
+  assert.equal(lexLevelOf('cp'), 'ce1');
+  assert.equal(lexLevelOf('ce1'), 'ce1');
+  assert.equal(lexLevelOf('ce2'), 'ce2');
+  assert.equal(lexLevelOf('cm1'), 'cm1');
+  assert.equal(lexLevelOf('cm2'), 'cm2');
 });
