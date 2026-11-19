@@ -5210,3 +5210,19 @@ th[aria-sort='descending'] .th-sort {
   color: #fffaf0;
   background: #3d2900;
 }
+
+/* Accueil : bouton de l'ambiance musicale (petit, discret, mais toujours à portée) */
+.home-music {
+  display: flex;
+  margin-top: 10px;
+}
+.home-music .tool {
+  padding: 4px 12px;
+}
+.home-music .tool[aria-pressed='true'] {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+.home-music .tool[aria-pressed='true'] > span {
+  color: var(--color-paper);
+}

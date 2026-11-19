@@ -348,11 +348,17 @@ select pg_temp.eq('Course : score impossible', private.run_violation('math', 999
 select pg_temp.eq('Mémoire : plus de manches que le jeu', private.run_violation('memory', 500, 40, 0, 100, 40, 300), 'plus de manches que le jeu n''en contient');
 select pg_temp.eq('Mémoire : un vrai score passe', private.run_violation('memory', 1800, 12, 0, 95, 12, 200) is null, true);
 select pg_temp.eq('Orthographe : 10 phrases parfaites passent', private.run_violation('spelling', 250, 10, 0, 100, 10, 90) is null, true);
-select pg_temp.eq('Orthographe : score impossible', private.run_violation('spelling', 5000, 10, 0, 100, 10, 90), 'score supérieur au maximum possible');
+select pg_temp.eq('Orthographe : score impossible', private.run_violation('spelling', 20000, 10, 0, 100, 10, 90), 'score supérieur au maximum possible');
 select pg_temp.eq('Orthographe : 10 phrases en 5 s', private.run_violation('spelling', 100, 5, 0, 100, 10, 5), 'phrases trop rapides');
 select pg_temp.eq('Mots en orbite : une vraie partie passe', private.run_violation('lexique', 900, 8, 0, 85, 8, 70) is null, true);
 select pg_temp.eq('Mots en orbite : manches trop rapides', private.run_violation('lexique', 300, 40, 0, 100, 40, 10), 'manches trop rapides');
 select pg_temp.eq('Mots en orbite : score impossible', private.run_violation('lexique', 90000, 8, 0, 100, 8, 70), 'score supérieur au maximum possible');
+select pg_temp.eq('barème commun : indicateur de version', (public.server_version()->'features'->>'bareme'), 'true');
+select pg_temp.eq('barème commun : Course, 48 réponses à haut score acceptées', private.run_violation('math', 30000, 20, 0, 98, 48, 300), null);
+select pg_temp.eq('barème commun : Course, 840 points par réponse au plus', private.run_violation('math', 840*48+5001, 20, 0, 98, 48, 300), 'score supérieur au maximum possible');
+select pg_temp.eq('barème commun : Mémoire, belle partie acceptée', private.run_violation('memory', 14000, 6, 0, 95, 30, 400), null);
+select pg_temp.eq('barème commun : Orthographe, partie parfaite acceptée', private.run_violation('spelling', 6250, 10, 0, 100, 10, 200), null);
+select pg_temp.eq('barème commun : Mots en orbite, belle partie acceptée', private.run_violation('lexique', 9000, 20, 0, 100, 20, 200), null);
 select pg_temp.eq('Mots en orbite : série supérieure aux bonnes réponses', private.run_violation('lexique', 100, 9, 0, 100, 8, 70), 'plus de manches que de bonnes réponses');
 select pg_temp.eq('version du serveur : Mots en orbite reconnu', (public.server_version()->'features'->>'lexique'), 'true');
 select pg_temp.eq('jeu inconnu', private.run_violation('piratage', 1, 1, 0, 1, 1, 10), 'jeu inconnu');

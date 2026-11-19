@@ -617,6 +617,10 @@ function MenuScreen({ view, setView, level, diff, setDiff, settings, account, on
             <kbd className="kbd">✓</kbd>
             <span>6 pages de plus en plus difficiles. Une erreur fait monter l’encre&nbsp;; si elle atteint la plume, c’est perdu. Termine le cahier pour un bonus&nbsp;!</span>
           </li>
+          <li className="howto">
+            <kbd className="kbd">×</kbd>
+            <span>Les points&nbsp;: chaque bonne réponse rapporte 100 points, un peu plus si tu valides vite. Trois bonnes réponses d’affilée font monter la série (×2, ×3… jusqu’à ×6) et multiplient tes points. Tu ne perds jamais de points&nbsp;; une vie perdue te fait redescendre d’un palier (en Expert, la série repart de ×1).</span>
+          </li>
           <li className="howto howto-opt">
             <kbd className="kbd">Échap</kbd>
             <span>Pause. Tu peux aussi toucher le bouton pause en haut à droite.</span>

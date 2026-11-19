@@ -1,3 +1,4 @@
+import { ANSWER_POINTS, FINISH_BONUS, PAGE_BONUS, SURVIVE_BONUS, multFor, speedBonus, streakAfterLoss } from '../scoring';
 import type { Sfx } from '../audio';
 import { ruleOfCalc } from '../encre/rules';
 import { mathOutcome } from '../itemstats';
@@ -95,15 +96,15 @@ const F_DISP = '"Special Elite", "Courier New", monospace';
 const F_NUM = '"Courier Prime", "Courier New", monospace';
 const PART_COLORS = [INK, RED, GREEN, GOLD, PAPER_HI];
 const MAX_PARTS = 260;
-const MAX_BONUS = 20;
+const MAX_BONUS = speedBonus(ANSWER_POINTS, 1);
 const SURFACE_STEPS = 18;
 
 const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
-const WIN_BONUS = 100;
-const PERFECT_PAGE = 50;
+const WIN_BONUS = FINISH_BONUS;
+const PERFECT_PAGE = PAGE_BONUS;
 
 function backOut(p: number) {
   const s = 1.7;
@@ -612,7 +613,7 @@ export class CourseGame {
   /** Les 6 pages sont finies : le cahier est terminé. */
   private victory() {
     if (this.over) return;
-    const bonus = WIN_BONUS + Math.round(clamp(this.flood, 0, 1) * 100) + (this.shield ? 50 : 0);
+    const bonus = WIN_BONUS + Math.round(clamp(this.flood, 0, 1) * 2 * SURVIVE_BONUS) + (this.shield ? SURVIVE_BONUS : 0);
     this.score += bonus;
     this.won = true;
     this.over = true;
@@ -652,9 +653,9 @@ export class CourseGame {
       this.correct++;
       this.streak++;
       this.best = Math.max(this.best, this.streak);
-      const mult = Math.min(5, 1 + Math.floor(this.streak / 3));
-      const prevMult = Math.min(5, 1 + Math.floor((this.streak - 1) / 3));
-      const pts = 10 * mult + g.bonus;
+      const mult = multFor(this.streak);
+      const prevMult = multFor(this.streak - 1);
+      const pts = (ANSWER_POINTS + g.bonus) * mult;
       this.score += pts;
       this.flood = Math.min(1, this.flood + COURSE_TUNING[this.diff].heal + (this.streak >= 3 ? 0.03 : 0));
       this.burst(x, y, 20, 2, 280);
@@ -701,7 +702,7 @@ export class CourseGame {
         this.sfx.play('hit');
         this.shake = Math.max(this.shake, 6);
       } else {
-        this.streak = 0;
+        this.streak = streakAfterLoss(this.streak, this.diff);
         this.flood -= COURSE_TUNING[this.diff].wrong * LEVEL_TUNING[this.level].wrong;
         this.shake = Math.max(this.shake, 12);
         this.hitStop = 0.09;
@@ -1150,7 +1151,7 @@ export class CourseGame {
     c.textBaseline = 'middle';
     if (this.mode !== 'play') return;
     const drill = this.drillTotal > 0;
-    const mult = Math.min(5, 1 + Math.floor(this.streak / 3));
+    const mult = multFor(this.streak);
     const right = W - 62; // le bouton pause occupe la droite
     const page = `${Math.min(PAGES, stageOf(this.asked) + 1)}/${PAGES}`;
     const label = (txt: string, x: number, y: number, al: CanvasTextAlign) => {

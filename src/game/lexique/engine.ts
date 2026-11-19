@@ -1,5 +1,6 @@
 import type { Sfx, SfxName } from '../audio';
 import { plain } from './data';
+import { streakAfterLoss } from '../scoring';
 import { edgeDistance, multFor, reachDistance, spreadAngles, winPoints } from './geometry';
 import { LEX_TUNE, buildRound, enemyCount, lossNote, travelTime } from './rounds';
 import type { LexDiff, LexLevel, LexWord, Rel, Round } from './rounds';
@@ -155,6 +156,8 @@ export class LexiqueGame {
   private rel: Rel = 'melange';
   private level: LexLevel = 'cm1';
   private diff: LexDiff = 'standard';
+  /** La démonstration joue ses sons (fenêtre d'extrait de l'accueil) ; dans le menu elle reste muette. */
+  private demoSound = false;
   private used = new Set<string>();
   private round: Round | null = null;
   private next: Round | null = null;
@@ -240,6 +243,10 @@ export class LexiqueGame {
     this.snd('start');
     this.beginRound(true);
     this.last = performance.now();
+  }
+
+  setDemoSound(on: boolean) {
+    this.demoSound = on;
   }
 
   startDemo() {
@@ -514,7 +521,7 @@ export class LexiqueGame {
   }
 
   private snd(name: SfxName) {
-    if (this.mode !== 'demo') this.sfx.play(name);
+    if (this.mode !== 'demo' || this.demoSound) this.sfx.play(name);
   }
 
   private addTrauma(v: number) {
@@ -599,7 +606,7 @@ export class LexiqueGame {
     this.streak++;
     this.bestStreak = Math.max(this.bestStreak, this.streak);
     const mult = multFor(this.streak);
-    const pts = winPoints(e.w.key.length, left, true, mult);
+    const pts = winPoints(left, mult);
     if (this.mode === 'play') {
       this.score += pts;
       this.wins++;
@@ -634,7 +641,7 @@ export class LexiqueGame {
 
   private lose(e: Enemy | null) {
     const r = this.round!;
-    this.streak = 0;
+    this.streak = streakAfterLoss(this.streak, this.diff);
     if (this.mode === 'play') {
       this.losses++;
       this.lives--;

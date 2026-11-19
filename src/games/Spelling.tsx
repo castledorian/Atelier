@@ -13,6 +13,7 @@ import type { RuleId } from '../game/encre/rules';
 import { DUEL_SIZE, activeRules, dayKey, loadStore, recordDuel, recordGame, saveStore, stateOf } from '../game/encre/tracker';
 import { effectiveGrade, levelOf } from '../game/grade';
 import { Sfx } from '../game/audio';
+import { streakAfterLoss } from '../game/scoring';
 import { addLog } from '../game/progress';
 import { CALM, calmBoss, feedBoss } from '../game/boss/state';
 import { newRunId } from '../game/history';
@@ -477,7 +478,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
     const out: RoundOutcome = { tapFirst: r.tapFirst, fixTries: tries, hint: r.hintUsed };
     const gained = pointsFor(out, s.streak);
     s.score += gained;
-    s.streak = isPerfect(out) ? s.streak + 1 : 0;
+    s.streak = isPerfect(out) ? s.streak + 1 : streakAfterLoss(s.streak, s.diff);
     s.best = Math.max(s.best, s.streak);
     if (isFault(out)) {
       s.faults[r.item.rule] = (s.faults[r.item.rule] ?? 0) + 1;

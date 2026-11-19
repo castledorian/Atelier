@@ -541,6 +541,10 @@ function MenuScreen({ view, setView, grade, level, rel, setRel, diff, setDiff, s
             <kbd className="kbd">♥</kbd>
             <span>Un mauvais mot relié, ou la bonne réponse laissée arriver au centre, coûte une vie (5 en Apprenti, 3 sinon). Les autres mots qui arrivent au centre ne font pas de mal.</span>
           </li>
+          <li className="howto">
+            <kbd className="kbd">×</kbd>
+            <span>Les points&nbsp;: chaque bonne réponse rapporte 100 points, un peu plus si tu es rapide. Trois bonnes réponses d’affilée font monter la série (×2, ×3… jusqu’à ×6) et multiplient tes points. Tu ne perds jamais de points&nbsp;; une vie perdue te fait redescendre d’un palier (en Expert, la série repart de ×1).</span>
+          </li>
           <li className="howto howto-opt">
             <kbd className="kbd">Tab</kbd>
             <span>Au clavier&nbsp;: Tab ou les flèches choisissent un mot, Entrée le valide.</span>

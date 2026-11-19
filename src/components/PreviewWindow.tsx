@@ -4,6 +4,7 @@ import { Sfx } from '../game/audio';
 import { Game } from '../game/engine';
 import { CourseGame } from '../game/course/engine';
 import { MemoryGame } from '../game/memory/engine';
+import { LexiqueGame } from '../game/lexique/engine';
 import { levelOf } from '../game/grade';
 import type { Grade } from '../game/grade';
 import { PREVIEWS } from './Preview';
@@ -45,6 +46,12 @@ export default function PreviewWindow({ game, grade, onClose, onPlay }: { game: 
     if (game === 'math') {
       const g = new CourseGame(canvas, sfx, { onOver: () => {} });
       g.startDemo(levelOf(grade), true);
+      return () => g.destroy();
+    }
+    if (game === 'lexique') {
+      const g = new LexiqueGame(canvas, sfx, { onOver: () => {} });
+      g.setDemoSound(true);
+      g.startDemo();
       return () => g.destroy();
     }
     if (game === 'memory') {

@@ -1,3 +1,4 @@
+import { SPELLING_FIX, SPELLING_TAP, multFor } from '../scoring';
 import { ruleInfo } from '../encre/rules';
 import type { RuleId } from '../encre/rules';
 import { shouldSummon } from '../encre/tracker';
@@ -300,12 +301,15 @@ export const isPerfect = (o: RoundOutcome) => o.tapFirst && o.fixTries === 1 && 
 /** Une faute pour la règle : une mauvaise correction au moins (l'indice et le mot touché à tort ne comptent pas). */
 export const isFault = (o: RoundOutcome) => o.fixTries > 1;
 
-/** Points d'une phrase : 5 pour le mot faux, 10 pour la correction (5 avec indice ou au 2e essai), bonus de série. */
+/**
+ * Points d'une phrase (barème commun, voir src/game/scoring.ts) : 100 pour le mot faux trouvé du premier coup, 150 pour la correction
+ * (75 avec l'indice ou au 2e essai). Une phrase parfaite compte aussi pour la série : ses points sont multipliés par le palier.
+ * Jamais de bonus de vitesse ici : on lit et on écrit sans courir.
+ */
 export function pointsFor(o: RoundOutcome, streakBefore: number): number {
-  const tap = o.tapFirst ? 5 : 0;
-  const fix = o.fixTries === 1 ? (o.hint ? 5 : 10) : o.fixTries === 2 ? 5 : 0;
-  const bonus = isPerfect(o) ? 2 * Math.min(5, streakBefore + 1) : 0;
-  return tap + fix + bonus;
+  const tap = o.tapFirst ? SPELLING_TAP : 0;
+  const fix = o.fixTries === 1 ? (o.hint ? SPELLING_FIX / 2 : SPELLING_FIX) : o.fixTries === 2 ? SPELLING_FIX / 2 : 0;
+  return (tap + fix) * (isPerfect(o) ? multFor(streakBefore + 1) : 1);
 }
 
 /** Une phrase ratée à reproposer à cette manche (ou null) : elle existe pour ce niveau et n'a pas déjà été jouée. */

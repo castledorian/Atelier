@@ -9,7 +9,7 @@ export function InfoButton({ onClick, label = 'Voir un extrait du jeu' }: { onCl
   );
 }
 
-export type PreviewGame = 'typing' | 'math' | 'memory' | 'spelling';
+export type PreviewGame = 'typing' | 'math' | 'memory' | 'spelling' | 'lexique';
 
 export interface PreviewStep {
   /** titre court, en gras */
@@ -59,6 +59,16 @@ export const PREVIEWS: Record<PreviewGame, PreviewInfo> = {
       { title: 'Refais la suite', text: 'Quand c’est fini, touche les cases dans le même ordre.', example: 'Tu touches 2, puis 5, puis 1.', sound: 'select' },
       { title: 'La suite s’allonge', text: 'À chaque réussite, il y a une tache de plus à retenir. Jusqu’où iras-tu ?', example: 'Suite de 3 réussie : la suivante en compte 4.', sound: 'mult' },
       { title: 'Deux jeux', text: 'Dans « Les Cases », les taches apparaissent un instant : il faut retrouver leurs places.', example: 'La Suite : l’ordre compte. Les Cases : seule la place compte.', sound: 'ding' },
+    ],
+  },
+  lexique: {
+    title: 'Mots en orbite',
+    goal: 'Trouve parmi les mots qui arrivent celui qui répond à la consigne, avant que les taches d’encre n’atteignent le centre.',
+    steps: [
+      { title: 'Un mot et une consigne', text: 'Au centre, un mot et une consigne : même sens, contraire ou même famille de mots.', example: 'MAISON · « même sens que ».', sound: 'ready' },
+      { title: 'Les mots arrivent', text: 'Des taches d’encre portant chacune un mot avancent vers le centre, de toutes les directions.', example: 'logis · jardin · toit · maison : lequel a le même sens ?', sound: 'spawn' },
+      { title: 'Touche le bon mot', text: 'Touche la tache dont le mot répond à la consigne. Tu peux aussi garder le doigt sur le mot du centre et glisser jusqu’au bon mot.', example: '« logis » a le même sens que « maison » : tu le touches.', sound: 'select' },
+      { title: 'Onde de choc', text: 'Une bonne réponse fait éclater toutes les taches et te montre comment le mot est construit. Trois bonnes réponses d’affilée font monter ta série.', example: 'en- + terr + -er : préfixe, racine, suffixe.', sound: 'mult' },
     ],
   },
   spelling: {

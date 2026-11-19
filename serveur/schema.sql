@@ -568,20 +568,20 @@ begin
   elsif p_game = 'math' then
     if c > 4 * d + 3 then return 'réponses trop rapides'; end if;                         -- une réponse demande au moins 0,25 s
     if w > c then return 'série plus longue que le nombre de réponses'; end if;
-    if s > 70 * c + 1500 then return 'score supérieur au maximum possible'; end if;       -- ×5 + 20 de vitesse, + pages parfaites et bonus final
+    if s > 840 * c + 5000 then return 'score supérieur au maximum possible'; end if;      -- (100 + 40 de vitesse) × ×6 = 840 par réponse, + pages parfaites (6 × 400) et bonus final (≤ 1 750)
   elsif p_game = 'memory' then
     if c > 30 or w > 30 then return 'plus de manches que le jeu n''en contient'; end if;
     if c > d / 0.5 + 2 then return 'manches trop rapides'; end if;
-    if s > 60 * greatest(w, 1) * c + 1000 then return 'score supérieur au maximum possible'; end if;
+    if s > 210 * greatest(w, 1) * c + 6000 then return 'score supérieur au maximum possible'; end if;   -- (25 + 10 de vitesse) × plus longue suite × ×6, + pages parfaites (6 × 400) et bonus final (≤ 2 750)
   elsif p_game = 'spelling' then
     if c > 10 then return 'plus de phrases que le jeu n''en contient'; end if;
     if d < c then return 'phrases trop rapides'; end if;                                  -- lire, toucher et choisir prend au moins 1 s
     if w > c then return 'série plus longue que le nombre de phrases'; end if;
-    if s > 25 * c then return 'score supérieur au maximum possible'; end if;              -- 5 + 10 + 10 de série au mieux
+    if s > 1000 * c + 1750 then return 'score supérieur au maximum possible'; end if;     -- 250 × ×4 (10 phrases) au mieux ; une phrase fautive rapporte au plus 175
   elsif p_game = 'lexique' then
     if c > d / 1.2 + 3 then return 'manches trop rapides'; end if;                        -- lire la consigne, repérer le mot et le taper prend plus d'1 s
     if w > c then return 'plus de manches que de bonnes réponses'; end if;
-    if s > 1300 * c + 100 then return 'score supérieur au maximum possible'; end if;      -- (50 + 10×12 lettres + 60 + 25) × série ×5 = 1 275 au mieux
+    if s > 840 * c + 100 then return 'score supérieur au maximum possible'; end if;       -- (100 + 40 de vitesse) × série ×6 = 840 au mieux
   else
     return 'jeu inconnu';
   end if;
@@ -1072,7 +1072,7 @@ create table if not exists private.schema_migrations (
   applied_at timestamptz not null default now()
 );
 alter table private.schema_migrations enable row level security;
-insert into private.schema_migrations (id) values ('2026-11-fiabilite'), ('2026-11-codes'), ('2026-11-grotte'), ('2026-11-lexique') on conflict (id) do nothing;
+insert into private.schema_migrations (id) values ('2026-11-fiabilite'), ('2026-11-codes'), ('2026-11-grotte'), ('2026-11-lexique'), ('2026-11-bareme') on conflict (id) do nothing;
 
 create table if not exists private.invitations (
   code       text primary key check (code ~ '^[A-Z0-9]{8}$'),
@@ -1266,6 +1266,8 @@ declare
                            where p.pronamespace = 'public'::regnamespace and p.proname = 'class_overview'), '');
   v_login text := coalesce((select pg_get_functiondef(p.oid) from pg_proc p
                             where p.pronamespace = 'public'::regnamespace and p.proname = 'student_login'), '');
+  v_rv   text := coalesce((select pg_get_functiondef(p.oid) from pg_proc p
+                           where p.pronamespace = 'private'::regnamespace and p.proname = 'run_violation'), '');
   v_cron boolean := false;
   f      jsonb;
 begin
@@ -1293,10 +1295,11 @@ begin
                    and v_login like '%code_hash%',
     'grotte',      to_regprocedure('public.cave_get(text)') is not null and to_regprocedure('public.cave_drop(text,text,integer,integer)') is not null and to_regprocedure('public.admin_observe(text,uuid)') is not null,
     'lexique',     v_ov like '%best_lexique%' and exists (select 1 from pg_constraint where conname = 'class_sessions_game_check' and pg_get_constraintdef(oid) like '%lexique%'),
+    'bareme',      v_rv like '%840 * c%',
     'nettoyage_auto', v_cron
   );
   return jsonb_build_object(
-    'version', 14,
+    'version', 15,
     'features', f,
     'migrations', coalesce((select jsonb_agg(id order by id) from private.schema_migrations), '[]'::jsonb),
     'plain_codes', (select count(*) from public.students where access_code is not null),

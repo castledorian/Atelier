@@ -153,8 +153,9 @@ class Synth {
         this.bell();
         break;
       case 'error':
-        this.tone('square', 150, 85, 0.13, 0.22);
-        this.burst('lowpass', 400, 200, 0.08, 0.3);
+        // une erreur est une information, pas une punition : un « bloup » grave et bref, sans buzz ni son strident
+        this.tone('triangle', 196, 124, 0.16, 0.26);
+        this.burst('lowpass', 380, 180, 0.07, 0.18);
         break;
       case 'breach':
         this.tone('sine', 110, 30, 0.6, 0.9);

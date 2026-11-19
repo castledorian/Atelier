@@ -1,3 +1,4 @@
+import { FINISH_BONUS, MEMORY_ITEM_POINTS, PAGE_BONUS, SURVIVE_BONUS, multFor, speedBonus, streakAfterLoss } from '../scoring';
 import type { Sfx, SfxName } from '../audio';
 import type { Grade } from '../grade';
 import {
@@ -118,8 +119,8 @@ const FLIP = 0.22; // durée du réveil / de l'endormissement d'une tache (s)
 const VARIANTS = 6; // formes de taches différentes
 /** Teinte du papier : elle change très doucement à chaque page, pour sentir qu'on avance. */
 const TINTS = ['#efe6d2', '#ece8d3', '#e8eadb', '#e6e9e2', '#ebe6e2', '#f2e6cf'];
-const WIN_BONUS = 100;
-const PERFECT_PAGE = 50;
+const WIN_BONUS = FINISH_BONUS;
+const PERFECT_PAGE = PAGE_BONUS;
 const OK_WORDS = ['Bravo !', 'Bien joué !', 'Super !', 'Excellent !'];
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
@@ -585,13 +586,13 @@ export class MemoryGame {
     this.streak++;
     this.best = Math.max(this.best, this.streak);
     this.maxSpan = Math.max(this.maxSpan, span);
-    const mult = Math.min(5, 1 + Math.floor((this.streak - 1) / 3));
-    const base = span * 10 * mult;
+    const mult = multFor(this.streak);
+    const base = span * MEMORY_ITEM_POINTS;
     // bonus « éclair » : on a répondu avec aisance (récompense la maîtrise, pas le hasard)
     const par = this.mode === 'suite' ? 0.5 + 0.55 * span : 1.4 + 0.9 * span;
     const fast = this.run === 'play' && this.tt < par;
-    const bonus = fast ? span * 5 : 0;
-    this.score += base + bonus;
+    const bonus = fast ? speedBonus(base, 1) : 0;
+    this.score += (base + bonus) * mult;
     this.scorePop = 1;
     // le mot d'encouragement : on pousse à battre SON propre record (La Suite)
     let word = OK_WORDS[this.n % OK_WORDS.length];
@@ -611,8 +612,8 @@ export class MemoryGame {
     this.flash = 0.5;
     this.flashC = GREEN;
     this.sfx.play(newRecord ? 'clear' : this.streak % 3 === 0 ? 'mult' : 'ding');
-    this.text(this.W / 2, this.gy + this.gs * 0.5, `+${base}${mult > 1 ? ` ×${mult}` : ''}`, GREEN, 34);
-    if (bonus > 0) this.text(this.W / 2, this.gy + this.gs * 0.74, `ÉCLAIR ! +${bonus}`, GOLD, 22);
+    this.text(this.W / 2, this.gy + this.gs * 0.5, `+${(base + bonus) * mult}${mult > 1 ? ` (×${mult})` : ''}`, GREEN, 34);
+    if (bonus > 0) this.text(this.W / 2, this.gy + this.gs * 0.74, `ÉCLAIR ! +${bonus * mult}`, GOLD, 22);
     if (newRecord) {
       this.text(this.W / 2, this.gy + this.gs * 0.28, 'NOUVEAU RECORD !', GOLD, 28);
       for (let k = 0; k < 5; k++) this.burst(rand(this.gx, this.gx + this.gs), rand(this.gy, this.gy + this.gs * 0.6), 6, 3);
@@ -627,7 +628,7 @@ export class MemoryGame {
     this.wrong++;
     this.pageA[stageOf(this.mode, this.n)]++;
     this.pageE[stageOf(this.mode, this.n)]++;
-    this.streak = 0;
+    this.streak = streakAfterLoss(this.streak, this.diff);
     this.pageLost++;
     this.lives--;
     // « presque ! » : l'erreur est arrivée tout au bout (on le dit gentiment, ça donne envie de réessayer)
@@ -685,7 +686,7 @@ export class MemoryGame {
 
   private victory() {
     if (this.run !== 'play') return;
-    const bonus = WIN_BONUS + this.lives * 50;
+    const bonus = WIN_BONUS + this.lives * SURVIVE_BONUS;
     this.score += bonus;
     this.won = true;
     this.over = true;
@@ -1501,7 +1502,7 @@ export class MemoryGame {
       c.fillStyle = INK;
       c.fillText(txt, x, y);
     };
-    const mult = this.streak > 0 ? Math.min(5, 1 + Math.floor((this.streak - 1) / 3)) : 1;
+    const mult = multFor(this.streak);
     const scoreTxt = fmt(this.scoreDisp);
     const pop = 1 + 0.2 * this.scorePop;
     if (this.compact) {

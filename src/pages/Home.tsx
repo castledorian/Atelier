@@ -14,6 +14,7 @@ import { loadCourseStamps } from '../game/course/scores';
 import { GRADES, gradeLabel, isAvailable, loadClassGrade, loadGrade, saveClassGrade, saveGrade } from '../game/grade';
 import type { Grade } from '../game/grade';
 import { loadTypingStamps } from '../game/storage';
+import { Ambiance, loadAmbiance, saveAmbiance } from '../game/ambiance';
 import { CAVE_ON, bossName, inkLevel, loadBoss, phaseOf } from '../game/boss/state';
 import type { TeacherSession } from '../server/teacher';
 
@@ -38,6 +39,29 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
   const online = serverEnabled();
   /** jeu dont l'extrait est ouvert (le « i » d'une carte) */
   const [preview, setPreview] = useState<PreviewGame | null>(null);
+  /** ambiance musicale de l'accueil : désactivée par défaut, choisie par l'élève, jamais pendant un jeu */
+  const [ambiance, setAmbiance] = useState(loadAmbiance);
+  useEffect(() => {
+    if (!ambiance || preview) return; // la fenêtre d'extrait a ses propres sons : on laisse la place
+    const m = new Ambiance();
+    if (!m.start()) return;
+    const wake = () => m.resume();
+    const vis = () => (document.hidden ? m.suspend() : m.resume());
+    window.addEventListener('pointerdown', wake);
+    window.addEventListener('keydown', wake);
+    document.addEventListener('visibilitychange', vis);
+    return () => {
+      window.removeEventListener('pointerdown', wake);
+      window.removeEventListener('keydown', wake);
+      document.removeEventListener('visibilitychange', vis);
+      m.stop();
+    };
+  }, [ambiance, preview]);
+  const toggleAmbiance = () => {
+    const v = !ambiance;
+    saveAmbiance(v);
+    setAmbiance(v);
+  };
   const [ownGrade, setGrade] = useState<Grade | null>(loadGrade);
   const studentId = student?.student.id ?? null;
   /** niveau fixé par l'enseignant pour la classe de l'élève connecté */
@@ -115,6 +139,12 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
         )}
       </div>
       <div className="rule" aria-hidden="true" />
+
+      <div className="home-music">
+        <button type="button" className="tool" aria-pressed={ambiance} onClick={toggleAmbiance} title="Une petite musique douce, seulement sur cette page. Elle s’arrête dès qu’un jeu commence.">
+          <span aria-hidden="true">♪</span> Ambiance musicale&nbsp;: {ambiance ? 'oui' : 'non'}
+        </button>
+      </div>
 
       {student && (
         <div className="home-cta">
@@ -221,6 +251,7 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
               <span className="gcard-text">Des mots arrivent de partout : relie le mot du centre à son synonyme, son contraire ou sa famille.</span>
               <span className="gcard-go">Jouer →</span>
             </button>
+            <InfoButton onClick={() => setPreview('lexique')} label="Voir un extrait : Mots en orbite" />
           </div>
         )}
         {isAvailable('memory', grade) && (

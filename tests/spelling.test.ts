@@ -146,14 +146,15 @@ test('duel : trois phrases distinctes de la règle', () => {
     assert.ok(d.every((i) => i.rule === rule && (i.grade === 'cm1' || i.grade === 'ce2')));
   }
 });
-test('points : parfait 15 + bonus de série ; erreur sans pénalité négative', () => {
+test('points : barème commun, série multipliée, erreur sans pénalité négative', () => {
   const perfect = { tapFirst: true, fixTries: 1, hint: false };
   assert.equal(isPerfect(perfect), true);
-  assert.equal(pointsFor(perfect, 0), 17);
-  assert.equal(pointsFor(perfect, 4), 25);
-  assert.equal(pointsFor(perfect, 40), 25);
-  assert.equal(pointsFor({ tapFirst: true, fixTries: 1, hint: true }, 3), 10);
-  assert.equal(pointsFor({ tapFirst: false, fixTries: 2, hint: false }, 3), 5);
+  assert.equal(pointsFor(perfect, 0), 250);
+  assert.equal(pointsFor(perfect, 1), 250);
+  assert.equal(pointsFor(perfect, 2), 500); // 3e phrase parfaite d'affilée : palier ×2
+  assert.equal(pointsFor(perfect, 40), 1500); // palier maximal ×6
+  assert.equal(pointsFor({ tapFirst: true, fixTries: 1, hint: true }, 3), 175);
+  assert.equal(pointsFor({ tapFirst: false, fixTries: 2, hint: false }, 3), 75);
   assert.equal(pointsFor({ tapFirst: false, fixTries: 3, hint: false }, 3), 0);
   assert.equal(isFault({ tapFirst: false, fixTries: 1, hint: true }), false);
   assert.equal(isFault({ tapFirst: true, fixTries: 2, hint: false }), true);

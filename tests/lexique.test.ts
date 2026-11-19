@@ -120,9 +120,11 @@ test('géométrie : bord du rectangle, angles répartis, contact', () => {
 test('score : série, rapidité et frappe sans faute', () => {
   assert.equal(multFor(0), 1);
   assert.equal(multFor(3), 2);
-  assert.equal(multFor(99), 5);
-  assert.ok(winPoints(6, 1, true, 1) > winPoints(6, 0, false, 1));
-  assert.equal(winPoints(6, 0, false, 2), 220);
+  assert.equal(multFor(99), 6);
+  assert.ok(winPoints(1, 1) > winPoints(0, 1));
+  assert.equal(winPoints(0, 1), 100);
+  assert.equal(winPoints(1, 1), 140);
+  assert.equal(winPoints(0, 2), 200);
 });
 
 test('manches : les « faux amis » de la même initiale que la réponse sont bien proposés', () => {
