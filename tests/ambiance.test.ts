@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { BARS, BEAT, BPM, MASTER, PROGRESSIONS, VOLUMES, chordAt, MELODY_HIGH, MELODY_LOW, isPentatonic, midiToHz, planBar } from '../src/game/ambiance';
+import { BARS, BEAT, BPM, MASTER, PROGRESSIONS, chordAt, MELODY_HIGH, MELODY_LOW, isPentatonic, midiToHz, planBar } from '../src/game/ambiance';
 
 const rngOf = (seed: number) => {
   let s = seed >>> 0 || 1;
@@ -16,7 +16,6 @@ test('ambiance : lente, douce et sans note fausse (recherche : rapide et fort g�
   assert.ok(MASTER <= 0.15, 'volume général très doux');
   assert.ok(Math.abs(midiToHz(69) - 440) < 1e-9);
   assert.ok(PROGRESSIONS.every((p) => p.length === BARS));
-  assert.ok(Math.max(...VOLUMES) <= 0.2 && VOLUMES.every((v, i) => i === 0 || v > VOLUMES[i - 1]), 'trois volumes croissants, tous doux');
 });
 
 test('ambiance : la mélodie reste pentatonique, dans une tessiture confortable, sans grands sauts', () => {

@@ -89,10 +89,6 @@ export function SpellingMenu({ view, setView, level, diff, setDiff, hint, settin
             <span>Une erreur, et la créature t’attaque : tu perds une vie. Dix phrases, la dernière écrite par le Grand Pâté.</span>
           </li>
           <li className="howto">
-            <kbd className="kbd">×</kbd>
-            <span>Les points&nbsp;: 100 points pour le mot fautif trouvé, 150 pour la bonne correction (moitié moins avec l’astuce ou au 2e essai). Pas de bonus de vitesse : prends le temps de lire. Trois phrases parfaites d’affilée font monter la série (×2, ×3…). Tu ne perds jamais de points&nbsp;; une vie perdue te fait redescendre d’un palier (en Expert, la série repart de ×1).</span>
-          </li>
-          <li className="howto">
             <kbd className="kbd">💡</kbd>
             <span>Chaque phrase te laisse une astuce pour retenir la règle. Les règles qui reviennent sont dans « Mes progrès ».</span>
           </li>

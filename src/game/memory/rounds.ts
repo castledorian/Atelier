@@ -92,14 +92,16 @@ export interface MemoryTune {
   size: number;
   /** proportion du nombre de taches à retrouver (Les Cases) */
   count: number;
+  /** nombre maximal de taches à retrouver (Les Cases) : l'empan de mémoire des élèves de cet âge, une tache de plus en Expert */
+  cap: number;
 }
 
 export const MEMORY_TUNE: Record<Grade, MemoryTune> = {
-  cp: { step: 1.45, show: 1.6, size: 3, count: 0.55 },
-  ce1: { step: 1.3, show: 1.4, size: 4, count: 0.7 },
-  ce2: { step: 1.15, show: 1.2, size: 5, count: 0.85 },
-  cm1: { step: 1, show: 1, size: 6, count: 1 },
-  cm2: { step: 0.95, show: 0.95, size: 6, count: 1 },
+  cp: { step: 1.45, show: 1.6, size: 3, count: 0.55, cap: 4 },
+  ce1: { step: 1.3, show: 1.4, size: 4, count: 0.7, cap: 6 },
+  ce2: { step: 1.15, show: 1.2, size: 5, count: 0.85, cap: 8 },
+  cm1: { step: 1, show: 1, size: 6, count: 1, cap: 99 },
+  cm2: { step: 0.95, show: 0.95, size: 6, count: 1, cap: 99 },
 };
 
 /** Côté de la grille et nombre de taches à la manche n, pour une classe. */
@@ -107,7 +109,8 @@ export function casesSpec(n: number, grade: Grade = 'cm1', diff: MemDiff = 'stan
   const i = Math.min(n, CASES_TOTAL - 1);
   const t = MEMORY_TUNE[grade];
   const size = Math.min(CASES_SIZE[i], t.size);
-  const count = Math.min(Math.max(2, Math.round(CASES_COUNT[i] * t.count * MEMORY_DIFF[diff].count)), size * size - 2);
+  const cap = t.cap + (diff === 'expert' && t.cap < 99 ? 1 : 0);
+  const count = Math.min(Math.max(2, Math.round(CASES_COUNT[i] * t.count * MEMORY_DIFF[diff].count)), size * size - 2, cap);
   return { size, count };
 }
 

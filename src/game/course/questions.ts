@@ -604,15 +604,6 @@ const subFromTens =
     return q(`${x} − ${b} = ?`, x - b, [x + b, x - 10 + b, x - b + 1], true);
   };
 
-/** Un nombre à deux chiffres plus des unités : 34 + 5 (sans passer la dizaine) ou 38 + 5 (en la passant). */
-const addUnits =
-  (xmin: number, xmax: number): Gen =>
-  (r) => {
-    const x = ri(r, xmin, xmax);
-    const b = ri(r, 2, 8);
-    return q(`${x} + ${b} = ?`, x + b, [x + b + 10, x + b - 10, x + b + 1, x + b - 1], true);
-  };
-
 /** Un nombre à deux chiffres moins des unités : 38 − 5 ou 53 − 6. Erreur : « le plus petit du plus grand » (53 − 6 → 53). */
 const subUnits =
   (xmin: number, xmax: number): Gen =>
@@ -622,6 +613,26 @@ const subUnits =
     const u = x % 10;
     const smallFromBig = Math.floor(x / 10) * 10 + Math.abs(u - b);
     return q(`${x} − ${b} = ?`, x - b, [smallFromBig, x - b + 10, x - b - 1, x - b + 1], true);
+  };
+
+/** CP : un nombre à deux chiffres plus des unités SANS passer la dizaine (34 + 5). Erreur : coller le chiffre (345 n'existe pas : 39, 29). */
+const addFlat =
+  (xmin: number, xmax: number): Gen =>
+  (r) => {
+    let x = ri(r, xmin, xmax);
+    if (x % 10 === 9) x -= 1;
+    const b = ri(r, 1, 9 - (x % 10));
+    return q(`${x} + ${b} = ?`, x + b, [x + b + 10, x + b - 10, x + b + 1, x + b - 1], true);
+  };
+
+/** CP : un nombre à deux chiffres moins des unités SANS casser la dizaine (58 − 5). */
+const subFlat =
+  (xmin: number, xmax: number): Gen =>
+  (r) => {
+    let x = ri(r, xmin, xmax);
+    if (x % 10 === 0 || x % 10 === 1) x += 2;
+    const b = ri(r, 1, x % 10);
+    return q(`${x} − ${b} = ?`, x - b, [x - b + 10, x - b - 10, x - b + 1, x - b - 1], true);
   };
 
 /** Addition de deux nombres : 38 + 27. Erreur : oublier la retenue. */
@@ -641,12 +652,12 @@ const GENS: Record<Level, Gen[][]> = {
     [addMax(20, 11), addMax(20, 11), subMax(20, 11), addMiss(18), dblR(5, 10), compTo(10)],
     // 3 · Ajouter et retrancher 10 et des dizaines
     [plusTen(1, 89), minusTen(11, 99), addDiz(1, 69, 99), subDiz(31, 99), addTens, subTens],
-    // 4 · Vers la dizaine : compléments, + 9, + unités
-    [compNextTen(11, 89), compNextTen(11, 89), addNear([9], 10, 80), addUnits(11, 85), addSmall(20, 97), dblR(5, 10)],
-    // 5 · Jusqu'à 100 : dizaine − unités, deux nombres, − unités
-    [subFromTens(20, 90), subFromTens(20, 90), addC(11, 59, 11, 39), subUnits(23, 99), addUnits(20, 89), addNear([9], 10, 89)],
-    // 6 · Le grand défi : tout mélangé
-    [addMax(20, 11), subMax(20, 11), addC(11, 59, 11, 39), subFromTens(20, 90), compNextTen(11, 89), addNear([9], 10, 89), addDiz(1, 69, 99), dblR(5, 10)],
+    // 4 · Vers la dizaine : compléments, + 9 (petits nombres), + unités sans passer la dizaine
+    [compNextTen(11, 89), compNextTen(11, 89), addNear([9], 10, 40), addFlat(11, 85), addSmall(20, 97), dblR(5, 10)],
+    // 5 · Jusqu'à 100 : dizaine − unités, unités sans passer la dizaine, dizaines entières (jamais deux nombres à deux chiffres « compliqués »)
+    [subFromTens(20, 90), subFromTens(20, 90), addFlat(21, 89), subFlat(23, 99), addDiz(1, 69, 99), subDiz(31, 99)],
+    // 6 · Le grand défi : tout mélangé, avec les mêmes limites
+    [addMax(20, 11), subMax(20, 11), addDiz(1, 69, 99), subFromTens(20, 90), compNextTen(11, 89), addNear([9], 10, 40), addFlat(11, 89), subFlat(13, 99)],
   ],
   ce1: [
     // 1 · Tables d'addition dans les deux sens

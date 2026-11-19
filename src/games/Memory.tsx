@@ -517,10 +517,6 @@ function MenuScreen({ view, setView, grade, mode, setMode, diff, setDiff, settin
             <kbd className="kbd">♥</kbd>
             <span>Des vies&nbsp;: une erreur en coûte une, puis tu réessaies (5 en Apprenti, 3 sinon). Une page sans erreur en rend une&nbsp;! Bats ton propre record.</span>
           </li>
-          <li className="howto">
-            <kbd className="kbd">×</kbd>
-            <span>Les points&nbsp;: chaque tache retenue rapporte 25 points, un peu plus si tu réponds avec aisance. Trois manches réussies d’affilée font monter la série (×2, ×3… jusqu’à ×6) et multiplient tes points. Tu ne perds jamais de points&nbsp;; une vie perdue te fait redescendre d’un palier (en Expert, la série repart de ×1).</span>
-          </li>
           <li className="howto howto-opt">
             <kbd className="kbd kbd-sym">← ↑ ↓ →</kbd>
             <span>Au clavier&nbsp;: les flèches déplacent le curseur, Entrée choisit (chiffres 1 à 9 pour La Suite).</span>

@@ -7,8 +7,8 @@
  *    et aide à se sentir bien dans un lieu (Schellenberg 2005, « enjoyment-arousal »).
  *  - En revanche une musique rapide et forte gêne la lecture (Thompson, Schellenberg et Letnic 2012) et une musique chantée gêne la lecture
  *    et la mémoire verbale (Perham et Currie 2014). D'où : instrumentale, lente, très douce, et JAMAIS pendant les jeux (on y lit et on réfléchit).
- *  - Elle doit rester sous le contrôle de l'élève et de l'enseignant (RGAA 4.1 critère 4.10 et WCAG 1.4.2 : aucun son ne démarre seul) :
- *    désactivée par défaut, un bouton visible, aucun démarrage avant un geste de l'élève.
+ *  - Elle n'a aucun bouton : elle accompagne l'accueil, et seulement l'accueil (coupée dès qu'un jeu ou un extrait s'ouvre, et quand l'onglet
+ *    est masqué). Les navigateurs la gardent muette jusqu'au premier toucher de l'élève. Volume très doux.
  *
  * Le style : gamme pentatonique majeure (aucune note « fausse », aucune tension), progression Do – La mineur – Fa – Sol, 72 pulsations
  * par minute (le tempo d'une marche tranquille), timbres de gouttes d'eau (le thème de l'encre) avec un petit écho.
@@ -37,11 +37,8 @@ export const PROGRESSIONS: ReadonlyArray<ReadonlyArray<Chord>> = [
 ];
 /** L'accord de la mesure `bar`. */
 export const chordAt = (bar: number): Chord => PROGRESSIONS[Math.floor(bar / BARS) % PROGRESSIONS.length][((bar % BARS) + BARS) % BARS];
-/** Niveaux de volume (très doux : on doit pouvoir parler par-dessus) ; le milieu est le choix par défaut. */
-export const VOLUMES = [0.05, 0.1, 0.17] as const;
-export type VolumeLevel = 0 | 1 | 2;
-export const DEFAULT_VOLUME: VolumeLevel = 1;
-export const MASTER = VOLUMES[DEFAULT_VOLUME];
+/** Volume de l'ambiance : très doux, on doit pouvoir parler par-dessus. */
+export const MASTER = 0.1;
 
 export const midiToHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
 export const isPentatonic = (m: number) => PENTATONIC.includes(((m % 12) + 12) % 12);
@@ -100,13 +97,12 @@ export class Ambiance {
   private nextAt = 0;
   private last = 74;
   private running = false;
-  private level: VolumeLevel = loadVolume();
 
   get isRunning() {
     return this.running;
   }
 
-  /** À appeler depuis un geste de l'élève (le bouton « Ambiance »). */
+  /** Démarre la musique ; le navigateur la laisse muette tant que l'élève n'a pas touché la page (voir resume). */
   start(): boolean {
     if (this.running) return true;
     const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -122,7 +118,7 @@ export class Ambiance {
     if (ac.state === 'suspended') void ac.resume().catch(() => {});
     const master = ac.createGain();
     master.gain.value = 0;
-    master.gain.linearRampToValueAtTime(VOLUMES[this.level], ac.currentTime + 2.5); // la musique « arrive » doucement
+    master.gain.linearRampToValueAtTime(MASTER, ac.currentTime + 2.5); // la musique « arrive » doucement
     const comp = ac.createDynamicsCompressor();
     master.connect(comp);
     comp.connect(ac.destination);
@@ -150,17 +146,6 @@ export class Ambiance {
     this.timer = window.setInterval(() => this.pump(), 300);
     this.pump();
     return true;
-  }
-
-  /** Change le volume en direct (fondu court, sans clic). */
-  setVolume(level: VolumeLevel) {
-    this.level = level;
-    const ac = this.ac;
-    const master = this.master;
-    if (!ac || !master) return;
-    master.gain.cancelScheduledValues(ac.currentTime);
-    master.gain.setValueAtTime(master.gain.value, ac.currentTime);
-    master.gain.linearRampToValueAtTime(VOLUMES[level], ac.currentTime + 0.25);
   }
 
   /** Reprend après une suspension du navigateur (onglet masqué, premier geste de l'élève). */
@@ -256,45 +241,5 @@ export class Ambiance {
     } else o.connect(out);
     o.start(t);
     o.stop(t + dur);
-  }
-}
-
-// ───────────── Préférence (sur l'appareil) ─────────────
-
-const KEY = 'atelier.ambiance.v1';
-
-/** Désactivée par défaut : la musique ne démarre jamais sans que l'élève ou l'enseignant l'ait voulu. */
-export function loadAmbiance(): boolean {
-  try {
-    return localStorage.getItem(KEY) === 'on';
-  } catch {
-    return false;
-  }
-}
-
-export function saveAmbiance(on: boolean) {
-  try {
-    localStorage.setItem(KEY, on ? 'on' : 'off');
-  } catch {
-    /* stockage refusé : la préférence ne sera pas gardée */
-  }
-}
-
-const VOL_KEY = 'atelier.ambiance.vol.v1';
-
-export function loadVolume(): VolumeLevel {
-  try {
-    const v = Number(localStorage.getItem(VOL_KEY));
-    return v === 0 || v === 1 || v === 2 ? (v as VolumeLevel) : DEFAULT_VOLUME;
-  } catch {
-    return DEFAULT_VOLUME;
-  }
-}
-
-export function saveVolume(level: VolumeLevel) {
-  try {
-    localStorage.setItem(VOL_KEY, String(level));
-  } catch {
-    /* ignoré */
   }
 }
