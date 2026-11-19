@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { F_LEVELS, WORDS, parts, plain, slug, wordsUpTo } from '../src/game/facteur/words';
 import type { FLevel } from '../src/game/facteur/words';
-import { CHOICES, PARCELS, WORDS_PER_SESSION, distractors, newSession, pickWords, starsFor } from '../src/game/facteur/rounds';
+import { CHOICES, PARCELS, TRAVEL_SECONDS, WORDS_PER_SESSION, distractors, newSession, pickWords, starsFor } from '../src/game/facteur/rounds';
 
 const rngOf = (seed: number) => {
   let s = seed >>> 0 || 1;
@@ -128,4 +128,21 @@ test('étoiles : bienveillantes, jamais zéro', () => {
   assert.equal(starsFor(12, 16), 2);
   assert.equal(starsFor(3, 16), 1);
   assert.equal(starsFor(0, 0), 1);
+});
+
+test('tapis : le colis avance doucement (au moins 25 s pour traverser), un peu plus vite quand les mots s’allongent', () => {
+  const t = [1, 2, 3, 4].map((l) => TRAVEL_SECONDS[l as FLevel]);
+  assert.ok(t.every((x) => x >= 25 && x <= 45), `durées : ${t}`);
+  assert.ok(t.every((x, i) => i === 0 || x <= t[i - 1]), 'jamais plus lent d’un niveau à l’autre');
+});
+
+test('chaque colis a son numéro, qui ne change pas après une erreur (le colis ne repart pas du début du tapis)', () => {
+  const g = newSession(1, rngOf(5));
+  const p = g.parcel!;
+  const id = p.id;
+  const wrong = p.choices.findIndex((c) => plain(c.mark) !== plain(p.word.mark));
+  g.tap(wrong);
+  assert.equal(g.parcel!.id, id);
+  g.tap(g.parcel!.choices.findIndex((c) => plain(c.mark) === plain(p.word.mark)));
+  assert.equal(g.parcel!.id, id + 1);
 });

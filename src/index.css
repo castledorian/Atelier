@@ -5288,7 +5288,7 @@ th[aria-sort='descending'] .th-sort {
   border-radius: 12px;
   background: #d2aa6c;
   box-shadow: 0 6px 0 rgba(27, 25, 21, 0.35);
-  animation: fct-in 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  animation: fct-ride var(--ride, 34s) linear infinite;
 }
 .fct-parcel::before {
   content: "";
@@ -5302,17 +5302,30 @@ th[aria-sort='descending'] .th-sort {
 .fct-parcel.is-sent {
   animation: fct-send 0.7s ease-in both;
 }
-@keyframes fct-in {
-  from {
-    transform: translateX(-60cqw) rotate(-6deg);
+/* le colis entre vite par la gauche, puis avance doucement jusqu'à la droite, sort, et refait un tour */
+@keyframes fct-ride {
+  0% {
+    transform: translateX(-64cqw);
+    animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1);
   }
-  to {
-    transform: none;
+  4% {
+    transform: translateX(-34cqw);
+    animation-timing-function: linear;
+  }
+  93% {
+    transform: translateX(34cqw);
+    animation-timing-function: ease-in;
+  }
+  100% {
+    transform: translateX(64cqw);
   }
 }
 @keyframes fct-send {
+  from {
+    transform: translate(var(--x0, 0), 0);
+  }
   to {
-    transform: translate(calc((var(--i) - 1) * 31cqw), 40cqh) scale(0.3);
+    transform: translate(calc(var(--x0, 0px) + var(--dx, 0px)), var(--dy, 40cqh)) scale(0.3);
     opacity: 0;
   }
 }
@@ -5481,11 +5494,13 @@ th[aria-sort='descending'] .th-sort {
 }
 @media (prefers-reduced-motion: reduce) {
   .fct-belt::after,
-  .fct-parcel,
   .fct-pts,
   .fct-box,
   .fct-box[data-state="hint"] .fct-box-art {
     animation: none !important;
+  }
+  .fct-parcel {
+    animation: none !important; /* sans mouvement : le colis reste au milieu du tapis */
   }
   .fct-parcel.is-sent {
     opacity: 0;

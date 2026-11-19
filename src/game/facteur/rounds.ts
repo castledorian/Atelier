@@ -3,10 +3,10 @@ import { plain, wordsUpTo } from './words';
 import type { FLevel, FWord } from './words';
 
 /**
- * « Le facteur » : des colis (une image) arrivent sur le tapis, il faut les ranger dans la bonne boîte aux lettres (un mot).
+ * « Le facteur » : des colis (une image) défilent sur le tapis, il faut les ranger dans la bonne boîte aux lettres (un mot).
  *
  * Choix pensés pour le CP (voir le document du projet) :
- *  - aucun chrono et aucune vie : on lit à son rythme, le jeu ne s'arrête jamais sur un échec ;
+ *  - aucune vie et aucune pénalité de temps : le colis avance doucement, et s'il arrive au bout il refait un tour ;
  *  - une boîte fausse se grise (on n'a jamais plus de 2 erreurs par colis), et le colis mal rangé REVIENT quelques colis plus tard ;
  *  - chaque mot passe deux fois dans une séance : retrouver plusieurs fois le même mot aide à le mémoriser ;
  *  - les mauvais mots ressemblent au bon (même première lettre, même longueur) : l'enfant doit lire, pas deviner sur l'initiale seule.
@@ -23,6 +23,13 @@ export const CHOICES = 3;
 export const PARCELS = WORDS_PER_SESSION * PARCELS_PER_WORD;
 /** Un colis mal rangé revient après ce nombre de colis. */
 export const RETURN_AFTER = 3;
+
+/**
+ * Durée (s) d'un tour de tapis : le colis avance doucement de gauche à droite pendant que l'enfant lit les trois mots.
+ * Rien ne se passe quand il arrive au bout (ni erreur, ni point en moins) : il refait simplement un tour. Le tapis ne sert qu'à donner
+ * un rythme calme ; les mots plus longs des niveaux suivants gardent presque autant de temps.
+ */
+export const TRAVEL_SECONDS: Record<FLevel, number> = { 1: 36, 2: 34, 3: 32, 4: 30 };
 
 const shuffle = <T>(a: T[], rng: Rng): T[] => {
   const b = a.slice();
@@ -76,6 +83,8 @@ export function distractors(target: FWord, pool: FWord[], rng: Rng, n = CHOICES 
 }
 
 export interface Parcel {
+  /** numéro du colis dans la séance (sert de clé : le colis ne repart pas du début du tapis après une erreur) */
+  id: number;
   word: FWord;
   /** les boîtes aux lettres, dans l'ordre d'affichage */
   choices: FWord[];
@@ -114,6 +123,7 @@ export class FacteurGame {
   private slips = 0;
   private score = 0;
   private missed = new Set<string>();
+  private seq = 0;
   readonly total: number;
   private pool: FWord[];
   private rng: Rng;
@@ -138,7 +148,7 @@ export class FacteurGame {
       return;
     }
     const mix = shuffle([word, ...distractors(word, this.pool, this.rng)], this.rng);
-    this.cur = { word, choices: mix, tried: mix.map(() => false) };
+    this.cur = { id: ++this.seq, word, choices: mix, tried: mix.map(() => false) };
     this.slipsNow = 0;
     this.requeued = false;
   }

@@ -30,7 +30,7 @@ export const RELEASES: Release[] = [
     title: 'Le facteur : un jeu de lecture pour le CP',
     changes: [
       { kind: 'new', text: 'Le facteur (CP) : un colis avec une image arrive sur le tapis, il faut le ranger dans la boîte aux lettres qui porte le bon mot. Quatre niveaux, qui suivent la progression des sons de la classe.' },
-      { kind: 'new', text: 'Sans chrono ni vie : une boîte fausse se grise, le colis mal rangé revient plus tard, et chaque mot passe deux fois pour qu’on le retrouve. Les lettres muettes sont grisées (vach-e, cha-t).' },
+      { kind: 'new', text: 'Le colis avance doucement de gauche à droite sur le tapis (une trentaine de secondes pour traverser) : le temps de lire les trois mots. S’il arrive au bout, il refait un tour, sans pénalité. Pas de vie : une boîte fausse se grise, le colis mal rangé revient plus tard, et chaque mot passe deux fois pour qu’on le retrouve. Les lettres muettes sont grisées (vach-e, cha-t).' },
       { kind: 'new', text: 'Une fois le colis rangé, le mot est lu à voix haute (voix de l’appareil). Les étoiles et le record restent sur l’appareil.' },
     ],
   },

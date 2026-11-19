@@ -7,7 +7,7 @@ import { effectiveGrade, gradeLabel } from '../game/grade';
 import { loadSettings, saveSettings } from '../game/storage';
 import type { Settings } from '../game/storage';
 import { hasPicture, pictureOf } from '../game/facteur/pictures';
-import { FacteurGame, newSession } from '../game/facteur/rounds';
+import { FacteurGame, TRAVEL_SECONDS, newSession } from '../game/facteur/rounds';
 import type { FResult, Parcel } from '../game/facteur/rounds';
 import { loadFBest, loadFLevel, saveFLevel, saveFResult } from '../game/facteur/scores';
 import { F_LEVELS, WORDS, isFLevel, parts, plain } from '../game/facteur/words';
@@ -106,7 +106,8 @@ export default function Facteur({ onHome }: Props) {
   const [sfx] = useState(() => new Sfx());
   const gameRef = useRef<FacteurGame | null>(null);
   const [, setTick] = useState(0);
-  const [sent, setSent] = useState<{ parcel: Parcel; i: number; points: number } | null>(null);
+  const [sent, setSent] = useState<{ parcel: Parcel; i: number; points: number; x0: number; dx: number; dy: number } | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const [nope, setNope] = useState<{ i: number; n: number } | null>(null);
   const [say, setSay] = useState('');
   const [result, setResult] = useState<{ r: FResult; record: boolean; prev: number } | null>(null);
@@ -198,7 +199,14 @@ export default function Facteur({ onHome }: Props) {
         busy.current = true;
         sfx.play('correct');
         if (live.current.settings.sound) window.setTimeout(() => speak(plain(p.word.mark)), 250);
-        setSent({ parcel: p, i, points: r.points });
+        // le colis part de l'endroit exact où il se trouve sur le tapis, et vole jusqu'à la boîte touchée
+        const pr = stageRef.current?.querySelector('.fct-parcel')?.getBoundingClientRect();
+        const br = stageRef.current?.querySelectorAll('.fct-box')[i]?.getBoundingClientRect();
+        const sr = stageRef.current?.getBoundingClientRect();
+        const x0 = pr && sr ? pr.left + pr.width / 2 - (sr.left + sr.width / 2) : 0;
+        const dx = pr && br ? br.left + br.width / 2 - (pr.left + pr.width / 2) : 0;
+        const dy = pr && br ? br.top + br.height * 0.45 - (pr.top + pr.height / 2) : 200;
+        setSent({ parcel: p, i, points: r.points, x0, dx, dy });
         setNope(null);
         setSay(r.first ? 'Bravo !' : 'Voilà, c’est rangé !');
         timer.current = window.setTimeout(() => {
@@ -243,7 +251,7 @@ export default function Facteur({ onHome }: Props) {
     return (
       <div className="desk">
         <main className="sheet">
-          <div className="stage fct" data-level={level}>
+          <div className="stage fct" data-level={level} ref={stageRef} style={{ ['--ride' as string]: `${TRAVEL_SECONDS[level]}s` }}>
             <div className="fct-top">
               <BackButton label="Menu" onClick={toMenu} />
               <div className="fct-prog" role="progressbar" aria-label="Colis rangés" aria-valuemin={0} aria-valuemax={g.total} aria-valuenow={Math.min(done, g.total)}>
@@ -255,12 +263,12 @@ export default function Facteur({ onHome }: Props) {
             </div>
             <div className="fct-belt" aria-hidden="true">
               {shown && (
-                <div className={sent ? 'fct-parcel is-sent' : 'fct-parcel'} key={`${g.left}-${shown.word.mark}-${sent ? 's' : 'c'}`} style={{ ['--i' as string]: sent ? sent.i : 1 }}>
+                <div className={sent ? 'fct-parcel is-sent' : 'fct-parcel'} key={`${shown.id}-${sent ? 's' : 'c'}`} style={sent ? { ['--x0' as string]: `${sent.x0}px`, ['--dx' as string]: `${sent.dx}px`, ['--dy' as string]: `${sent.dy}px` } : undefined}>
                   <PictureView word={shown.word} />
                 </div>
               )}
               {sent && (
-                <span className="fct-pts" key={`p${g.left}`}>
+                <span className="fct-pts" key={`p${shown?.id}`}>
                   +{sent.points}
                 </span>
               )}
@@ -350,7 +358,7 @@ export default function Facteur({ onHome }: Props) {
         <ul className="howto-list">
           <li className="howto">
             <kbd className="kbd">📦</kbd>
-            <span>Un colis arrive sur le tapis : regarde bien l’image.</span>
+            <span>Un colis avance doucement sur le tapis : regarde bien l’image. Prends ton temps, s’il arrive au bout il refait un tour.</span>
           </li>
           <li className="howto">
             <kbd className="kbd">✉</kbd>
