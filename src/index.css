@@ -5268,12 +5268,13 @@ th[aria-sort='descending'] .th-sort {
   left: -10px;
   height: 26px;
   border: 2px solid var(--color-ink);
-  background: repeating-linear-gradient(90deg, #3a342c 0 18px, #4a4338 18px 36px);
-  animation: fct-belt 1.2s linear infinite;
+  /* les rayures avancent exactement comme le colis : un motif (4 cqw) à chaque 1/25 de tour ; le tour dure --ride et le colis parcourt 100 cqw */
+  background: repeating-linear-gradient(90deg, #3a342c 0 2cqw, #4a4338 2cqw 4cqw);
+  animation: fct-belt calc(var(--ride, 44s) / 25) linear infinite;
 }
 @keyframes fct-belt {
   to {
-    background-position: 36px 0;
+    background-position: 4cqw 0;
   }
 }
 .fct-parcel {
@@ -5282,14 +5283,15 @@ th[aria-sort='descending'] .th-sort {
   display: flex;
   align-items: stretch;
   justify-content: stretch;
-  width: min(44cqw, 34cqh);
+  --pw: min(44cqw, 34cqh);
+  width: var(--pw);
   aspect-ratio: 1;
   padding: min(2.4cqw, 1.8cqh); /* en cq, pas en % : un % se calcule sur la largeur du parent */
   border: 3px solid var(--color-ink);
   border-radius: 12px;
   background: #d2aa6c;
   box-shadow: 0 3px 0 rgba(27, 25, 21, 0.45); /* l'ombre touche le tapis */
-  animation: fct-ride var(--ride, 34s) linear infinite;
+  animation: fct-ride var(--ride, 44s) linear infinite;
 }
 .fct-parcel::before {
   content: "";
@@ -5303,22 +5305,18 @@ th[aria-sort='descending'] .th-sort {
 .fct-parcel.is-sent {
   animation: fct-send 0.7s ease-in both;
 }
-/* le colis entre vite par la gauche, puis avance doucement jusqu'à la droite, sort, et refait un tour */
+/* le colis est posé sur le tapis à gauche (il apparaît en fondu), avance à vitesse constante, la même que les rayures du tapis, sort à droite, puis refait un tour */
 @keyframes fct-ride {
   0% {
-    transform: translateX(-64cqw);
-    animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1);
+    transform: translateX(calc(-50cqw + var(--pw) / 2));
+    opacity: 0;
   }
-  4% {
-    transform: translateX(-34cqw);
-    animation-timing-function: linear;
-  }
-  93% {
-    transform: translateX(34cqw);
-    animation-timing-function: ease-in;
+  2% {
+    opacity: 1;
   }
   100% {
-    transform: translateX(64cqw);
+    transform: translateX(calc(50cqw + var(--pw) / 2));
+    opacity: 1;
   }
 }
 @keyframes fct-send {

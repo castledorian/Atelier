@@ -130,9 +130,9 @@ test('étoiles : bienveillantes, jamais zéro', () => {
   assert.equal(starsFor(0, 0), 1);
 });
 
-test('tapis : le colis avance doucement (au moins 25 s pour traverser), un peu plus vite quand les mots s’allongent', () => {
+test('tapis : le colis avance doucement (au moins 25 s entièrement visible), un peu plus vite quand les mots s’allongent', () => {
   const t = [1, 2, 3, 4].map((l) => TRAVEL_SECONDS[l as FLevel]);
-  assert.ok(t.every((x) => x >= 25 && x <= 45), `durées : ${t}`);
+  assert.ok(t.every((x) => x * 0.73 >= 25 && x <= 60), `durées de tour : ${t}`);
   assert.ok(t.every((x, i) => i === 0 || x <= t[i - 1]), 'jamais plus lent d’un niveau à l’autre');
 });
 

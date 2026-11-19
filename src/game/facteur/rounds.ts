@@ -25,11 +25,12 @@ export const PARCELS = WORDS_PER_SESSION * PARCELS_PER_WORD;
 export const RETURN_AFTER = 3;
 
 /**
- * Durée (s) d'un tour de tapis : le colis avance doucement de gauche à droite pendant que l'enfant lit les trois mots.
+ * Durée (s) d'un tour de tapis : le colis avance doucement de gauche à droite, à la vitesse des rayures du tapis, pendant que l'enfant
+ * lit les trois mots (il est entièrement visible pendant environ 73 % du tour : 32 s au niveau 1, 28 s au niveau 4).
  * Rien ne se passe quand il arrive au bout (ni erreur, ni point en moins) : il refait simplement un tour. Le tapis ne sert qu'à donner
  * un rythme calme ; les mots plus longs des niveaux suivants gardent presque autant de temps.
  */
-export const TRAVEL_SECONDS: Record<FLevel, number> = { 1: 36, 2: 34, 3: 32, 4: 30 };
+export const TRAVEL_SECONDS: Record<FLevel, number> = { 1: 44, 2: 42, 3: 40, 4: 38 };
 
 const shuffle = <T>(a: T[], rng: Rng): T[] => {
   const b = a.slice();
