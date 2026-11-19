@@ -34,6 +34,7 @@ function csp(): Plugin {
         "style-src 'self' 'unsafe-inline'", // styles en ligne du site lui-même (React) ; aucun script
         "img-src 'self' data: blob:",
         "font-src 'self' data:",
+        "media-src 'self' blob:", // voix enregistrées du jeu « Le facteur » (fichiers du site, chargés puis joués en mémoire)
         `connect-src 'self' ${server}`.trim(),
         "manifest-src 'self'",
         "worker-src 'self'",
@@ -73,9 +74,12 @@ const __dirname = path.dirname(__filename);
 /** Images des colis du jeu « Le facteur » : les fichiers déposés dans public/facteur/ (un par mot, nommé comme le mot, sans accent). */
 const facteurImages = existsSync("public/facteur") ? readdirSync("public/facteur").filter((f) => /\.(webp|png|jpe?g|svg)$/i.test(f)).sort() : [];
 
+/** Voix enregistrées des mots du jeu « Le facteur » : public/facteur/voix/<mot>.mp3 (même nom que l'image). Sans fichier, la voix du poste sert de secours. */
+const facteurVoices = existsSync("public/facteur/voix") ? readdirSync("public/facteur/voix").filter((f) => /\.(mp3|ogg|m4a|wav)$/i.test(f)).sort() : [];
+
 // https://vite.dev/config/
 export default defineConfig({
-  define: { __FACTEUR_IMAGES__: JSON.stringify(facteurImages) },
+  define: { __FACTEUR_IMAGES__: JSON.stringify(facteurImages), __FACTEUR_VOICES__: JSON.stringify(facteurVoices) },
   // chemins relatifs : le jeu fonctionne quel que soit le dossier où il est publié (GitHub Pages…)
   base: "./",
   plugins: [react(), tailwindcss(), viteSingleFile(), csp(), swVersion()],

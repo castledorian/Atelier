@@ -10,6 +10,7 @@ import { hasPicture, pictureOf } from '../game/facteur/pictures';
 import { FacteurGame, TRAVEL_SECONDS, newSession } from '../game/facteur/rounds';
 import type { FResult, Parcel } from '../game/facteur/rounds';
 import { loadFBest, loadFLevel, saveFLevel, saveFResult } from '../game/facteur/scores';
+import { preloadVoices, say as readAloud, stopSaying } from '../game/facteur/voice';
 import { F_LEVELS, WORDS, isFLevel, parts, plain } from '../game/facteur/words';
 import type { FLevel, FWord } from '../game/facteur/words';
 import type { SessionInfo, StudentAccount } from '../server/types';
@@ -44,21 +45,6 @@ export function Mark({ mark }: { mark: string }) {
       ))}
     </>
   );
-}
-
-/** Le mot lu à voix haute, une fois le colis rangé (voix du navigateur, rien n'est téléchargé). */
-function speak(text: string) {
-  try {
-    const synth = window.speechSynthesis;
-    if (!synth) return;
-    synth.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'fr-FR';
-    u.rate = 0.8;
-    synth.speak(u);
-  } catch {
-    /* pas de voix sur ce poste : le jeu fonctionne sans */
-  }
 }
 
 function PictureView({ word }: { word: FWord }) {
@@ -126,14 +112,15 @@ export default function Facteur({ onHome }: Props) {
   useEffect(
     () => () => {
       window.clearTimeout(timer.current);
-      try {
-        window.speechSynthesis?.cancel();
-      } catch {
-        /* rien */
-      }
+      stopSaying();
     },
     [],
   );
+  // la voix du mot du colis qui défile est chargée d'avance : elle part sans attente à la livraison
+  const comingMark = phase === 'play' ? gameRef.current?.parcel?.word.mark : undefined;
+  useEffect(() => {
+    if (comingMark && settings.sound) preloadVoices([comingMark]);
+  }, [comingMark, settings.sound]);
 
   const change = (p: Partial<Settings>) =>
     setSettings((s) => {
@@ -167,11 +154,7 @@ export default function Facteur({ onHome }: Props) {
   const toMenu = useCallback(() => {
     window.clearTimeout(timer.current);
     busy.current = false;
-    try {
-      window.speechSynthesis?.cancel();
-    } catch {
-      /* rien */
-    }
+    stopSaying();
     gameRef.current = null;
     setPhase('menu');
     setView('main');
@@ -198,7 +181,7 @@ export default function Facteur({ onHome }: Props) {
       if (r.kind === 'ok') {
         busy.current = true;
         sfx.play('correct');
-        if (live.current.settings.sound) window.setTimeout(() => speak(plain(p.word.mark)), 250);
+        if (live.current.settings.sound) window.setTimeout(() => readAloud(p.word.mark), 250);
         // le colis part de l'endroit exact où il se trouve sur le tapis, et vole jusqu'à la boîte touchée
         const pr = stageRef.current?.querySelector('.fct-parcel')?.getBoundingClientRect();
         const br = stageRef.current?.querySelectorAll('.fct-box')[i]?.getBoundingClientRect();

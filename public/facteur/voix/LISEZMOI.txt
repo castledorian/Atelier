@@ -1,0 +1,22 @@
+Voix du jeu « Le facteur » (CP)
+===============================
+
+Quand un colis est rangé dans la bonne boîte, le mot est lu à voix haute. Deux sources, dans cet ordre :
+1. un enregistrement ici : UN fichier .mp3 par mot, nommé comme le mot (minuscules, sans accent, comme les images) ;
+2. à défaut, la voix de l'ordinateur ou de la tablette (variable selon les postes : c'est ce qu'on veut éviter).
+
+Le site relève les fichiers présents à sa construction : rien d'autre à modifier. Un mot sans fichier garde la voix du poste.
+La liste des mots (104, mots-outils compris) est dans mots.txt (slug;texte lu;prononciation facultative).
+
+Deux façons de les obtenir :
+
+A. Voix de synthèse neuronale, hors ligne (rapide, une seule voix homogène)
+   Sur un ordinateur connecté, avec Python et ffmpeg :  voir l'en-tête de scripts/generer-voix.py (une commande).
+   Écouter chaque fichier ; corriger la 3e colonne de mots.txt pour les mots mal prononcés, puis relancer avec --mot.
+
+B. Votre voix, ou celle de l'enseignante (le meilleur rendu pour des CP : lecture posée, mots isolés justes)
+   Enregistrer chaque mot séparément avec n'importe quel enregistreur (téléphone, Audacity…), exporter en .mp3 mono,
+   nommer le fichier (vache.mp3, lezard.mp3, c-est.mp3…), le déposer ici. 30 à 60 minutes pour les 104 mots.
+
+Taille : 3 à 8 Ko par mot (≈ 600 Ko pour tout). Les voix du mot en cours sont chargées d'avance, le jeu marche ensuite hors ligne.
+Droits : n'utiliser qu'une voix dont la licence autorise l'usage en classe, ou une voix enregistrée avec l'accord de la personne.
