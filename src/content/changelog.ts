@@ -32,7 +32,7 @@ export const RELEASES: Release[] = [
       { kind: 'better', text: 'Barème commun : Course à l’encre, Mémoire d’encre, Chasse aux fautes et Mots en orbite comptent maintenant comme Frappe ! La série monte d’un palier toutes les 3 bonnes réponses, de ×1 à ×6, et une bonne réponse vaut environ 100 points (un mot de Frappe !).' },
       { kind: 'better', text: 'Quand on perd une vie, la règle est celle de Frappe ! : Apprenti et Standard redescendent d’un palier, Expert repart de ×1. Aucun point n’est jamais retiré.' },
       { kind: 'better', text: 'Le bonus de vitesse ne dépasse jamais 40 % des points d’une réponse, et n’existe pas en Chasse aux fautes : l’exactitude compte plus que la vitesse. Les scores de ces jeux sont plus hauts qu’avant ; les anciens records restent mais sont vite battus.' },
-      { kind: 'new', text: 'Accueil : une ambiance musicale douce (instrumentale, lente, désactivée par défaut) avec un bouton pour l’activer. Elle s’arrête dès qu’on entre dans un jeu.' },
+      { kind: 'new', text: 'Accueil : une ambiance musicale douce (instrumentale, lente, avec deux progressions et un fin arpège de harpe). Elle est désactivée par défaut ; une petite note ♪ discrète dans le coin ouvre un minuscule panneau (musique oui/non, volume bas / moyen / haut). Elle s’arrête dès qu’on entre dans un jeu.' },
       { kind: 'new', text: 'Mots en orbite a maintenant son petit « i » sur l’accueil : un extrait animé qui explique le jeu en 4 étapes.' },
       { kind: 'better', text: 'Le son d’erreur est plus doux : un « bloup » grave et bref à la place d’un buzz.' },
       { kind: 'better', text: 'Les écrans « Comment jouer » expliquent maintenant comment les points sont comptés.' },

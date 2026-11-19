@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Frame } from './Frame';
 import { SiteFooter } from './Info';
 import type { InfoView } from './Info';
@@ -14,7 +14,9 @@ import { loadCourseStamps } from '../game/course/scores';
 import { GRADES, gradeLabel, isAvailable, loadClassGrade, loadGrade, saveClassGrade, saveGrade } from '../game/grade';
 import type { Grade } from '../game/grade';
 import { loadTypingStamps } from '../game/storage';
-import { Ambiance, loadAmbiance, saveAmbiance } from '../game/ambiance';
+import { Ambiance, loadAmbiance, loadVolume, saveAmbiance, saveVolume } from '../game/ambiance';
+import type { VolumeLevel } from '../game/ambiance';
+import { MusicMenu } from '../components/MusicMenu';
 import { CAVE_ON, bossName, inkLevel, loadBoss, phaseOf } from '../game/boss/state';
 import type { TeacherSession } from '../server/teacher';
 
@@ -41,10 +43,13 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
   const [preview, setPreview] = useState<PreviewGame | null>(null);
   /** ambiance musicale de l'accueil : désactivée par défaut, choisie par l'élève, jamais pendant un jeu */
   const [ambiance, setAmbiance] = useState(loadAmbiance);
+  const [volume, setVolume] = useState<VolumeLevel>(loadVolume);
+  const player = useRef<Ambiance | null>(null);
   useEffect(() => {
     if (!ambiance || preview) return; // la fenêtre d'extrait a ses propres sons : on laisse la place
     const m = new Ambiance();
     if (!m.start()) return;
+    player.current = m;
     const wake = () => m.resume();
     const vis = () => (document.hidden ? m.suspend() : m.resume());
     window.addEventListener('pointerdown', wake);
@@ -54,9 +59,15 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
       window.removeEventListener('pointerdown', wake);
       window.removeEventListener('keydown', wake);
       document.removeEventListener('visibilitychange', vis);
+      player.current = null;
       m.stop();
     };
   }, [ambiance, preview]);
+  const changeVolume = (v: VolumeLevel) => {
+    saveVolume(v);
+    setVolume(v);
+    player.current?.setVolume(v);
+  };
   const toggleAmbiance = () => {
     const v = !ambiance;
     saveAmbiance(v);
@@ -139,12 +150,7 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
         )}
       </div>
       <div className="rule" aria-hidden="true" />
-
-      <div className="home-music">
-        <button type="button" className="tool" aria-pressed={ambiance} onClick={toggleAmbiance} title="Une petite musique douce, seulement sur cette page. Elle s’arrête dès qu’un jeu commence.">
-          <span aria-hidden="true">♪</span> Ambiance musicale&nbsp;: {ambiance ? 'oui' : 'non'}
-        </button>
-      </div>
+      <MusicMenu on={ambiance} volume={volume} onToggle={toggleAmbiance} onVolume={changeVolume} />
 
       {student && (
         <div className="home-cta">

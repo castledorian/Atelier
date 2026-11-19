@@ -24,15 +24,24 @@ export const PENTATONIC = [0, 2, 4, 7, 9];
 /** Notes MIDI de la mélodie : de sol 4 à la 5 (jamais aiguë ni grave). */
 export const MELODY_LOW = 67;
 export const MELODY_HIGH = 81;
-/** Accords (notes MIDI graves : fondamentale, tierce, quinte) : Do, La mineur, Fa, Sol. */
-export const CHORDS: ReadonlyArray<readonly [number, number, number]> = [
-  [48, 52, 55],
-  [45, 48, 52],
-  [41, 45, 48],
-  [43, 47, 50],
+/** Accords (notes MIDI graves : fondamentale, tierce, quinte). */
+type Chord = readonly [number, number, number];
+const C: Chord = [48, 52, 55];
+const AM: Chord = [45, 48, 52];
+const F: Chord = [41, 45, 48];
+const G: Chord = [43, 47, 50];
+/** Deux progressions qui alternent d'un tour à l'autre : Do – La mineur – Fa – Sol, puis Do – Sol – La mineur – Fa (la musique ne tourne pas en rond). */
+export const PROGRESSIONS: ReadonlyArray<ReadonlyArray<Chord>> = [
+  [C, AM, F, G],
+  [C, G, AM, F],
 ];
-/** Volume général de l'ambiance (très doux : on doit pouvoir parler par-dessus). */
-export const MASTER = 0.11;
+/** L'accord de la mesure `bar`. */
+export const chordAt = (bar: number): Chord => PROGRESSIONS[Math.floor(bar / BARS) % PROGRESSIONS.length][((bar % BARS) + BARS) % BARS];
+/** Niveaux de volume (très doux : on doit pouvoir parler par-dessus) ; le milieu est le choix par défaut. */
+export const VOLUMES = [0.05, 0.1, 0.17] as const;
+export type VolumeLevel = 0 | 1 | 2;
+export const DEFAULT_VOLUME: VolumeLevel = 1;
+export const MASTER = VOLUMES[DEFAULT_VOLUME];
 
 export const midiToHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
 export const isPentatonic = (m: number) => PENTATONIC.includes(((m % 12) + 12) % 12);
@@ -42,7 +51,7 @@ export type Rng = () => number;
 export interface Note {
   /** début, en temps (0 à 16 pour une mesure de 4 temps ×4 mesures, ici relatif à la mesure) */
   beat: number;
-  kind: 'pad' | 'bass' | 'drop';
+  kind: 'pad' | 'bass' | 'drop' | 'harp';
   midi: number;
   /** durée en temps */
   beats: number;
@@ -55,11 +64,14 @@ export interface Note {
  * (la mélodie marche de proche en proche, sans grands sauts) ; renvoie aussi la dernière note jouée.
  */
 export function planBar(bar: number, prev: number, rng: Rng): { notes: Note[]; last: number } {
-  const chord = CHORDS[((bar % BARS) + BARS) % BARS];
+  const chord = chordAt(bar);
   const notes: Note[] = [];
   // le fond : la fondamentale tenue, et l'accord en nappe très douce
   notes.push({ beat: 0, kind: 'bass', midi: chord[0], beats: 4, vol: 0.5 });
   for (const m of chord) notes.push({ beat: 0, kind: 'pad', midi: m + 12, beats: 4, vol: 0.22 });
+  // un fin arpège de harpe sur l'accord : il donne le mouvement, sans jamais passer devant la mélodie
+  const arp = [chord[0] + 24, chord[1] + 24, chord[2] + 24, chord[1] + 24];
+  [0.5, 1.5, 2.5, 3.5].forEach((beat, k) => notes.push({ beat, kind: 'harp', midi: arp[k], beats: 1.2, vol: 0.14 }));
   // la mélodie : des gouttes, surtout sur les temps, jamais deux mesures identiques
   const scale: number[] = [];
   for (let m = MELODY_LOW; m <= MELODY_HIGH; m++) if (isPentatonic(m)) scale.push(m);
@@ -88,6 +100,7 @@ export class Ambiance {
   private nextAt = 0;
   private last = 74;
   private running = false;
+  private level: VolumeLevel = loadVolume();
 
   get isRunning() {
     return this.running;
@@ -109,7 +122,7 @@ export class Ambiance {
     if (ac.state === 'suspended') void ac.resume().catch(() => {});
     const master = ac.createGain();
     master.gain.value = 0;
-    master.gain.linearRampToValueAtTime(MASTER, ac.currentTime + 2.5); // la musique « arrive » doucement
+    master.gain.linearRampToValueAtTime(VOLUMES[this.level], ac.currentTime + 2.5); // la musique « arrive » doucement
     const comp = ac.createDynamicsCompressor();
     master.connect(comp);
     comp.connect(ac.destination);
@@ -137,6 +150,17 @@ export class Ambiance {
     this.timer = window.setInterval(() => this.pump(), 300);
     this.pump();
     return true;
+  }
+
+  /** Change le volume en direct (fondu court, sans clic). */
+  setVolume(level: VolumeLevel) {
+    this.level = level;
+    const ac = this.ac;
+    const master = this.master;
+    if (!ac || !master) return;
+    master.gain.cancelScheduledValues(ac.currentTime);
+    master.gain.setValueAtTime(master.gain.value, ac.currentTime);
+    master.gain.linearRampToValueAtTime(VOLUMES[level], ac.currentTime + 0.25);
   }
 
   /** Reprend après une suspension du navigateur (onglet masqué, premier geste de l'élève). */
@@ -191,7 +215,13 @@ export class Ambiance {
     const dur = n.beats * BEAT;
     const g = ac.createGain();
     g.gain.setValueAtTime(0.0001, t);
-    if (n.kind === 'drop') {
+    if (n.kind === 'harp') {
+      g.gain.linearRampToValueAtTime(n.vol, t + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      this.osc('triangle', f, g, t, dur + 0.05);
+      g.connect(master);
+      if (this.delayIn) g.connect(this.delayIn);
+    } else if (n.kind === 'drop') {
       // une goutte : attaque très vive, longue résonance
       g.gain.linearRampToValueAtTime(n.vol, t + 0.006);
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
@@ -247,5 +277,24 @@ export function saveAmbiance(on: boolean) {
     localStorage.setItem(KEY, on ? 'on' : 'off');
   } catch {
     /* stockage refusé : la préférence ne sera pas gardée */
+  }
+}
+
+const VOL_KEY = 'atelier.ambiance.vol.v1';
+
+export function loadVolume(): VolumeLevel {
+  try {
+    const v = Number(localStorage.getItem(VOL_KEY));
+    return v === 0 || v === 1 || v === 2 ? (v as VolumeLevel) : DEFAULT_VOLUME;
+  } catch {
+    return DEFAULT_VOLUME;
+  }
+}
+
+export function saveVolume(level: VolumeLevel) {
+  try {
+    localStorage.setItem(VOL_KEY, String(level));
+  } catch {
+    /* ignoré */
   }
 }
