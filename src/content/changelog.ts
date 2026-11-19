@@ -24,6 +24,17 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.23',
+    date: '19 novembre 2026',
+    iso: '2026-11-19',
+    title: 'Le facteur : un jeu de lecture pour le CP',
+    changes: [
+      { kind: 'new', text: 'Le facteur (CP) : un colis avec une image arrive sur le tapis, il faut le ranger dans la boîte aux lettres qui porte le bon mot. Quatre niveaux, qui suivent la progression des sons de la classe.' },
+      { kind: 'new', text: 'Sans chrono ni vie : une boîte fausse se grise, le colis mal rangé revient plus tard, et chaque mot passe deux fois pour qu’on le retrouve. Les lettres muettes sont grisées (vach-e, cha-t).' },
+      { kind: 'new', text: 'Une fois le colis rangé, le mot est lu à voix haute (voix de l’appareil). Les étoiles et le record restent sur l’appareil.' },
+    ],
+  },
+  {
     version: '1.22',
     date: '19 novembre 2026',
     iso: '2026-11-19',

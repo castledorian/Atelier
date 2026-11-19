@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import tailwindcss from "@tailwindcss/vite";
@@ -70,8 +70,12 @@ function swVersion(): Plugin {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+/** Images des colis du jeu « Le facteur » : les fichiers déposés dans public/facteur/ (un par mot, nommé comme le mot, sans accent). */
+const facteurImages = existsSync("public/facteur") ? readdirSync("public/facteur").filter((f) => /\.(webp|png|jpe?g|svg)$/i.test(f)).sort() : [];
+
 // https://vite.dev/config/
 export default defineConfig({
+  define: { __FACTEUR_IMAGES__: JSON.stringify(facteurImages) },
   // chemins relatifs : le jeu fonctionne quel que soit le dossier où il est publié (GitHub Pages…)
   base: "./",
   plugins: [react(), tailwindcss(), viteSingleFile(), csp(), swVersion()],

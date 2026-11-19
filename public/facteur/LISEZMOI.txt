@@ -1,0 +1,14 @@
+Images du jeu « Le facteur » (CP)
+=================================
+
+Déposer ici UNE image par mot, au format .webp (ou .png / .jpg / .svg), nommée comme le mot, en minuscules et SANS accent.
+Exemple : vache.webp, lezard.webp, epee.webp, hache.webp. Une image carrée d'environ 300 × 300 pixels (10 à 30 Ko) suffit.
+Le site relève les fichiers présents à sa construction : rien d'autre à modifier. Tant qu'un mot n'a pas son image, son petit dessin de
+secours est utilisé ; sans l'un ni l'autre, le mot n'est simplement pas proposé.
+
+Niveau 1 : ane ananas as chat cheval chiot chocolat fenetre fil fumee lit lune nid niche nuit numero rat vache velo vis
+Niveau 2 : hache huit lezard judo lego moto epee koala flute radio radis robot zoo ressort lavabo vipere de dame pie pot pull
+Niveau 3 : bulles domino gomme libellule pelote pile pioche tasse tele tete banane bebe cafe canne cube culotte caravane canard pedalo carre casserole
+Niveau 4 : micro frigo frites levres regle grappe grenadine gris parapluie parachute pluie porte sifflet statue stylo prix tartine table tortue triste tigre zebre arbre bras cadre cartable carte cle chevre
+
+(« de » est l'image du dé. Les mots-outils un, une, le, la, les, des, il, elle, et, avec, dans, en, c'est n'ont pas d'image : ils servent de mauvaises boîtes aux lettres.)
