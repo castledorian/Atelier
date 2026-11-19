@@ -5278,12 +5278,12 @@ th[aria-sort='descending'] .th-sort {
 .fct-parcel {
   position: relative;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: stretch;
   width: min(44cqw, 34cqh);
   aspect-ratio: 1;
   margin-bottom: 4%;
-  padding: 7%;
+  padding: min(2.4cqw, 1.8cqh); /* en cq, pas en % : un % se calcule sur la largeur du parent */
   border: 3px solid var(--color-ink);
   border-radius: 12px;
   background: #d2aa6c;
@@ -5323,10 +5323,11 @@ th[aria-sort='descending'] .th-sort {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100%;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
   border-radius: 8px;
-  background: #fffaf0;
+  background: #fdf9ee; /* le fond crème des images générées */
   object-fit: contain;
   font-size: min(19cqw, 14.5cqh);
   line-height: 1;
