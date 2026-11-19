@@ -91,7 +91,7 @@ function Mailbox({ i, word, state, onTap }: { i: number; word: FWord; state: 'id
           <rect x="94" y="12" width="14" height="10" rx="2" />
         </g>
       </svg>
-      <span className="fct-word" style={{ fontSize: `clamp(18px, ${(45 / Math.max(5, plain(word.mark).length)).toFixed(2)}cqw, 48px)` }}>
+      <span className="fct-word" style={{ fontSize: `clamp(20px, min(${(46 / Math.max(5, plain(word.mark).length)).toFixed(2)}cqw, 8cqh), 54px)` }}>
         <Mark mark={word.mark} />
       </span>
     </button>

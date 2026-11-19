@@ -5254,18 +5254,19 @@ th[aria-sort='descending'] .th-sort {
   position: relative;
   display: flex;
   flex: 1 1 0;
-  align-items: center;
+  align-items: flex-end; /* le colis est posé sur le tapis */
   justify-content: center;
   min-height: 0;
+  padding-bottom: 22px;
   overflow: hidden;
 }
 .fct-belt::after {
   content: "";
   position: absolute;
   right: -10px;
-  bottom: 6%;
+  bottom: 0;
   left: -10px;
-  height: 16px;
+  height: 26px;
   border: 2px solid var(--color-ink);
   background: repeating-linear-gradient(90deg, #3a342c 0 18px, #4a4338 18px 36px);
   animation: fct-belt 1.2s linear infinite;
@@ -5277,17 +5278,17 @@ th[aria-sort='descending'] .th-sort {
 }
 .fct-parcel {
   position: relative;
+  z-index: 1; /* posé sur le tapis, pas dessous */
   display: flex;
   align-items: stretch;
   justify-content: stretch;
   width: min(44cqw, 34cqh);
   aspect-ratio: 1;
-  margin-bottom: 4%;
   padding: min(2.4cqw, 1.8cqh); /* en cq, pas en % : un % se calcule sur la largeur du parent */
   border: 3px solid var(--color-ink);
   border-radius: 12px;
   background: #d2aa6c;
-  box-shadow: 0 6px 0 rgba(27, 25, 21, 0.35);
+  box-shadow: 0 3px 0 rgba(27, 25, 21, 0.45); /* l'ombre touche le tapis */
   animation: fct-ride var(--ride, 34s) linear infinite;
 }
 .fct-parcel::before {
@@ -5381,7 +5382,10 @@ th[aria-sort='descending'] .th-sort {
 }
 .fct-box {
   position: relative;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
   min-height: 0;
   padding: 0;
   border: 0;
@@ -5394,7 +5398,7 @@ th[aria-sort='descending'] .th-sort {
 .fct-box-art {
   display: block;
   width: 100%;
-  max-height: 32cqh;
+  max-height: 22cqh;
 }
 .fct-box-body {
   fill: #f2c230;
@@ -5418,11 +5422,13 @@ th[aria-sort='descending'] .th-sort {
   fill: #7fc47a;
 }
 .fct-word {
-  position: absolute;
-  right: 8%;
-  bottom: 9%;
-  left: 8%;
-  padding: 1px 6px 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: clamp(54px, 11cqh, 78px); /* même hauteur pour les trois étiquettes, quelle que soit la longueur du mot */
+  line-height: 1;
+  padding: 2px 6px 5px;
   border: 2px solid var(--color-ink);
   border-radius: 8px;
   background: #fffaf0;
@@ -5456,6 +5462,12 @@ th[aria-sort='descending'] .th-sort {
 }
 .fct-box[data-state="hint"] .fct-box-art {
   animation: fct-pulse 0.9s ease-in-out infinite;
+}
+.fct-box[data-state="hint"] .fct-word {
+  box-shadow: 0 0 0 4px var(--color-ribbon);
+}
+.fct-box[data-state="ok"] .fct-word {
+  background: #d9f0d4;
 }
 @keyframes fct-shake {
   25% {
