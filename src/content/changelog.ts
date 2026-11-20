@@ -24,6 +24,16 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.26',
+    date: '20 novembre 2026',
+    iso: '2026-11-20',
+    title: 'Grotte : bon compte',
+    changes: [
+      { kind: 'fix', text: 'La grotte n’affiche plus un chiffre qui change : elle attend la réponse de la classe.' },
+      { kind: 'fix', text: 'Les parties d’avant la grotte de classe sont comptées (fichier de reprise à lancer).' },
+    ],
+  },
+  {
     version: '1.25',
     date: '20 novembre 2026',
     iso: '2026-11-20',

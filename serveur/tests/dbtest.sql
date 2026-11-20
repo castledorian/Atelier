@@ -595,4 +595,15 @@ select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 select pg_temp.eq('enseignant : voit la grotte de ses classes', public.teacher_cave(null)->>'classes' is not null, true);
 select pg_temp.as_admin();
 
+-- Reprise de la grotte : parties d'avant les compteurs reconstituées (estimation), une seule fois, sans toucher aux parties récentes
+reset role;
+update public.runs set cave_ink = null, cave_power = null, correct = 40, acc = 80.0, game = 'typing', received_at = now() - interval '1 hour' where client_id = 'renew000001';
+\ir ../mise-a-jour-grotte-reprise.sql
+select pg_temp.eq('reprise : fautes estimées (40 réussites à 80 % → 10)', (select cave_ink::text from public.runs where client_id = 'renew000001'), '10');
+select pg_temp.eq('reprise : réussites reprises', (select cave_power::text from public.runs where client_id = 'renew000001'), '40');
+update public.runs set cave_ink = null, cave_power = null, received_at = now() where client_id = 'renew000001';
+\ir ../mise-a-jour-grotte-reprise.sql
+select pg_temp.eq('reprise : partie récente laissée à son compteur exact', (select cave_ink is null from public.runs where client_id = 'renew000001')::text, 'true');
+select pg_temp.as_admin();
+
 \echo TOUS LES TESTS SQL PASSENT

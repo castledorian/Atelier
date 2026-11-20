@@ -98,9 +98,11 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refresh, readOnly]);
 
+  /** une grotte de classe existe : on attend sa réponse avant d'afficher un chiffre (sinon le nombre de l'appareil clignote puis change) */
+  const waiting = source !== null && remote === undefined;
   const boss: BossState = remote
     ? { year: schoolYear(), ink: remote.ink, power: remote.power, games: remote.games, wonAt: remote.won_at, seen: true }
-    : readOnly
+    : readOnly || waiting
       ? { year: schoolYear(), ink: 0, power: 0, games: 0, wonAt: null, seen: true }
       : localBoss;
   const [fight, setFight] = useState<null | { real: boolean }>(null);
@@ -188,7 +190,7 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
             <p className="cave-hp" role="status">
               <span aria-hidden="true">♥</span>
               <span className="sr-only">Points de vie de {bossName(boss)} : </span>
-              <b>{hp.toLocaleString('fr-FR')}</b>
+              <b>{waiting ? '…' : hp.toLocaleString('fr-FR')}</b>
               <span className="cave-hp-unit" aria-hidden="true">
                 points de vie
               </span>
