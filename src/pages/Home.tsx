@@ -13,7 +13,7 @@ import type { StudentAccount } from '../server/types';
 import { loadCourseStamps } from '../game/course/scores';
 import { GRADES, gradeLabel, isAvailable, loadClassGrade, loadGrade, saveClassGrade, saveGrade } from '../game/grade';
 import type { Grade } from '../game/grade';
-import { loadTypingStamps } from '../game/storage';
+import { loadSettings, loadTypingStamps } from '../game/storage';
 import { Ambiance } from '../game/ambiance';
 import { CAVE_ON, bossName, inkLevel, loadBoss, phaseOf } from '../game/boss/state';
 import type { TeacherSession } from '../server/teacher';
@@ -42,6 +42,7 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
   /** ambiance musicale de l'accueil : sans bouton, seulement sur cette page (jamais pendant un jeu) */
   useEffect(() => {
     if (preview) return; // la fenêtre d'extrait a ses propres sons : on laisse la place
+    if (!loadSettings().sound) return; // le réglage « Son » coupé dans un jeu vaut aussi pour l'accueil
     const m = new Ambiance();
     if (!m.start()) return;
     const wake = () => m.resume(); // le navigateur n'autorise le son qu'après un premier toucher
@@ -173,7 +174,7 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
       )}
       {grade === null && (
         <>
-          <p className="mt-2 text-[15px] leading-snug">Choisis ta classe pour voir les jeux qui te conviennent.</p>
+          <p className="mt-2 text-[15px] leading-snug">Choisis ta classe pour voir tes jeux.</p>
           <h2 className="subhead mt-[var(--sp)]">Les jeux</h2>
           <ul className="intro-games" aria-label="Les jeux d’Atelier">
             {GAMES.map((g) => (
@@ -193,7 +194,7 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
             <button type="button" className="gcard" onClick={() => onPlay('typing')}>
             <span className="gcard-tag">Clavier</span>
             <span className="gcard-name">Frappe&nbsp;!</span>
-            <span className="gcard-text">Défends la marge : tape les mots avant que les taches d’encre n’arrivent.</span>
+            <span className="gcard-text">Tape les mots avant que l’encre n’atteigne la marge.</span>
             {loadTypingStamps() > 0 && (
             <span className="gcard-stamps" role="img" aria-label={`Tampons : ${loadTypingStamps()} sur 6`}>
               {Array.from({ length: 6 }, (_, k) => (k < loadTypingStamps() ? '●' : '○')).join(' ')}
@@ -209,7 +210,7 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
             <button type="button" className="gcard" onClick={() => onPlay('math')}>
             <span className="gcard-tag">Maths</span>
             <span className="gcard-name">Course à l’encre</span>
-            <span className="gcard-text">Place la plume sur la bonne réponse et fuis la tache d’encre !</span>
+            <span className="gcard-text">Choisis la bonne réponse et fuis la tache d’encre !</span>
             {loadCourseStamps() > 0 && (
             <span className="gcard-stamps" role="img" aria-label={`Tampons : ${loadCourseStamps()} sur 6`}>
               {Array.from({ length: 6 }, (_, k) => (k < loadCourseStamps() ? '●' : '○')).join(' ')}
@@ -225,7 +226,7 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
             <button type="button" className="gcard" onClick={() => onPlay('spelling')}>
             <span className="gcard-tag">Orthographe</span>
             <span className="gcard-name">Chasse aux fautes</span>
-            <span className="gcard-text">Une faute s’est glissée dans la phrase : trouve-la, puis corrige-la.</span>
+            <span className="gcard-text">Trouve la faute dans la phrase, puis corrige-la.</span>
             <span className="gcard-go">Jouer →</span>
           </button>
             <InfoButton onClick={() => setPreview('spelling')} label="Voir un extrait : Chasse aux fautes" />
@@ -236,7 +237,7 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
             <button type="button" className="gcard" onClick={() => onPlay('facteur')}>
               <span className="gcard-tag">Lecture</span>
               <span className="gcard-name">Le facteur</span>
-              <span className="gcard-text">Un colis arrive : range-le dans la boîte aux lettres qui porte le bon mot.</span>
+              <span className="gcard-text">Range chaque colis dans la boîte qui porte son mot.</span>
               <span className="gcard-go">Jouer →</span>
             </button>
           </div>
@@ -246,7 +247,7 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
             <button type="button" className="gcard" onClick={() => onPlay('lexique')}>
               <span className="gcard-tag">Vocabulaire</span>
               <span className="gcard-name">Mots en orbite</span>
-              <span className="gcard-text">Des mots arrivent de partout : relie le mot du centre à son synonyme, son contraire ou sa famille.</span>
+              <span className="gcard-text">Relie le mot du centre à son synonyme, son contraire ou sa famille.</span>
               <span className="gcard-go">Jouer →</span>
             </button>
             <InfoButton onClick={() => setPreview('lexique')} label="Voir un extrait : Mots en orbite" />
@@ -257,7 +258,7 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
             <button type="button" className="gcard" onClick={() => onPlay('memory')}>
             <span className="gcard-tag">Mémoire</span>
             <span className="gcard-name">Mémoire d’encre</span>
-            <span className="gcard-text">Retiens les taches qui s’allument, puis refais la suite ou retrouve leurs places.</span>
+            <span className="gcard-text">Retiens les taches qui s’allument, puis refais la suite.</span>
             <span className="gcard-go">Jouer →</span>
           </button>
             <InfoButton onClick={() => setPreview('memory')} label="Voir un extrait : Mémoire d’encre" />

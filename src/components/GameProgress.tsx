@@ -1,3 +1,4 @@
+import { ConfirmButton } from './ConfirmButton';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { ruleInfo } from '../game/encre/rules';
@@ -35,7 +36,7 @@ const TREND_TEXT_MEMORY: Record<Trend, string> = {
   none: TREND_TEXT.none,
   up: TREND_TEXT.up,
   flat: 'Tu es régulier. Pour retenir plus, fais une petite pause d’une seconde avant de répondre.',
-  down: 'Un peu moins bien ces derniers temps. Respire, regarde bien la suite en entier, puis refais-la dans ta tête.',
+  down: 'Un peu moins bien ces derniers temps. Respire, regarde toute la suite, puis refais-la dans ta tête.',
 };
 
 const GAME_NAME: Record<Kind, string> = { math: 'calculs', spelling: 'phrases', memory: 'manches', lexique: 'manches' };
@@ -43,7 +44,7 @@ const TREND_TEXT_LEXIQUE: Record<Trend, string> = {
   none: TREND_TEXT.none,
   up: TREND_TEXT.up,
   flat: 'Tu es régulier. Relis la liste « Mots à revoir » : les relations ratées reviendront plus facilement.',
-  down: 'Un peu moins bien ces derniers temps. Prends le temps de lire la consigne avant de taper, et relis les mots à revoir.',
+  down: 'Un peu moins bien ces derniers temps. Lis bien la consigne avant de taper.',
 };
 
 export function GameProgress({ game, onTrain, extra }: { game: Kind; onTrain?: (rule: RuleId) => void; extra?: ReactNode }) {
@@ -61,7 +62,7 @@ export function GameProgress({ game, onTrain, extra }: { game: Kind; onTrain?: (
   if (log.length === 0 && rules.length === 0) {
     return (
       <div className="prog">
-        <p className="text-[16px] leading-snug">Pas encore de partie enregistrée. Joue quelques parties : tes progrès et les points à travailler apparaîtront ici.</p>
+        <p className="text-[16px] leading-snug">Pas encore de partie. Joue un peu : tes progrès apparaîtront ici.</p>
         {extra}
       </div>
     );
@@ -115,7 +116,7 @@ export function GameProgress({ game, onTrain, extra }: { game: Kind; onTrain?: (
             {todo.length > 0 ? 'À travailler en priorité' : 'Tes règles'}
           </h3>
           {open.length === 0 ? (
-            <p className="text-[15px] leading-snug">Aucune erreur répétée pour l’instant : bravo ! Les règles à revoir apparaîtront ici si une faute revient.</p>
+            <p className="text-[15px] leading-snug">Aucune erreur répétée : bravo ! Les règles à revoir apparaîtront ici.</p>
           ) : (
             <ul className="prog-list">
               {open.map((r) => {
@@ -152,11 +153,10 @@ export function GameProgress({ game, onTrain, extra }: { game: Kind; onTrain?: (
         </section>
       )}
 
-      <button
-        type="button"
+      <ConfirmButton
         className="btn btn-ghost mt-3"
-        onClick={() => {
-          if (!window.confirm('Effacer tes progrès sur cet appareil ? Tes meilleurs scores ne sont pas touchés.')) return;
+        confirm="Sûr ? Les scores restent."
+        onConfirm={() => {
           clearLog(game);
           if (family) clearRules(family);
           setLog([]);
@@ -164,7 +164,7 @@ export function GameProgress({ game, onTrain, extra }: { game: Kind; onTrain?: (
         }}
       >
         Effacer mes progrès
-      </button>
+      </ConfirmButton>
     </div>
   );
 }

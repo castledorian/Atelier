@@ -12,8 +12,7 @@ export default function FramedNotice({ onBack }: { onBack: () => void }) {
       <h1 className="title-sm">À ouvrir dans sa propre page</h1>
       <div className="rule" aria-hidden="true" />
       <p className="mt-3 text-[15px] leading-snug">
-        Pour ta sécurité, la connexion et l’espace enseignant ne s’ouvrent pas à l’intérieur d’une autre page : on ne pourrait pas être sûr que ton mot de passe reste
-        entre le site et toi. Ouvre le site directement dans un nouvel onglet.
+        Pour ta sécurité, la connexion ne s’ouvre pas dans une autre page. Ouvre le site directement dans un nouvel onglet.
       </p>
       <p className="mt-3">
         <a className="btn btn-primary" href={window.location.href} target="_blank" rel="noopener">

@@ -1,3 +1,4 @@
+import { ConfirmButton } from '../components/ConfirmButton';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackButton } from '../components/BackButton';
 import BossFight from '../components/BossFight';
@@ -202,10 +203,9 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
               <div className="fold-in">
                 <p className="text-[15px] leading-snug">
                   {remote
-                    ? 'La créature est celle de la classe : elle grossit avec les fautes de toutes les parties libres jouées par les élèves, sur tous leurs appareils (ses points de vie montent d’un point par faute), et faiblit quand ils retravaillent une règle. '
-                    : 'La créature grossit avec les fautes de toutes les parties jouées sur cet appareil (ses points de vie montent d’un point par faute) et faiblit quand les élèves retravaillent une règle. '}
-                  {phase === 'final' ? '' : `Le grand combat s’ouvre en juin (dans ${left} mois). `}Le combat final est écrit d’avance&nbsp;:{' '}
-                  <strong>la classe gagne toujours</strong>, après un moment où tout semble perdu. Les compteurs ne sont reliés à aucun élève en particulier.
+                    ? 'La créature est celle de la classe : +1 point de vie par faute des parties libres, sur tous les appareils ; elle faiblit quand on retravaille une règle. '
+                    : 'La créature grossit d’un point par faute des parties jouées sur cet appareil et faiblit quand on retravaille une règle. '}
+                  {phase === 'final' ? '' : `Grand combat en juin (dans ${left} mois). `}La classe gagne toujours, après un moment où tout semble perdu. Les compteurs ne sont reliés à aucun élève.
                 </p>
                 <Gauges boss={boss} ink={ink} power={power} />
                 <CaveClasses count={names.length} onNames={(list) => setNames(saveNames(list))} onPick={setPicked} />
@@ -213,18 +213,15 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
                   <button type="button" className="btn btn-ghost" onClick={() => setFight({ real: false })}>
                     Essayer le combat (sans le compter)
                   </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    onClick={() => {
-                      if (window.confirm('Remettre la grotte à zéro ? La créature redevient une goutte et le combat sera à refaire.')) {
-                        setBoss(resetBoss());
-                        void sendCaveReset(picked).then(() => refresh());
-                      }
+                  <ConfirmButton
+                    confirm="Sûr ? Le combat sera à refaire."
+                    onConfirm={() => {
+                      setBoss(resetBoss());
+                      void sendCaveReset(picked).then(() => refresh());
                     }}
                   >
                     Remettre la grotte à zéro
-                  </button>
+                  </ConfirmButton>
                 </div>
               </div>
             </details>

@@ -39,6 +39,13 @@ function write(s: Saved) {
 export const loadFLevel = (): FLevel => read().level;
 export const loadFBest = (level: FLevel): FBest | null => read().best[level] ?? null;
 
+/** Efface les records (le dernier niveau joué est gardé). */
+export function clearFScores() {
+  const s = read();
+  s.best = {};
+  write(s);
+}
+
 export function saveFLevel(level: FLevel) {
   const s = read();
   s.level = level;

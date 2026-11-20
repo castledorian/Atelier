@@ -51,3 +51,12 @@ test('clés de classement : Standard garde l’ancienne clé', () => {
     assert.match(Q.boardKey(l, d), /^[a-z0-9_-]{1,20}$/, 'accepté par le serveur');
   }
 });
+
+test('Le facteur : niveau de séance lu avec repli sur le niveau 1', async () => {
+  const { parseFacteur, describeConfig, GAME_NAMES } = await import('../src/game/sessionConfig');
+  assert.deepEqual(parseFacteur({ level: 3 }), { level: 3 });
+  assert.deepEqual(parseFacteur({ level: 9 }), { level: 1 });
+  assert.deepEqual(parseFacteur(null), { level: 1 });
+  assert.equal(GAME_NAMES.facteur, 'Le facteur');
+  assert.deepEqual(describeConfig('facteur', { level: 2 }), ['Niveau 2']);
+});

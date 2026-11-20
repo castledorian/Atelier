@@ -43,6 +43,10 @@ begin
     if c > d / 1.2 + 3 then return 'manches trop rapides'; end if;                        -- lire la consigne, repérer le mot et le taper prend plus d'1 s
     if w > c then return 'plus de manches que de bonnes réponses'; end if;
     if s > 840 * c + 100 then return 'score supérieur au maximum possible'; end if;       -- (100 + 40 de vitesse) × série ×6 = 840 au mieux
+  elsif p_game = 'facteur' then
+    if c > 16 or w > c then return 'plus de colis que le jeu n''en contient'; end if;     -- 16 colis par partie ; premiers essais réussis ≤ colis rangés
+    if c > d / 0.8 + 3 then return 'colis rangés trop vite'; end if;                      -- lire trois mots et toucher une boîte prend au moins 1 s (pause de rangement comprise)
+    if s > 600 * c + 100 then return 'score supérieur au maximum possible'; end if;       -- 100 × série ×6 = 600 au mieux par colis
   else
     return 'jeu inconnu';
   end if;

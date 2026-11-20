@@ -1,3 +1,4 @@
+import { ConfirmButton } from '../components/ConfirmButton';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Dialog } from '../components/Dialog';
 import { RotateNotice, useShortLandscape } from '../components/RotateNotice';
@@ -611,15 +612,15 @@ function MenuScreen({ view, setView, level, diff, setDiff, settings, account, on
           </li>
           <li className="howto">
             <kbd className="kbd">↵</kbd>
-            <span>Entrée, ↑ ou glisser vers le haut&nbsp;: l’étiquette tombe tout de suite. Plus tu es rapide, plus tu gagnes de points&nbsp;!</span>
+            <span>Entrée, ↑ ou glisser vers le haut&nbsp;: l’étiquette tombe tout de suite.</span>
           </li>
           <li className="howto">
             <kbd className="kbd">✓</kbd>
-            <span>6 pages de plus en plus difficiles. Une erreur fait monter l’encre&nbsp;; si elle atteint la plume, c’est perdu. Termine le cahier pour un bonus&nbsp;!</span>
+            <span>6 pages de plus en plus dures. Une erreur fait monter l’encre : si elle touche la plume, c’est perdu.</span>
           </li>
           <li className="howto howto-opt">
             <kbd className="kbd">Échap</kbd>
-            <span>Pause. Tu peux aussi toucher le bouton pause en haut à droite.</span>
+            <span>Pause (ou bouton en haut à droite).</span>
           </li>
         </ul>
       );
@@ -636,15 +637,9 @@ function MenuScreen({ view, setView, level, diff, setDiff, settings, account, on
           <LocalTable scores={scores} limit={6} />
           {account && <Board account={account} level={boardKey(level, diff)} refreshKey="menu" />}
           {scores.length > 0 && (
-            <button
-              type="button"
-              className="btn btn-ghost mt-3"
-              onClick={() => {
-                if (window.confirm('Effacer les scores de cet appareil pour ce niveau ?')) setScores(clearCourseScores(boardKey(level, diff)));
-              }}
-            >
+            <ConfirmButton className="btn btn-ghost mt-3" confirm="Sûr ?" onConfirm={() => setScores(clearCourseScores(boardKey(level, diff)))}>
               Effacer les scores
-            </button>
+            </ConfirmButton>
           )}
         </>
       );
@@ -697,7 +692,7 @@ function MenuScreen({ view, setView, level, diff, setDiff, settings, account, on
             </span>
           </h1>
           <div className="rule" aria-hidden="true" />
-          <p className="tagline">Choisis la bonne réponse avant qu’elle ne tombe, et fais reculer l’encre&nbsp;!</p>
+          <p className="tagline">Choisis la bonne réponse avant qu’elle ne tombe&nbsp;!</p>
           <div className="tools" data-n="4" role="group" aria-label="Plus d’options">
             <button type="button" className="tool" onClick={() => setView('howto')}>
               <span aria-hidden="true">?</span> Comment jouer

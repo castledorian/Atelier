@@ -39,164 +39,133 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
       <Section id="p-bref" title="En bref">
         <ul className={ul}>
           <li>
-            <strong>Aucune publicité, aucun cookie, aucun traceur</strong>, aucune statistique d’audience, aucun outil d’un autre site chargé dans les jeux.
+            <strong>Aucune publicité, aucun cookie, aucun traceur</strong>, aucune statistique d’audience, aucun outil d’un autre site.
           </li>
           <li>
             <strong>Sans connexion</strong>, rien ne quitte l’appareil : les scores restent dans le navigateur.
           </li>
           <li>
-            <strong>Avec un code d’élève</strong>, le site enregistre un prénom (ou un pseudo), une classe et des résultats de jeux. Rien d’autre : ni nom de famille exigé, ni
-            adresse e-mail, ni photo, ni localisation.
+            <strong>Avec un code d’élève</strong> : un prénom (ou pseudo), une classe et des résultats de jeux. Ni e-mail, ni photo, ni localisation.
           </li>
           <li>
-            Les données sont <strong>utilisées uniquement pour l’école</strong> (classements, suivi de la classe), jamais vendues ni transmises à des fins commerciales.
+            Données <strong>utilisées uniquement pour l’école</strong>, jamais vendues.
           </li>
-          <li>L’enseignant peut <strong>supprimer</strong> un élève, une classe ou toute l’école à tout moment.</li>
+          <li>L’enseignant peut <strong>supprimer</strong> un élève, une classe ou l’école à tout moment.</li>
         </ul>
       </Section>
 
       <Section id="p-qui" title="Qui est responsable ?">
         <p>
-          C’est l’école, par l’intermédiaire de l’enseignant qui crée la classe et ajoute ses élèves, qui décide d’utiliser le site dans un but pédagogique. Le site est édité par{' '}
-          <Todo value={LEGAL.editor} what="nom de l’éditeur" />, qui héberge les données pour le compte de l’école et ne s’en sert pour rien d’autre.
+          L’école, par l’enseignant qui crée la classe. Le site est édité par <Todo value={LEGAL.editor} what="nom de l’éditeur" />, qui héberge les données pour le compte de l’école et ne
+          s’en sert pour rien d’autre.
         </p>
         <p>
-          Contact pour toute question ou demande&nbsp;: <Todo value={LEGAL.contact} what="adresse e-mail de contact" />. Pour un élève, le plus simple est d’en parler à son
-          enseignant, qui peut agir tout de suite.
+          Une question ou une demande&nbsp;: <Todo value={LEGAL.contact} what="adresse e-mail de contact" />. Pour un élève, le plus simple est d’en parler à son enseignant.
         </p>
       </Section>
 
       <Section id="p-donnees" title="Ce qui est enregistré">
-        <h3 className="font-bold">Élève, sans connexion</h3>
+        <h3 className="font-bold">Élève sans connexion</h3>
         <p>
-          Les scores, la progression (par exemple les tampons de Mémoire d’encre, ou la liste des mots à revoir de Mots en orbite), les réglages et le dernier niveau choisi restent <strong>dans le navigateur de l’appareil</strong>{' '}
-          (« stockage local »). Ils ne sont envoyés à personne.
+          Scores, progression, réglages et dernier niveau restent <strong>dans le navigateur</strong> (« stockage local ») et ne sont envoyés à personne.
         </p>
-        <h3 className="font-bold">Élève, avec un code</h3>
+        <h3 className="font-bold">Élève avec un code</h3>
         <ul className={ul}>
-          <li>Le prénom ou pseudo (24 caractères au maximum), choisi par l’enseignant, le nom de la classe et celui de l’école.</li>
-          <li>Un code d’accès de 8 caractères, créé au hasard, qui sert de « clé » de connexion. Le serveur n’en garde qu’une empreinte : même l’éditeur ne peut pas le relire.</li>
-          <li>Les résultats de chaque partie&nbsp;: jeu, mode, score, niveau atteint, vitesse et précision de frappe, durée, date.</li>
-          <li>
-            Pour les séances de classe (un jeu réglé par l’enseignant)&nbsp;: le nombre d’essais utilisés et le résultat de chaque essai. Seul le meilleur score compte pour l’évaluation&nbsp;;
-            l’enseignant voit tous les essais.
-          </li>
-          <li>
-            Un jeton de connexion, gardé sur l’appareil. Sur le serveur, seule son empreinte est conservée (le jeton lui-même n’y est jamais lu) et il expire au bout de 30 jours, prolongés tant que l’élève joue.
-          </li>
+          <li>Prénom ou pseudo (24 caractères au plus), classe et école, choisis par l’enseignant.</li>
+          <li>Un code de 8 caractères tirés au hasard. Le serveur n’en garde qu’une empreinte : même l’éditeur ne peut pas le relire.</li>
+          <li>Pour chaque partie : jeu, mode, score, niveau, vitesse et précision, durée, date.</li>
+          <li>Pour une séance de classe : le nombre d’essais et le résultat de chacun. Seul le meilleur compte ; l’enseignant les voit tous.</li>
+          <li>Un jeton de connexion, gardé sur l’appareil (empreinte seule sur le serveur), valable 30 jours et prolongé tant que l’élève joue.</li>
         </ul>
-        <h3 className="font-bold">Statistiques anonymes pour régler la difficulté</h3>
+        <h3 className="font-bold">Statistiques anonymes</h3>
         <p>
-          À la fin d’une partie libre d’un élève connecté, un résumé est enregistré à part&nbsp;: jeu, niveau, difficulté, score, nombre de réussites et d’erreurs par page, durée. Il ne
-          contient <strong>aucun identifiant</strong> (ni élève, ni classe, ni école) et ne permet pas de retrouver la personne. Il sert uniquement à rendre les jeux plus justes pour
-          tous. Les parties de séance et les réglages personnalisés n’y figurent pas.
-        </p>
-        <p>
-          De la même façon, des <strong>compteurs par exercice</strong> sont tenus à part&nbsp;: «&nbsp;ce calcul a été posé tant de fois et raté tant de fois, avec telles mauvaises réponses&nbsp;». Ils servent à repérer les
-          calculs et les phrases trop difficiles. Ils ne contiennent <strong>aucun identifiant</strong>, ne retiennent jamais ce qu’un élève écrit lui-même (les corrections tapées au clavier ne sont pas gardées)
-          et ne sont lisibles que par l’administrateur du site.
+          Après une partie libre d’un élève connecté, un résumé <strong>sans aucun identifiant</strong> (jeu, niveau, score, réussites et erreurs, durée) sert à régler la difficulté.
+          Des compteurs par exercice (« posé tant de fois, raté tant de fois ») servent à repérer les exercices trop durs ; ils ne gardent jamais ce qu’un élève écrit et ne sont lisibles que
+          par l’administrateur.
         </p>
         <h3 className="font-bold">Enseignant</h3>
-        <ul className={ul}>
-          <li>L’adresse e-mail et le mot de passe du compte (le mot de passe est protégé par le service d’identification et n’est lisible par personne).</li>
-          <li>Le nom de l’école et les noms des classes.</li>
-        </ul>
+        <p>Adresse e-mail et mot de passe (protégé par le service d’identification, lisible par personne), nom de l’école et des classes.</p>
         <h3 className="font-bold">Administrateur du site</h3>
         <p>
-          Le responsable du site peut consulter, en lecture seule, la liste des écoles, des classes, des prénoms ou pseudos des élèves, leurs parties, les adresses e-mail des
-          enseignants et les parties refusées par la vérification des scores. Il ne voit <strong>jamais les codes personnels</strong> des élèves et ne peut modifier aucune donnée d’élève par cet
-          espace (il peut seulement inviter des enseignants). Chaque consultation est enregistrée (qui, quand, quoi) pendant un an, et ces accès servent uniquement à l’assistance, à la sécurité et au bon fonctionnement du site.
+          Il consulte en <strong>lecture seule</strong> les écoles, classes, prénoms, parties, e-mails d’enseignants et parties refusées par la vérification des scores. Il ne voit{' '}
+          <strong>jamais les codes</strong> et ne peut rien modifier chez un élève. Chaque consultation est notée (qui, quand, quoi) pendant un an et ne sert qu’à l’assistance, la sécurité et
+          le bon fonctionnement.
         </p>
         <h3 className="font-bold">Données techniques</h3>
         <p>
-          Lors d’une connexion par code, l’adresse IP est gardée <strong>24 heures au plus</strong>, uniquement pour bloquer les essais répétés de codes. Les hébergeurs (voir
-          plus bas) tiennent par ailleurs les journaux techniques habituels de tout site web.
+          À la connexion par code, l’adresse IP est gardée <strong>24 heures au plus</strong>, pour bloquer les essais répétés. Les hébergeurs tiennent les journaux habituels.
         </p>
       </Section>
 
       <Section id="p-classements" title="Qui voit quoi ?">
         <ul className={ul}>
           <li>
-            <strong>L’enseignant</strong> voit, pour ses classes, les prénoms et les résultats de ses élèves (tableau de bord, export CSV). Il ne voit le code d’un élève qu’au moment où il le crée ou le renouvelle (pour l’imprimer) ; ensuite, il peut en créer un nouveau.
+            <strong>L’enseignant</strong> : prénoms et résultats de ses classes (tableau de bord, export CSV). Il ne voit un code qu’à sa création ou son renouvellement.
           </li>
           <li>
-            <strong>Un élève connecté</strong> voit le prénom (ou le pseudo) et le score des élèves de sa classe, et de son école s’il ouvre le classement de l’école. Il ne voit ni
-            les codes, ni les autres données. Les prénoms ou pseudos choisis par l’enseignant sont donc visibles des camarades de classe.
+            <strong>Un élève connecté</strong> : prénoms (ou pseudos) et scores de sa classe, et de son école s’il ouvre ce classement. Rien d’autre.
           </li>
           <li>Les autres écoles et le public ne voient rien.</li>
         </ul>
       </Section>
 
-      <Section id="p-local" title="Sur l’appareil (stockage local)">
+      <Section id="p-local" title="Sur l’appareil">
         <p>
-          Le site garde dans le navigateur&nbsp;: les scores et réglages, la progression, les parties en attente d’envoi quand il n’y a pas de réseau, et la connexion de l’élève ou de
-          l’enseignant. Ce ne sont pas des cookies et ils ne servent pas à suivre les personnes. Le site garde aussi ses propres fichiers en mémoire pour fonctionner sans
-          connexion.
+          Le navigateur garde les scores, les réglages, la progression, les parties en attente d’envoi (sans réseau) et la connexion. Ce ne sont pas des cookies et rien ne suit les
+          personnes. Le site garde aussi ses fichiers pour marcher sans connexion.
         </p>
         <p>
-          «&nbsp;Mes progrès&nbsp;» reste lui aussi <strong>sur l’appareil, et uniquement là</strong>&nbsp;: le résultat des 30 dernières parties de chaque jeu, les règles à revoir et
-          les lettres les plus ratées. Rien n’est envoyé au serveur ni relié à un élève&nbsp;; la page a son bouton pour tout effacer.
+          «&nbsp;Mes progrès&nbsp;» reste <strong>sur l’appareil, et uniquement là</strong> (30 dernières parties de chaque jeu, règles à revoir, lettres ratées), avec un bouton pour tout effacer.
+          Les voix du jeu « Le facteur » sont des fichiers du site : aucun enregistrement n’est fait ni envoyé.
         </p>
         <p>
-          «&nbsp;La grotte&nbsp;» (réservée aux élèves et enseignants connectés) est celle de <strong>la classe</strong>&nbsp;: à la fin d’une partie libre, le nombre de fautes et de réussites est
-          ajouté à la ligne de la partie déjà enregistrée (aucune autre donnée) ; pour une partie sans bonne réponse, qui n’est pas enregistrée, seul ce compteur est envoyé, et le serveur n’en montre que la <strong>somme par classe</strong>. Les prénoms repris des classes par l’enseignant pour le jeu
-          final restent <strong>sur l’appareil, et uniquement là</strong>. L’enseignant peut remettre la grotte de sa classe à zéro, et ces compteurs disparaissent avec les parties (conservation limitée, voir plus haut).
+          «&nbsp;La grotte&nbsp;» (élèves et enseignants connectés) est celle de <strong>la classe</strong> : seuls les nombres de fautes et de réussites sont ajoutés aux parties, et le serveur n’en
+          montre que la <strong>somme par classe</strong>. L’enseignant peut la remettre à zéro.
         </p>
         <p>
-          Pour vérifier que le site fonctionne, l’administrateur du site peut <strong>regarder</strong> l’espace d’une école ou l’écran d’un élève, <strong>en lecture seule</strong>&nbsp;: le serveur lui
-          interdit toute modification, et chaque observation est inscrite dans le journal de l’administration (qui, quand, quoi). Les codes d’accès des élèves ne lui sont jamais montrés.
-        </p>
-        <p>
-          Sur un ordinateur partagé, l’élève utilise <strong>« Changer d’élève »</strong> en fin de séance. On peut tout effacer avec les réglages du navigateur (« effacer les données du
-          site »).
+          Sur un ordinateur partagé, l’élève utilise <strong>« Changer d’élève »</strong>. On efface tout avec les réglages du navigateur (« effacer les données du site »).
         </p>
       </Section>
 
-      <Section id="p-tiers" title="Hébergement et services utilisés">
+      <Section id="p-tiers" title="Hébergement et services">
         <ul className={ul}>
           <li>
-            <strong>Base de données&nbsp;: Supabase</strong>, hébergée dans l’Union européenne (<Todo value={LEGAL.region} what="région choisie, ex. Paris ou Francfort" />). C’est là que
-            sont les comptes, les élèves et les résultats.
+            <strong>Supabase</strong> (base de données, Union européenne&nbsp;: <Todo value={LEGAL.region} what="région choisie, ex. Paris ou Francfort" />) : comptes, élèves, résultats.
           </li>
           <li>
-            <strong>Site web&nbsp;: GitHub Pages.</strong> Il ne distribue que les fichiers du site ; aucune donnée d’élève n’y passe. Comme tout site, il voit l’adresse IP des visiteurs
-            dans ses journaux techniques.
+            <strong>GitHub Pages</strong> : seulement les fichiers du site, aucune donnée d’élève. Il voit l’adresse IP des visiteurs dans ses journaux.
           </li>
           <li>
-            <strong>E-mails des enseignants&nbsp;: Brevo</strong> (confirmation d’inscription, mot de passe oublié). Aucun e-mail n’est envoyé aux élèves.
+            <strong>Brevo</strong> : e-mails aux enseignants (confirmation, mot de passe oublié). Aucun e-mail aux élèves.
           </li>
-          <li>Polices et fichiers du site sont fournis par le site lui-même : aucun service externe de polices, de statistiques ou de publicité.</li>
+          <li>Polices et fichiers viennent du site lui-même : aucun service externe de polices, statistiques ou publicité.</li>
         </ul>
       </Section>
 
       <Section id="p-duree" title="Combien de temps ?">
         <p>
-          <strong>Les parties et les élèves sont effacés automatiquement au bout de 13 mois</strong> : les résultats de plus de 13 mois, puis les élèves créés depuis plus de 13 mois qui
-          n’ont plus aucune partie. <strong>En fin d’année scolaire (à partir du 15 juin), l’espace enseignant propose d’exporter puis d’effacer les résultats de la classe</strong> ; l’enseignant peut
-          aussi supprimer la classe ou l’école à tout moment : la suppression est définitive. L’enseignant peut aussi supprimer lui-même son compte (espace enseignant → « Mon compte ») : son adresse e-mail et son mot de passe sont alors effacés, ainsi que les écoles dont il est le seul enseignant.
+          <strong>Parties et élèves sont effacés automatiquement au bout de 13 mois</strong> (élèves sans partie compris). <strong>À partir du 15 juin, l’espace enseignant propose d’exporter
+          puis d’effacer les résultats de la classe.</strong> L’enseignant peut supprimer une classe, l’école ou son compte à tout moment : c’est définitif.
         </p>
       </Section>
 
       <Section id="p-droits" title="Vos droits">
         <p>
-          Les élèves et leurs parents peuvent demander à l’enseignant, ou à <Todo value={LEGAL.contact} what="adresse e-mail de contact" />, de voir, corriger ou supprimer les données
-          de l’élève, et peuvent s’opposer à leur utilisation. L’enseignant peut renommer un élève, lui donner un nouveau code ou le supprimer lui-même. En cas de difficulté, il est
-          possible de saisir la CNIL (<span className="font-bold">cnil.fr</span>).
+          Élèves et parents peuvent demander à l’enseignant, ou à <Todo value={LEGAL.contact} what="adresse e-mail de contact" />, de voir, corriger ou supprimer les données, et s’opposer à
+          leur utilisation. En cas de difficulté, on peut saisir la CNIL (<span className="font-bold">cnil.fr</span>).
         </p>
       </Section>
 
       <Section id="p-securite" title="Sécurité">
         <p>
-          Les échanges sont chiffrés (HTTPS). Chaque enseignant n’accède qu’aux classes de son école, et chaque élève qu’à ses propres résultats et aux classements. Le code de connexion
-          est difficile à deviner et les essais répétés sont bloqués.
+          Échanges chiffrés (HTTPS). Chaque enseignant n’accède qu’aux classes de son école, chaque élève qu’à ses résultats et aux classements. Les essais répétés de codes sont bloqués.
         </p>
       </Section>
 
       <Section id="p-familles" title="Note pour les familles">
         <p>
-          Votre enfant joue à des jeux pour s’entraîner (frappe au clavier, calcul, mémoire). Pour que l’enseignant suive la classe, l’enfant se connecte avec un code&nbsp;: le site
-          enregistre alors son prénom (ou un pseudo) et ses résultats. Pas de publicité, pas de cookie, pas de suivi, aucune donnée vendue. Vous pouvez demander à l’enseignant
-          de voir ou de supprimer ces données quand vous le souhaitez.
+          Votre enfant joue pour s’entraîner (clavier, calcul, lecture, mémoire). Pour que l’enseignant suive la classe, il se connecte avec un code : le site enregistre son prénom (ou
+          pseudo) et ses résultats. Pas de publicité, pas de cookie, pas de suivi, rien n’est vendu. Vous pouvez demander à l’enseignant de voir ou supprimer ces données.
         </p>
         <p className="no-print">
           <button type="button" className="btn btn-ghost" onClick={() => window.print()}>

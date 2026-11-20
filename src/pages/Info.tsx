@@ -124,12 +124,12 @@ export function About({ onBack, onNav }: PageProps) {
       id="about"
       eyebrow="Le site"
       title="À propos"
-      intro="Atelier est un site de petits jeux pour s’entraîner en classe ou à la maison, du CP au CM2. Il est gratuit, sans publicité et sans cookie."
+      intro="Des petits jeux pour s’entraîner en classe ou à la maison, du CP au CM2. Gratuit, sans publicité, sans cookie."
       onBack={onBack}
       onNav={onNav}
     >
-      <Section id="a-jeux" title="Les quatre jeux">
-        <p>Chaque partie dure quelques minutes. Seuls les jeux adaptés à la classe choisie s’affichent à l’accueil.</p>
+      <Section id="a-jeux" title="Les jeux">
+        <p>Quelques minutes par partie. L’accueil n’affiche que les jeux de la classe choisie.</p>
         <dl className="about-games">
           {GAMES.map((g) => (
             <div key={g.name} className="about-game">
@@ -142,60 +142,58 @@ export function About({ onBack, onNav }: PageProps) {
         </dl>
       </Section>
 
-      <Section id="a-diff" title="Trois difficultés, dans chaque classe">
+      <Section id="a-diff" title="Trois difficultés">
         <ul className={ul}>
           <li>
-            <strong>Apprenti</strong> : pour découvrir le jeu, avec plus de temps et plus de droit à l’erreur.
+            <strong>Apprenti</strong> : plus de temps, plus de droit à l’erreur.
           </li>
           <li>
             <strong>Standard</strong> : le rythme attendu pour la classe.
           </li>
           <li>
-            <strong>Expert</strong> : pour se mesurer à un vrai défi.
+            <strong>Expert</strong> : un vrai défi.
           </li>
         </ul>
-        <p>Un élève de CP et un élève de CM2 qui jouent en « Standard » ne voient pas le même contenu : calculs, mots et phrases changent avec la classe. La difficulté ne dépend pas de la taille de l’écran.</p>
+        <p>Le contenu (calculs, mots, phrases) change avec la classe, pas avec la taille de l’écran.</p>
       </Section>
 
       <Section id="a-classe" title="En classe">
         <ul className={ul}>
-          <li>L’enseignant crée un compte, puis son école, ses classes et ses élèves. Chaque élève reçoit un code : aucune adresse e-mail d’élève n’est demandée.</li>
-          <li>Il peut proposer des <strong>séances</strong> (un jeu, une difficulté, un nombre d’essais limité), fixer le niveau de la classe et suivre les résultats.</li>
-          <li>Les élèves retrouvent leurs séances à faire dès qu’ils se connectent avec leur code.</li>
-          <li>Les jeux restent accessibles <strong>sans compte</strong> : les scores sont alors gardés uniquement sur l’appareil.</li>
+          <li>L’enseignant crée ses classes et ses élèves. Chaque élève reçoit un code : aucun e-mail d’élève.</li>
+          <li>Il propose des <strong>séances</strong> (un jeu, une difficulté, un nombre d’essais) et suit les résultats.</li>
+          <li>Les jeux restent accessibles <strong>sans compte</strong> : les scores restent alors sur l’appareil.</li>
         </ul>
         <p>
-          Les règles de conservation des données sont détaillées dans la page{' '}
+          Détails et note pour les familles :{' '}
           <button type="button" className="link inline-link" onClick={() => onNav('privacy')}>
             Confidentialité
           </button>
-          , avec une note prête à remettre aux familles.
+          .
         </p>
       </Section>
 
       <Section id="a-materiel" title="Matériel">
         <ul className={ul}>
-          <li>Fonctionne dans un navigateur récent, sur ordinateur, tablette ou téléphone, et s’affiche sur un tableau ou un vidéoprojecteur interactif.</li>
-          <li>Léger : conçu pour rester fluide sur les ordinateurs et les réseaux d’école parfois anciens ou lents.</li>
-          <li>Installable comme une application ; il fonctionne ensuite sans connexion (les résultats sont envoyés au retour du réseau).</li>
-          <li>Le son peut être coupé dans chaque jeu.</li>
+          <li>Navigateur récent, sur ordinateur, tablette, téléphone ou tableau interactif.</li>
+          <li>Léger, pour les postes et réseaux d’école anciens ou lents.</li>
+          <li>Installable ; fonctionne ensuite sans connexion (les résultats partent au retour du réseau).</li>
         </ul>
       </Section>
 
       <Section id="a-limites" title="Ce que le site n’est pas">
         <ul className={ul}>
-          <li>Un entraînement ludique, pas une évaluation officielle : les scores servent au jeu et au suivi de classe.</li>
-          <li>Un site <strong>indépendant</strong> : il n’est ni édité, ni validé, ni labellisé par le ministère de l’Éducation nationale. Les contenus s’appuient sur les programmes des cycles 2 et 3.</li>
+          <li>Une évaluation officielle : c’est un entraînement ludique.</li>
+          <li>Un site du ministère : il est <strong>indépendant</strong>, mais suit les programmes des cycles 2 et 3.</li>
         </ul>
       </Section>
 
       <Section id="a-editeur" title="Qui est derrière Atelier ?">
         <p>
-          Le site est édité par <strong>{LEGAL.editor}</strong>. Une remarque, une erreur, une idée de jeu&nbsp;? La page{' '}
+          <strong>{LEGAL.editor}</strong>. Une remarque, une erreur, une idée de jeu&nbsp;? Écrivez via{' '}
           <button type="button" className="link inline-link" onClick={() => onNav('contact')}>
             Contact
-          </button>{' '}
-          est faite pour ça.
+          </button>
+          .
         </p>
       </Section>
     </Page>
@@ -210,53 +208,50 @@ export function Accessibility({ onBack, onNav }: PageProps) {
       id="a11y"
       eyebrow="Pour tous les élèves"
       title="Accessibilité"
-      intro="Atelier s’efforce d’être utilisable par le plus grand nombre, en s’inspirant du référentiel général d’amélioration de l’accessibilité (RGAA). Cette déclaration est une démarche volontaire."
+      intro="Atelier s’inspire du référentiel RGAA, sans en être certifié."
       onBack={onBack}
       onNav={onNav}
     >
       <Section id="x-etat" title="État de conformité">
         <p>
-          <strong>Le site n’a pas encore fait l’objet d’un audit d’accessibilité complet</strong> par un tiers : il n’est donc pas déclaré conforme au RGAA. Les points ci-dessous sont des
-          vérifications menées par l’éditeur, pas une certification.
+          Pas d’audit par un tiers : le site n’est <strong>pas déclaré conforme</strong>. Les points ci-dessous sont des vérifications de l’éditeur.
         </p>
       </Section>
 
       <Section id="x-ok" title="Ce qui est en place">
         <ul className={ul}>
-          <li>Langue de la page déclarée en français ; pages d’information structurées par titres.</li>
-          <li>Textes d’au moins 14 px, boutons et zones à toucher d’au moins 44 px, contrastes renforcés.</li>
-          <li>Menus, formulaires et boutons utilisables au clavier, avec un contour visible sur l’élément actif. Frappe ! se joue au clavier.</li>
+          <li>Page en français, titres structurés.</li>
+          <li>Texte d’au moins 14 px, boutons d’au moins 44 px, contrastes renforcés.</li>
+          <li>Menus et boutons utilisables au clavier, contour visible sur l’élément actif.</li>
           <li>Messages d’erreur et de confirmation annoncés aux lecteurs d’écran.</li>
-          <li>Animations réduites quand l’appareil le demande (réglage « réduire les animations »).</li>
-          <li>Sons facultatifs : ils peuvent être coupés dans chaque jeu.</li>
-          <li>Pages adaptées au tableau interactif, à la tablette et au téléphone ; sur téléphone en paysage, les jeux concernés se mettent en pause.</li>
-          <li>Aucun CAPTCHA, aucun contenu chargé depuis un autre site, aucune publicité.</li>
-          <li>Difficulté « Apprenti » : plus de temps et plus de droit à l’erreur, pour les élèves qui ont besoin d’aller moins vite.</li>
+          <li>Animations réduites si l’appareil le demande.</li>
+          <li>Sons : effets coupables dans chaque jeu ; musique d’accueil coupée avec le même réglage.</li>
+          <li>Tableau interactif, tablette, téléphone ; en paysage sur téléphone, les jeux concernés se mettent en pause.</li>
+          <li>Ni CAPTCHA, ni contenu d’un autre site, ni publicité.</li>
+          <li>Difficulté « Apprenti » : plus de temps et d’erreurs permises.</li>
         </ul>
       </Section>
 
       <Section id="x-limites" title="Limites connues">
         <ul className={ul}>
           <li>
-            <strong>Les jeux sont des jeux d’action visuels et chronométrés</strong> (Frappe !, Course à l’encre, Chasse aux fautes). Le déroulement de la partie n’est pas décrit en
-            texte : ils sont difficilement utilisables avec un lecteur d’écran.
+            Les jeux sont <strong>visuels et chronométrés</strong> : leur déroulement n’est pas décrit en texte, ils sont difficilement utilisables avec un lecteur d’écran. Dans « Le facteur »,
+            les images n’ont pas de description : elle donnerait la réponse.
           </li>
-          <li>Mémoire d’encre repose sur la mémorisation d’éléments visuels, sans équivalent sonore ou tactile complet.</li>
-          <li>Les polices, de style machine à écrire, ne sont pas modifiables ; il n’existe pas encore de réglage dédié (police adaptée à la dyslexie, taille du texte, contraste maximal).</li>
-          <li>Certains gestes (glisser la plume dans la Course à l’encre) sont plus aisés au doigt ou à la souris ; des touches du clavier existent aussi.</li>
-          <li>Les extraits animés des jeux (bouton « i ») sont accompagnés d’un texte, mais n’ont pas de transcription complète.</li>
+          <li>Mémoire d’encre repose sur des éléments visuels, sans équivalent sonore.</li>
+          <li>Pas de réglage de police (dyslexie) ni de contraste maximal ; la taille du texte se règle dans chaque jeu.</li>
+          <li>Glisser la plume (Course à l’encre) est plus simple au doigt ou à la souris ; des touches existent aussi.</li>
         </ul>
       </Section>
 
-      <Section id="x-aide" title="Une difficulté&nbsp;? Dites-le-nous">
+      <Section id="x-aide" title="Une difficulté&nbsp;?">
         <p>
-          Si un élève ne peut pas utiliser une partie du site, ou si vous voyez un défaut qui n’est pas listé ici, écrivez-nous via la page{' '}
+          Écrivez via{' '}
           <button type="button" className="link inline-link" onClick={() => onNav('contact')}>
             Contact
           </button>{' '}
-          en précisant l’appareil, le navigateur et l’aide technique utilisée. L’éditeur étudie chaque retour.
+          en précisant l’appareil, le navigateur et l’aide technique utilisée.
         </p>
-        <p>En cas de difficulté persistante, vous pouvez aussi saisir le Défenseur des droits (defenseurdesdroits.fr).</p>
         <p className="text-[14px] text-ink/70">Déclaration établie le {LEGAL.updated}.</p>
       </Section>
     </Page>
@@ -300,25 +295,29 @@ export function Credits({ onBack, onNav }: PageProps) {
       id="credits"
       eyebrow="Merci"
       title="Crédits et licences"
-      intro="Atelier est construit avec des logiciels libres et des polices libres de droits. Voici ce qu’il utilise, avec leurs licences."
+      intro="Atelier utilise des logiciels et des polices libres. Voici lesquels, avec leurs licences."
       onBack={onBack}
       onNav={onNav}
     >
       <Section id="c-creation" title="Création">
         <ul className={ul}>
-          <li>Conception, programmation et rédaction des contenus pédagogiques (calculs, phrases, consignes) : {LEGAL.editor}.</li>
-          <li>Illustrations (taches d’encre, créatures, décors) : dessinées pour le site en SVG, sans image extérieure.</li>
-          <li>Effets sonores : produits par le navigateur au moment de jouer, sans fichier audio ni enregistrement extérieur.</li>
-          <li>Les programmes de l’école primaire (cycles 2 et 3) ont servi de référence pour choisir les contenus par classe.</li>
+          <li>Conception, programmation et contenus (calculs, phrases, mots, consignes) : {LEGAL.editor}.</li>
+          <li>Taches d’encre, créatures, décors : dessinés pour le site, en SVG.</li>
+          <li>
+            <strong>Images du jeu « Le facteur » : générées par une intelligence artificielle</strong> (style encre), à partir des listes de mots d’une enseignante. Elles servent d’illustrations
+            de mots ; aucune photo ni œuvre existante n’est reproduite.
+          </li>
+          <li>Effets sonores et musique d’accueil : produits par le navigateur, sans fichier audio. Voix du « Facteur » : voix de synthèse du navigateur, ou enregistrements ajoutés au site.</li>
+          <li>Programmes des cycles 2 et 3 : référence pour choisir les contenus par classe.</li>
         </ul>
       </Section>
 
-      <Section id="c-site" title="Ce qui est envoyé à l’élève">
+      <Section id="c-site" title="Dans les pages du site">
         <CreditTable rows={RUNTIME} caption="Bibliothèques et polices utilisées dans les pages du site" />
       </Section>
 
       <Section id="c-outils" title="Outils de fabrication">
-        <p>Ils servent à construire le site, mais ne sont pas envoyés aux élèves.</p>
+        <p>Pour fabriquer le site, jamais envoyés aux élèves.</p>
         <CreditTable rows={BUILD} caption="Outils utilisés pour fabriquer le site" />
       </Section>
 
@@ -335,8 +334,8 @@ export function Credits({ onBack, onNav }: PageProps) {
 
       <Section id="c-droits" title="Droits sur le site">
         <p>
-          © 2026 {LEGAL.editor}. Les textes, illustrations et le code propres à Atelier ne peuvent pas être copiés ni republiés sans accord. Les logiciels et polices cités ci-dessus restent
-          soumis à leurs licences d’origine, dont les textes complets sont disponibles sur les sites indiqués.
+          © 2026 {LEGAL.editor}. Textes, illustrations et code propres à Atelier : pas de copie ni de republication sans accord. Les logiciels et polices cités gardent leur licence
+          d’origine (textes complets sur les sites indiqués).
         </p>
       </Section>
     </Page>

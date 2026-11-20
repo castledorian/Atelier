@@ -1,15 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { BackButton } from '../components/BackButton';
+import { ConfirmButton } from '../components/ConfirmButton';
 import { SettingsRow, StampTitle } from '../components/MenuParts';
+import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionPanels';
 import { Sfx } from '../game/audio';
+import { newRunId } from '../game/history';
+import { parseFacteur } from '../game/sessionConfig';
+import { enqueue, flush } from '../server/outbox';
+import { sendRun } from '../server/student';
+import type { RunPayload } from '../server/types';
 import { effectiveGrade, gradeLabel } from '../game/grade';
 import { loadSettings, saveSettings } from '../game/storage';
 import type { Settings } from '../game/storage';
 import { hasPicture, pictureOf } from '../game/facteur/pictures';
 import { FacteurGame, TRAVEL_SECONDS, newSession } from '../game/facteur/rounds';
 import type { FResult, Parcel } from '../game/facteur/rounds';
-import { loadFBest, loadFLevel, saveFLevel, saveFResult } from '../game/facteur/scores';
+import { clearFScores, loadFBest, loadFLevel, saveFLevel, saveFResult } from '../game/facteur/scores';
 import { preloadVoices, say as readAloud, stopSaying } from '../game/facteur/voice';
 import { F_LEVELS, WORDS, isFLevel, parts, plain } from '../game/facteur/words';
 import type { FLevel, FWord } from '../game/facteur/words';
@@ -29,7 +36,7 @@ interface Props {
 }
 
 type Phase = 'menu' | 'play' | 'over';
-type MenuView = 'main' | 'howto' | 'settings';
+type MenuView = 'main' | 'howto' | 'scores' | 'settings';
 
 const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(3 - n);
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -84,11 +91,19 @@ function Mailbox({ i, word, state, onTap }: { i: number; word: FWord; state: 'id
   );
 }
 
-export default function Facteur({ onHome }: Props) {
+export default function Facteur({ account, onHome, onSessionLost, session, onSessions }: Props) {
   const [phase, setPhase] = useState<Phase>('menu');
   const [view, setView] = useState<MenuView>('main');
   const [settings, setSettings] = useState<Settings>(loadSettings);
-  const [level, setLevel] = useState<FLevel>(loadFLevel);
+  const [level, setLevel] = useState<FLevel>(() => (session ? parseFacteur(session.config).level : loadFLevel()));
+  const ses = useSessionRun(account, session);
+  const sesRef = useRef(ses);
+  sesRef.current = ses;
+  const accountRef = useRef(account);
+  accountRef.current = account;
+  const [cloud, setCloud] = useState<'off' | 'sending' | 'sent' | 'queued'>('off');
+  const lost = useRef(false);
+  const startedAt = useRef(0);
   const [sfx] = useState(() => new Sfx());
   const gameRef = useRef<FacteurGame | null>(null);
   const [, setTick] = useState(0);
@@ -131,7 +146,10 @@ export default function Facteur({ onHome }: Props) {
 
   const ready = (l: FLevel) => WORDS.filter((w) => w.level <= l && !w.tool && hasPicture(w)).length >= 6;
 
-  const begin = (l: FLevel) => {
+  const begin = (l0: FLevel) => {
+    const s = sesRef.current;
+    if (s.sess && (s.left <= 0 || !s.sess.active)) return;
+    const l = s.sess ? parseFacteur(s.sess.config).level : l0;
     sfx.unlock();
     if (!ready(l)) {
       setMissing(true);
@@ -147,6 +165,8 @@ export default function Facteur({ onHome }: Props) {
     setNope(null);
     setSay('');
     setResult(null);
+    setCloud('off');
+    startedAt.current = performance.now();
     setPhase('play');
     sfx.play('start');
   };
@@ -158,7 +178,8 @@ export default function Facteur({ onHome }: Props) {
     gameRef.current = null;
     setPhase('menu');
     setView('main');
-  }, []);
+    if (lost.current) onSessionLost();
+  }, [onSessionLost]);
 
   const finish = (g: FacteurGame) => {
     const r = g.result;
@@ -167,7 +188,52 @@ export default function Facteur({ onHome }: Props) {
     setResult({ r, record: saved.record && prev > 0, prev });
     setPhase('over');
     sfx.play('victory');
+    // envoi à la classe : une partie libre est gardée en file si le réseau manque ; une séance passe par son propre suivi
+    const acct = accountRef.current;
+    const payload: RunPayload = {
+      clientId: newRunId(),
+      game: 'facteur',
+      mode: `n${r.level}`,
+      kind: 'game',
+      score: r.score,
+      wave: r.firstTry,
+      wpm: 0,
+      acc: r.delivered ? Math.round((r.firstTry / r.delivered) * 100) : 0,
+      correct: r.delivered,
+      duration: Math.min(7200, Math.max(1, Math.round((performance.now() - startedAt.current) / 1000))),
+      playedMs: Date.now(),
+    };
+    if (sesRef.current.sess) {
+      sesRef.current.submit(payload, () => {
+        lost.current = true;
+      });
+    } else if (acct && r.delivered > 0) {
+      setCloud('sending');
+      sendRun(acct.token, payload)
+        .then((s) => {
+          if (s === 'invalid_session') {
+            enqueue(acct.student.id, payload);
+            lost.current = true;
+          }
+          setCloud(s === 'ok' ? 'sent' : 'queued');
+        })
+        .catch(() => {
+          enqueue(acct.student.id, payload);
+          setCloud('queued');
+        });
+    }
   };
+
+  // parties jouées sans réseau : on réessaie au démarrage et au retour du réseau
+  const studentId = account?.student.id ?? null;
+  const token = account?.token ?? null;
+  useEffect(() => {
+    if (!studentId || !token) return;
+    const go = () => void flush(studentId, token);
+    go();
+    window.addEventListener('online', go);
+    return () => window.removeEventListener('online', go);
+  }, [studentId, token]);
 
   const tap = useCallback(
     (i: number) => {
@@ -272,6 +338,31 @@ export default function Facteur({ onHome }: Props) {
   }
 
   // ───────────── Fin ─────────────
+  if (phase === 'over' && result && ses.sess) {
+    const r = result.r;
+    return (
+      <div className="desk">
+        <main className="sheet">
+          <div className="stage">
+            <SessionOver
+              session={ses.sess}
+              state={ses.state}
+              score={r.score}
+              left={ses.left}
+              details={
+                <p className="mt-1 text-[15px]">
+                  Colis rangés du premier coup : <strong>{r.firstTry}</strong> sur {r.delivered}
+                </p>
+              }
+              onRetry={() => begin(r.level)}
+              onBack={() => (onSessions ?? onHome)()}
+            />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   if (phase === 'over' && result) {
     const { r, record } = result;
     const next = r.level < 4 && r.stars >= 2 ? ((r.level + 1) as FLevel) : null;
@@ -298,6 +389,13 @@ export default function Facteur({ onHome }: Props) {
                   Score : <strong>{fmt(r.score)}</strong>
                   {record && <span className="text-ribbon"> · nouveau record !</span>}
                 </p>
+                {cloud !== 'off' && (
+                  <p className="mt-1 text-[14px] text-ink/75" role="status" aria-live="polite">
+                    {cloud === 'sending' && 'Envoi du score à la classe…'}
+                    {cloud === 'sent' && 'Score envoyé à la classe ✓'}
+                    {cloud === 'queued' && 'Pas de réseau : score gardé, envoyé plus tard.'}
+                  </p>
+                )}
                 {r.missed.length > 0 && (
                   <>
                     <h3 className="subhead mt-[var(--sp)]">Des mots à relire</h3>
@@ -335,31 +433,68 @@ export default function Facteur({ onHome }: Props) {
   }
 
   // ───────────── Menu ─────────────
+  if (phase === 'menu' && view === 'main' && ses.sess) {
+    return (
+      <div className="desk">
+        <main className="sheet">
+          <div className="stage">
+            <SessionIntro session={ses.sess} left={ses.left} onStart={() => begin(level)} onBack={() => (onSessions ?? onHome)()} />
+          </div>
+        </main>
+      </div>
+    );
+  }
   if (view !== 'main') {
     const body: ReactNode =
       view === 'howto' ? (
         <ul className="howto-list">
           <li className="howto">
             <kbd className="kbd">📦</kbd>
-            <span>Un colis avance doucement sur le tapis : regarde bien l’image. Prends ton temps, s’il arrive au bout il refait un tour.</span>
+            <span>Le colis avance sur le tapis. Regarde l’image, prends ton temps : au bout, il refait un tour.</span>
           </li>
           <li className="howto">
             <kbd className="kbd">✉</kbd>
-            <span>Touche la boîte aux lettres qui porte le mot de l’image.</span>
+            <span>Touche la boîte qui porte le mot de l’image.</span>
           </li>
           <li className="howto">
             <kbd className="kbd">↺</kbd>
-            <span>Tu t’es trompé ? Ce n’est pas grave : la boîte se grise et tu peux réessayer. Le colis reviendra plus tard.</span>
+            <span>Raté ? Pas grave : la boîte se grise, essaie une autre. Le colis reviendra.</span>
           </li>
           <li className="howto">
             <kbd className="kbd">ab</kbd>
-            <span>Les lettres en gris ne se prononcent pas.</span>
+            <span>Les lettres grises ne se disent pas.</span>
           </li>
           <li className="howto howto-opt">
             <kbd className="kbd">1 2 3</kbd>
-            <span>Au clavier, les touches 1, 2 et 3 choisissent la boîte.</span>
+            <span>Au clavier : 1, 2, 3 pour choisir la boîte.</span>
           </li>
         </ul>
+      ) : view === 'scores' ? (
+        <>
+          <ul className="fct-scores">
+            {F_LEVELS.map((l) => {
+              const b = loadFBest(l.id);
+              return (
+                <li key={l.id}>
+                  <strong>{l.label}</strong>
+                  <span>{b ? `${stars(b.stars)} · ${fmt(b.score)} points` : 'Pas encore joué'}</span>
+                </li>
+              );
+            })}
+          </ul>
+          {F_LEVELS.some((l) => loadFBest(l.id)) && (
+            <ConfirmButton
+              className="btn btn-ghost mt-3"
+              confirm="Sûr ?"
+              onConfirm={() => {
+                clearFScores();
+                setLevel(1);
+              }}
+            >
+              Effacer les scores
+            </ConfirmButton>
+          )}
+        </>
       ) : (
         <SettingsRow settings={settings} onChange={change} />
       );
@@ -373,7 +508,7 @@ export default function Facteur({ onHome }: Props) {
                   <BackButton label="Retour" onClick={() => setView('main')} autoFocus />
                 </div>
                 <h2 id="sub-title" className="title-sm">
-                  {view === 'howto' ? 'Comment jouer' : 'Réglages'}
+                  {view === 'howto' ? 'Comment jouer' : view === 'scores' ? 'Scores' : 'Réglages'}
                 </h2>
                 <div className="rule" aria-hidden="true" />
                 <div className="sub-body">{body}</div>
@@ -398,10 +533,13 @@ export default function Facteur({ onHome }: Props) {
                 <p className="eyebrow">Lecture · {gradeLabel(grade ?? 'cp')}</p>
                 <StampTitle id="game-title" label="Le facteur" lines={[{ text: 'FACTEUR', ribbon: 'LE' }]} />
                 <div className="rule" aria-hidden="true" />
-                <p className="tagline menu-opt">Range chaque colis dans la boîte aux lettres qui porte le bon mot&nbsp;!</p>
-                <div className="tools" data-n="2" role="group" aria-label="Plus d’options">
+                <p className="tagline menu-opt">Range chaque colis dans la bonne boîte&nbsp;!</p>
+                <div className="tools" data-n="3" role="group" aria-label="Plus d’options">
                   <button type="button" className="tool" onClick={() => setView('howto')}>
                     <span aria-hidden="true">?</span> Comment jouer
+                  </button>
+                  <button type="button" className="tool" onClick={() => setView('scores')}>
+                    <span aria-hidden="true">★</span> Scores
                   </button>
                   <button type="button" className="tool" onClick={() => setView('settings')}>
                     <span aria-hidden="true">⚙</span> Réglages

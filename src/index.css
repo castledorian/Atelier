@@ -735,6 +735,7 @@ html[data-text='xlarge'] .card .title-sm {
 }
 .seg-b {
   min-width: 44px;
+  min-height: 44px;
   padding: 4px 9px;
   border: 2px solid var(--color-ink);
   margin-left: -2px;
@@ -798,6 +799,7 @@ html[data-text='xlarge'] .card .title-sm {
 
 /* Champs, onglets, graphiques */
 .field {
+  min-height: 44px;
   padding: 4px 8px;
   border: 2px solid var(--color-ink);
   background: var(--color-paper);
@@ -1850,8 +1852,8 @@ html[data-comfort='on'] .title-sm {
   position: absolute;
   top: 10px;
   right: 10px;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   margin: 0;
   font-size: 22px;
 }
@@ -5260,21 +5262,31 @@ th[aria-sort='descending'] .th-sort {
   padding-bottom: 22px;
   overflow: hidden;
 }
+.fct-belt::before,
 .fct-belt::after {
   content: "";
   position: absolute;
-  right: -10px;
   bottom: 0;
-  left: -10px;
   height: 26px;
-  border: 2px solid var(--color-ink);
-  /* les rayures avancent exactement comme le colis : un motif (4 cqw) à chaque 1/25 de tour ; le tour dure --ride et le colis parcourt 100 cqw */
+}
+/* les rayures : un calque plus large qui glisse (transform : léger pour les vieux postes) exactement comme le colis ;
+   un motif (4 cqw) à chaque 1/25 de tour, le tour dure --ride et le colis parcourt 100 cqw */
+.fct-belt::before {
+  right: -10px;
+  left: calc(-10px - 4cqw);
   background: repeating-linear-gradient(90deg, #3a342c 0 2cqw, #4a4338 2cqw 4cqw);
   animation: fct-belt calc(var(--ride, 44s) / 25) linear infinite;
+  will-change: transform;
+}
+/* le cadre du tapis, fixe */
+.fct-belt::after {
+  right: -10px;
+  left: -10px;
+  border: 2px solid var(--color-ink);
 }
 @keyframes fct-belt {
   to {
-    background-position: 4cqw 0;
+    transform: translateX(4cqw);
   }
 }
 .fct-parcel {
@@ -5503,7 +5515,7 @@ th[aria-sort='descending'] .th-sort {
   font-weight: 700;
 }
 @media (prefers-reduced-motion: reduce) {
-  .fct-belt::after,
+  .fct-belt::before,
   .fct-pts,
   .fct-box,
   .fct-box[data-state="hint"] .fct-box-art {
@@ -5515,4 +5527,21 @@ th[aria-sort='descending'] .th-sort {
   .fct-parcel.is-sent {
     opacity: 0;
   }
+}
+
+/* Le facteur : écran des scores */
+.fct-scores {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fct-scores li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--color-ink);
+  font-size: 17px;
 }

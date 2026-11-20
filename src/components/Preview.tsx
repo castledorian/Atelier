@@ -63,12 +63,12 @@ export const PREVIEWS: Record<PreviewGame, PreviewInfo> = {
   },
   lexique: {
     title: 'Mots en orbite',
-    goal: 'Trouve parmi les mots qui arrivent celui qui répond à la consigne, avant que les taches d’encre n’atteignent le centre.',
+    goal: 'Trouve le mot qui répond à la consigne avant que l’encre n’atteigne le centre.',
     steps: [
       { title: 'Un mot et une consigne', text: 'Au centre, un mot et une consigne : même sens, contraire ou même famille de mots.', example: 'MAISON · « même sens que ».', sound: 'ready' },
       { title: 'Les mots arrivent', text: 'Des taches d’encre portant chacune un mot avancent vers le centre, de toutes les directions.', example: 'logis · jardin · toit · maison : lequel a le même sens ?', sound: 'spawn' },
-      { title: 'Touche le bon mot', text: 'Touche la tache dont le mot répond à la consigne. Tu peux aussi garder le doigt sur le mot du centre et glisser jusqu’au bon mot.', example: '« logis » a le même sens que « maison » : tu le touches.', sound: 'select' },
-      { title: 'Onde de choc', text: 'Une bonne réponse fait éclater toutes les taches et te montre comment le mot est construit. Trois bonnes réponses d’affilée font monter ta série.', example: 'en- + terr + -er : préfixe, racine, suffixe.', sound: 'mult' },
+      { title: 'Touche le bon mot', text: 'Touche la tache dont le mot répond à la consigne.', example: '« logis » a le même sens que « maison » : tu le touches.', sound: 'select' },
+      { title: 'Onde de choc', text: 'Une bonne réponse fait éclater les taches et montre comment le mot est construit. Trois de suite : la série monte.', example: 'en- + terr + -er : préfixe, racine, suffixe.', sound: 'mult' },
     ],
   },
   spelling: {
@@ -78,7 +78,7 @@ export const PREVIEWS: Record<PreviewGame, PreviewInfo> = {
       { title: 'Une créature écrit', text: 'Une créature d’encre apparaît et écrit sa phrase. Une faute s’y cache.', example: '« Les enfants joue dehors. »', sound: 'scribble' },
       { title: 'Touche le mot fautif', text: 'Touche le mot mal écrit. Attention : un mot juste touché par erreur, et la créature attaque.', example: 'Tu touches « joue » : c’est lui qui est fautif.', sound: 'select' },
       { title: 'Choisis la correction', text: 'Plusieurs écritures sont proposées. Une mauvaise réponse te coûte une vie.', example: 'joue · jouent · joues : « ils jouent », le verbe s’accorde avec « enfants ».', sound: 'select' },
-      { title: 'La phrase est corrigée', text: 'Ton canon tire, la créature est vaincue et la phrase est corrigée. Une astuce t’aide à retenir la règle.', example: '« Les enfants jouent dehors. »', sound: 'impact' },
+      { title: 'La phrase est corrigée', text: 'La phrase est corrigée, et une astuce aide à retenir la règle.', example: '« Les enfants jouent dehors. »', sound: 'impact' },
     ],
   },
 };

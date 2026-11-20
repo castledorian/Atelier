@@ -6,13 +6,15 @@ import { MEM_DIFFS, MODES, PAGES, isMemDiff } from './memory/rounds';
 import type { MemDiff, Mode } from './memory/rounds';
 import { LEX_DIFFS, LEX_LEVELS, LEX_RELS, isLexDiff, isLexLevel, isRel } from './lexique/rounds';
 import type { LexDiff, LexLevel, Rel } from './lexique/rounds';
+import { F_LEVELS, isFLevel } from './facteur/words';
+import type { FLevel } from './facteur/words';
 
 /**
  * Réglages d'une séance de classe, pour chaque jeu. Les valeurs viennent du serveur : tout est revalidé ici,
  * pour qu'un réglage inconnu ou abîmé retombe toujours sur une partie normale.
  */
 
-export type GameKind = 'typing' | 'math' | 'memory' | 'spelling' | 'lexique';
+export type GameKind = 'typing' | 'math' | 'memory' | 'spelling' | 'lexique' | 'facteur';
 
 export interface TypingCfg {
   diff: Difficulty;
@@ -28,6 +30,10 @@ export interface MemoryCfg {
   diff: MemDiff;
   /** page du cahier où l'on commence (0 à 5) */
   startPage: number;
+}
+
+export interface FacteurCfg {
+  level: FLevel;
 }
 
 export interface LexiqueCfg {
@@ -62,7 +68,12 @@ export function parseLexique(v: unknown): LexiqueCfg {
   return { rel: isRel(o.rel) ? o.rel : 'melange', diff: isLexDiff(o.diff) ? o.diff : 'standard', level: isLexLevel(o.level) ? o.level : 'cm1' };
 }
 
-export const GAME_NAMES: Record<GameKind, string> = { typing: 'Frappe !', math: 'Course à l’encre', memory: 'Mémoire d’encre', spelling: 'Chasse aux fautes', lexique: 'Mots en orbite' };
+export function parseFacteur(v: unknown): FacteurCfg {
+  const o = obj(v);
+  return { level: isFLevel(o.level) ? o.level : 1 };
+}
+
+export const GAME_NAMES: Record<GameKind, string> = { typing: 'Frappe !', math: 'Course à l’encre', memory: 'Mémoire d’encre', spelling: 'Chasse aux fautes', lexique: 'Mots en orbite', facteur: 'Le facteur' };
 
 const DIFF_LABEL: Record<Difficulty, string> = { apprenti: 'Apprenti', standard: 'Standard', expert: 'Expert', perso: 'Personnalisé' };
 
@@ -78,6 +89,10 @@ export function describeConfig(game: GameKind, config: unknown): string[] {
   if (game === 'math' || game === 'spelling') {
     const c = parseMath(config);
     return [LEVELS.find((l) => l.id === c.level)?.label ?? c.level, COURSE_DIFFS.find((d) => d.id === c.diff)?.label ?? c.diff];
+  }
+  if (game === 'facteur') {
+    const c = parseFacteur(config);
+    return [F_LEVELS.find((l) => l.id === c.level)?.label ?? `Niveau ${c.level}`];
   }
   if (game === 'lexique') {
     const c = parseLexique(config);

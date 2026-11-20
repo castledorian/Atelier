@@ -1,3 +1,4 @@
+import { ConfirmButton } from '../components/ConfirmButton';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { BackButton, useFitRows } from '../components/BackButton';
@@ -530,20 +531,20 @@ function MenuScreen({ view, setView, grade, level, rel, setRel, diff, setDiff, s
           <li className="howto">
             <kbd className="kbd">◎</kbd>
             <span>
-              Un <strong>mot</strong> est au centre, avec une <strong>consigne</strong> : même sens, contraire ou même famille. Des mots arrivent de partout&nbsp;: <strong>touche le bon mot</strong> (ou, si tu préfères, maintiens le mot central et glisse jusqu’au bon mot).
+              Un <strong>mot</strong> au centre, une <strong>consigne</strong> (même sens, contraire, même famille). <strong>Touche le bon mot</strong> parmi ceux qui arrivent.
             </span>
           </li>
           <li className="howto">
             <kbd className="kbd">✱</kbd>
-            <span>Bonne réponse&nbsp;: une onde de choc détruit tous les mots, le mot central change et ça va un peu plus vite. Tu vois alors comment le mot est construit (préfixe, racine, suffixe).</span>
+            <span>Bonne réponse&nbsp;: une onde détruit les mots, le mot central change et le rythme monte. On voit comment le mot est construit.</span>
           </li>
           <li className="howto">
             <kbd className="kbd">♥</kbd>
-            <span>Un mauvais mot relié, ou la bonne réponse laissée arriver au centre, coûte une vie (5 en Apprenti, 3 sinon). Les autres mots qui arrivent au centre ne font pas de mal.</span>
+            <span>Un mauvais mot, ou la bonne réponse laissée arriver au centre, coûte une vie (5 en Apprenti, 3 sinon).</span>
           </li>
           <li className="howto howto-opt">
             <kbd className="kbd">Tab</kbd>
-            <span>Au clavier&nbsp;: Tab ou les flèches choisissent un mot, Entrée le valide.</span>
+            <span>Au clavier&nbsp;: Tab ou flèches, puis Entrée.</span>
           </li>
           <li className="howto howto-opt">
             <kbd className="kbd">Échap</kbd>
@@ -571,15 +572,9 @@ function MenuScreen({ view, setView, grade, level, rel, setRel, diff, setDiff, s
           <LocalTable scores={scores} limit={6} />
           {account && <Board account={account} board={sBoard} refreshKey="menu" />}
           {scores.length > 0 && (
-            <button
-              type="button"
-              className="btn btn-ghost mt-3"
-              onClick={() => {
-                if (window.confirm('Effacer les scores de cet appareil pour cette consigne ?')) setScores(clearLexScores(sBoard));
-              }}
-            >
+            <ConfirmButton className="btn btn-ghost mt-3" confirm="Sûr ?" onConfirm={() => setScores(clearLexScores(sBoard))}>
               Effacer les scores
-            </button>
+            </ConfirmButton>
           )}
         </>
       );
@@ -645,7 +640,7 @@ function MenuScreen({ view, setView, grade, level, rel, setRel, diff, setDiff, s
             </span>
           </h1>
           <div className="rule" aria-hidden="true" />
-          <p className="tagline menu-opt">Touche le bon mot avant que les taches d’encre n’arrivent au centre&nbsp;!</p>
+          <p className="tagline menu-opt">Touche le bon mot avant que l’encre n’arrive au centre&nbsp;!</p>
           <div className="tools" data-n="4" role="group" aria-label="Plus d’options">
             <button type="button" className="tool" onClick={() => setView('howto')}>
               <span aria-hidden="true">?</span> Comment jouer

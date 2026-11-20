@@ -224,7 +224,7 @@ export default function Dashboard({ email, onHome, onSignOut, onAccountDeleted, 
 }
 
 /** Colonnes triables du tableau des élèves. */
-type OverKey = 'name' | 'games' | 'typing' | 'math' | 'memory' | 'lexique' | 'wpm' | 'acc' | 'time' | 'last';
+type OverKey = 'name' | 'games' | 'typing' | 'math' | 'memory' | 'lexique' | 'facteur' | 'wpm' | 'acc' | 'time' | 'last';
 
 function overValue(r: Overview, key: OverKey): SortValue {
   switch (key) {
@@ -240,6 +240,8 @@ function overValue(r: Overview, key: OverKey): SortValue {
       return r.best_memory ?? null;
     case 'lexique':
       return r.best_lexique ?? null;
+    case 'facteur':
+      return r.best_facteur ?? null;
     case 'wpm':
       return r.avg_wpm;
     case 'acc':
@@ -271,7 +273,7 @@ function InviteForm({ onAccepted, act }: { onAccepted: () => void; act: Act }) {
     <form className="form mt-4" onSubmit={go} aria-label="Code d’invitation">
       <h2 className="subhead">Code d’invitation</h2>
       <p className="text-[15px] leading-snug">
-        Pendant la phase de test, la création d’une école est réservée aux enseignants invités. Saisis le code que l’administrateur du site t’a donné.
+        Créer une école demande un code d’invitation, donné par l’administrateur du site.
       </p>
       <label className="subhead" htmlFor="inv-code">
         Ton code
@@ -542,7 +544,7 @@ function ClassPanel({
   const exportRuns = async () => {
     const runs = await act(() => T.classRuns(cls.id));
     if (!runs) return;
-    const GAME: Record<string, string> = { typing: 'Frappe !', math: 'Course à l’encre', memory: 'Mémoire d’encre', spelling: 'Chasse aux fautes', lexique: 'Mots en orbite' };
+    const GAME: Record<string, string> = { typing: 'Frappe !', math: 'Course à l’encre', memory: 'Mémoire d’encre', spelling: 'Chasse aux fautes', lexique: 'Mots en orbite', facteur: 'Le facteur' };
     downloadText(
       `resultats-${cls.name.replace(/[^\w-]+/g, '_')}.csv`,
       toCsv(
@@ -746,6 +748,9 @@ function ClassPanel({
                     <SortTh col="lexique" sort={sort} onSort={toggle} numeric className="num c-mid">
                       <span className="sr-only">Record </span>Mots
                     </SortTh>
+                    <SortTh col="facteur" sort={sort} onSort={toggle} numeric className="num c-mid">
+                      <span className="sr-only">Record </span>Lecture
+                    </SortTh>
                     <SortTh col="wpm" sort={sort} onSort={toggle} numeric className="num c-sm">
                       Mots/min
                     </SortTh>
@@ -773,6 +778,7 @@ function ClassPanel({
                       <td className="num c-mid">{r.best_math != null ? fmt(r.best_math) : '–'}</td>
                       <td className="num c-mid">{r.best_memory != null ? fmt(r.best_memory) : '–'}</td>
                       <td className="num c-mid">{r.best_lexique != null ? fmt(r.best_lexique) : '–'}</td>
+                      <td className="num c-mid">{r.best_facteur != null ? fmt(r.best_facteur) : '–'}</td>
                       <td className="num c-sm">{r.avg_wpm != null ? Math.round(r.avg_wpm) : '–'}</td>
                       <td className="num c-lo">{r.avg_acc != null ? `${Math.round(r.avg_acc)} %` : '–'}</td>
                       <td className="num c-lo">{r.seconds ? dur(r.seconds) : '–'}</td>
@@ -824,8 +830,7 @@ function ClassPanel({
             </div>
           )}
           <p className="sec-note">
-            « Frappe », « Calcul » et « Mémoire » : meilleur score de l’élève dans ce jeu. Clique sur un titre de colonne pour classer la liste.
-            Les parties « Perso » et les entraînements ne comptent pas dans les records ; l’export CSV contient toutes les colonnes.
+            Colonnes de jeux : meilleur score de l’élève. Clique sur un titre pour trier. Parties « Perso » et entraînements exclus ; l’export CSV contient tout.
           </p>
         </section>
       )}
@@ -837,8 +842,7 @@ function ClassPanel({
           </h2>
           <form onSubmit={add} className="form">
             <label className="text-[14px] leading-snug" htmlFor="add-names">
-              Un prénom par ligne (tu peux coller une liste). Chaque élève reçoit un code personnel de 8 caractères. Utilise des prénoms ou
-              des pseudos, jamais de noms complets.
+              Un prénom ou pseudo par ligne (jamais de nom complet) ; tu peux coller une liste. Chaque élève reçoit un code.
             </label>
             <textarea
               id="add-names"
@@ -866,8 +870,7 @@ function ClassPanel({
                 ))}
               </ul>
               <p className="mt-1 text-[14px] text-ink/75">
-                Note-les ou imprime la fiche maintenant : pour la sécurité des élèves, le serveur ne garde qu’une empreinte et ne pourra plus les
-                afficher (tu pourras toujours en créer un nouveau).
+                Note-les ou imprime la fiche maintenant : ils ne s’afficheront plus (tu pourras en créer de nouveaux).
               </p>
               <p className="mt-1">
                 <button type="button" className="btn btn-ghost" onClick={() => window.print()}>

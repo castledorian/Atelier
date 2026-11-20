@@ -78,19 +78,19 @@ export function SpellingMenu({ view, setView, level, diff, setDiff, hint, settin
         <ul className="howto-list">
           <li className="howto">
             <kbd className="kbd">👁</kbd>
-            <span>Une créature d’encre écrit une phrase sous tes yeux. Elle y a caché <strong>une faute</strong>&nbsp;: trouve-la.</span>
+            <span>Une phrase cache <strong>une faute</strong>&nbsp;: trouve-la.</span>
           </li>
           <li className="howto">
             <kbd className="kbd">☝</kbd>
-            <span>Touche le mot mal écrit, puis choisis (ou écris) la bonne orthographe. Ton canon tire et la phrase est corrigée.</span>
+            <span>Touche le mot mal écrit, puis choisis (ou écris) la bonne orthographe.</span>
           </li>
           <li className="howto">
             <kbd className="kbd">♥</kbd>
-            <span>Une erreur, et la créature t’attaque : tu perds une vie. Dix phrases, la dernière écrite par le Grand Pâté.</span>
+            <span>Une erreur coûte une vie. Dix phrases par partie.</span>
           </li>
           <li className="howto">
             <kbd className="kbd">💡</kbd>
-            <span>Chaque phrase te laisse une astuce pour retenir la règle. Les règles qui reviennent sont dans « Mes progrès ».</span>
+            <span>Chaque phrase donne une astuce pour retenir la règle (voir « Mes progrès »).</span>
           </li>
         </ul>
       );
@@ -151,7 +151,7 @@ export function SpellingMenu({ view, setView, level, diff, setDiff, hint, settin
           <p className="eyebrow">Orthographe · {gradeLabel(level)}</p>
           <StampTitle id="sp-title" label="Chasse aux fautes" lines={[{ text: 'CHASSE' }, { ribbon: 'AUX', text: 'FAUTES' }]} />
           <div className="rule" aria-hidden="true" />
-          <p className="tagline menu-opt">Trouve la faute cachée dans chaque phrase, avant que la créature d’encre ne t’attrape&nbsp;!</p>
+          <p className="tagline menu-opt">Trouve la faute cachée dans chaque phrase&nbsp;!</p>
           <div className="tools" data-n="4" role="group" aria-label="Plus d’options">
             <button type="button" className="tool" onClick={() => setView('howto')}>
               <span aria-hidden="true">?</span> Comment jouer

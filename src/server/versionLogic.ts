@@ -38,6 +38,7 @@ export const STEPS: Array<[string, Step]> = [
   ['grotte', { file: 'mise-a-jour-grotte.sql', why: 'grotte partagée par classe et observation en lecture seule', critical: false }],
   ['lexique', { file: 'mise-a-jour-lexique.sql', why: 'jeu « Mots en orbite » (séances, contrôle des parties, record)', critical: false }],
   ['bareme', { file: 'mise-a-jour-bareme.sql', why: 'barème commun des scores (sans elle, les parties à haut score sont refusées)', critical: true }],
+  ['facteur', { file: 'mise-a-jour-facteur.sql', why: 'jeu « Le facteur » (séances, contrôle des parties, record)', critical: false }],
 ];
 
 export interface Todo {

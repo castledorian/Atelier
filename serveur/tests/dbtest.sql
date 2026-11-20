@@ -361,6 +361,13 @@ select pg_temp.eq('barème commun : Orthographe, partie parfaite acceptée', pri
 select pg_temp.eq('barème commun : Mots en orbite, belle partie acceptée', private.run_violation('lexique', 9000, 20, 0, 100, 20, 200), null);
 select pg_temp.eq('Mots en orbite : série supérieure aux bonnes réponses', private.run_violation('lexique', 100, 9, 0, 100, 8, 70), 'plus de manches que de bonnes réponses');
 select pg_temp.eq('version du serveur : Mots en orbite reconnu', (public.server_version()->'features'->>'lexique'), 'true');
+select pg_temp.eq('Le facteur : une vraie partie passe', private.run_violation('facteur', 3200, 12, 0, 75, 16, 150) is null, true);
+select pg_temp.eq('Le facteur : partie parfaite acceptée', private.run_violation('facteur', 5100, 16, 0, 100, 16, 90) is null, true);
+select pg_temp.eq('Le facteur : colis rangés trop vite', private.run_violation('facteur', 1000, 10, 0, 100, 16, 5), 'colis rangés trop vite');
+select pg_temp.eq('Le facteur : score impossible', private.run_violation('facteur', 90000, 16, 0, 100, 16, 150), 'score supérieur au maximum possible');
+select pg_temp.eq('Le facteur : plus de 16 colis', private.run_violation('facteur', 3000, 17, 0, 100, 17, 150), 'plus de colis que le jeu n''en contient');
+select pg_temp.eq('Le facteur : premiers essais supérieurs aux colis', private.run_violation('facteur', 1000, 10, 0, 100, 8, 150), 'plus de colis que le jeu n''en contient');
+select pg_temp.eq('version du serveur : Le facteur reconnu', (public.server_version()->'features'->>'facteur'), 'true');
 select pg_temp.eq('jeu inconnu', private.run_violation('piratage', 1, 1, 0, 1, 1, 10), 'jeu inconnu');
 
 select pg_temp.eq('refus d''une triche en partie libre', public.submit_run((select v from ctx where k='tok_nina'),'triche00001','math','standard','game',900000,50,0,100,50,100)->>'error', 'cheat');

@@ -1,3 +1,4 @@
+import { ConfirmButton } from './ConfirmButton';
 import { useEffect, useMemo, useState } from 'react';
 import { Dialog } from './Dialog';
 import { DIFFICULTIES } from '../game/difficulty';
@@ -76,7 +77,6 @@ export function ScoresPanel({ diff, local, account, limit, highlightId, refreshK
   const [rows, setRows] = useState<BoardRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
-  const [confirm, setConfirm] = useState(false);
 
   useEffect(() => {
     if (!token || tab === 'local') return;
@@ -134,19 +134,9 @@ export function ScoresPanel({ diff, local, account, limit, highlightId, refreshK
         <>
           <ScoreTable scores={local} limit={limit} highlightId={highlightId} name={name} onName={onName} />
           {onClear && local.length > 0 && (
-            <button
-              type="button"
-              className="link mt-2"
-              onClick={() => {
-                if (confirm) {
-                  onClear();
-                  setConfirm(false);
-                } else setConfirm(true);
-              }}
-              onBlur={() => setConfirm(false)}
-            >
-              {confirm ? 'Confirmer l’effacement' : 'Effacer les scores de cet appareil'}
-            </button>
+            <ConfirmButton className="link mt-2" confirm="Sûr ?" onConfirm={onClear}>
+              Effacer les scores
+            </ConfirmButton>
           )}
         </>
       )}
@@ -299,7 +289,7 @@ export function Progress({ runs, loading, currentName, onBack, onDrill }: { runs
             Lettres à travailler
           </h3>
           {letters.length === 0 ? (
-            <p className="mt-1 text-[15px] leading-snug">Aucune lettre ne te résiste pour l’instant. Après quelques parties, les touches où tu te trompes le plus apparaîtront ici.</p>
+            <p className="mt-1 text-[15px] leading-snug">Aucune lettre difficile pour l’instant. Tes touches les plus ratées apparaîtront ici.</p>
           ) : (
             <>
               <ul className="prog-letters">
@@ -318,17 +308,16 @@ export function Progress({ runs, loading, currentName, onBack, onDrill }: { runs
                   S’entraîner sur ces lettres
                 </button>
               )}
-              <button
-                type="button"
+              <ConfirmButton
                 className="btn btn-ghost prog-train ml-2"
-                onClick={() => {
-                  if (!window.confirm('Effacer le suivi de tes lettres sur cet appareil ?')) return;
+                confirm="Sûr ?"
+                onConfirm={() => {
                   clearLetters();
                   setLetters([]);
                 }}
               >
                 Effacer
-              </button>
+              </ConfirmButton>
             </>
           )}
         </section>

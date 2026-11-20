@@ -1,3 +1,4 @@
+import { ConfirmButton } from '../components/ConfirmButton';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Dialog } from '../components/Dialog';
 import type { ReactNode } from 'react';
@@ -515,11 +516,11 @@ function MenuScreen({ view, setView, grade, mode, setMode, diff, setDiff, settin
           </li>
           <li className="howto">
             <kbd className="kbd">♥</kbd>
-            <span>Des vies&nbsp;: une erreur en coûte une, puis tu réessaies (5 en Apprenti, 3 sinon). Une page sans erreur en rend une&nbsp;! Bats ton propre record.</span>
+            <span>Une erreur coûte une vie (5 en Apprenti, 3 sinon). Une page sans erreur en rend une&nbsp;!</span>
           </li>
           <li className="howto howto-opt">
             <kbd className="kbd kbd-sym">← ↑ ↓ →</kbd>
-            <span>Au clavier&nbsp;: les flèches déplacent le curseur, Entrée choisit (chiffres 1 à 9 pour La Suite).</span>
+            <span>Au clavier&nbsp;: flèches et Entrée (chiffres 1 à 9 pour La Suite).</span>
           </li>
           <li className="howto howto-opt">
             <kbd className="kbd">Échap</kbd>
@@ -547,15 +548,9 @@ function MenuScreen({ view, setView, grade, mode, setMode, diff, setDiff, settin
           <LocalTable scores={scores} limit={6} mode={sMode} />
           {account && <Board account={account} board={sBoard} refreshKey="menu" />}
           {scores.length > 0 && (
-            <button
-              type="button"
-              className="btn btn-ghost mt-3"
-              onClick={() => {
-                if (window.confirm('Effacer les scores de cet appareil pour ce mode ?')) setScores(clearMemoryScores(sBoard));
-              }}
-            >
+            <ConfirmButton className="btn btn-ghost mt-3" confirm="Sûr ?" onConfirm={() => setScores(clearMemoryScores(sBoard))}>
               Effacer les scores
-            </button>
+            </ConfirmButton>
           )}
         </>
       );
@@ -638,7 +633,7 @@ function MenuScreen({ view, setView, grade, mode, setMode, diff, setDiff, settin
             </span>
           </h1>
           <div className="rule" aria-hidden="true" />
-          <p className="tagline menu-opt">Retiens ce que l’encre te montre, puis refais-le sans te tromper&nbsp;!</p>
+          <p className="tagline menu-opt">Retiens ce que l’encre te montre, puis refais-le&nbsp;!</p>
           <div className="tools" data-n="4" role="group" aria-label="Plus d’options">
             <button type="button" className="tool" onClick={() => setView('howto')}>
               <span aria-hidden="true">?</span> Comment jouer

@@ -310,19 +310,19 @@ function HowTo({ assist, kbOn }: { assist: boolean; kbOn: boolean }) {
         <kbd className="kbd">A–Z</kbd>
         <span>
           {assist
-            ? 'La cible est choisie pour toi : tape la touche rouge du clavier.'
-            : 'Tape la première lettre d’un mot pour le viser, puis les lettres suivantes pour le faire éclater.'}
+            ? 'Tape la touche rouge du clavier.'
+            : 'Tape la 1re lettre d’un mot pour le viser, puis les suivantes.'}
         </span>
       </li>
       {assist && (
         <li className="howto">
           <kbd className="kbd">•</kbd>
-          <span>Les points sous chaque touche montrent le doigt : 1 = index, 2 = majeur, 3 = annulaire, 4 = auriculaire.</span>
+          <span>Points sous les touches : 1 index, 2 majeur, 3 annulaire, 4 auriculaire.</span>
         </li>
       )}
       <li className="howto">
         <kbd className="kbd kbd-sym">↵</kbd>
-        <span>Jauge du bas pleine&nbsp;? {kbOn ? 'La touche ↵' : 'Entrée'} balaie tout l’écran.</span>
+        <span>Jauge pleine&nbsp;? {kbOn ? '↵' : 'Entrée'} balaie l’écran.</span>
       </li>
       <li className="howto">
         <kbd className="kbd kbd-sym">⌫</kbd>
@@ -330,7 +330,7 @@ function HowTo({ assist, kbOn }: { assist: boolean; kbOn: boolean }) {
       </li>
       <li className="howto">
         <kbd className="kbd">♥</kbd>
-        <span>Une tache qui touche la marge rouge te fait perdre une vie.</span>
+        <span>Une tache qui touche la marge fait perdre une vie.</span>
       </li>
     </ul>
   );
@@ -435,7 +435,7 @@ export function Menu({ scores, settings, kbOn, install, onStart, onChange, onCle
             </span>
           </h1>
           <div className="rule" aria-hidden="true" />
-          <p className="tagline menu-opt">Tape les mots pour faire éclater les taches d’encre avant qu’elles n’atteignent la marge.</p>
+          <p className="tagline menu-opt">Tape les mots pour faire éclater les taches avant la marge.</p>
 
           <div className="tools" data-n="4" role="group" aria-label="Plus d’options">
             <button type="button" className="tool" onClick={() => setView('howto')}>

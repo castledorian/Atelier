@@ -165,7 +165,7 @@ export default function AdminBalance({ levels, stats }: { levels: BalanceLevel[]
 
       {families.length === 0 && items.length === 0 ? (
         <p className="adm-note">
-          Pas encore de données pour ce choix. Les compteurs se remplissent quand des élèves connectés jouent des parties libres ; si rien n’apparaît après des parties, vérifiez que la mise à jour SQL « exercices » a bien été exécutée (voir le guide du serveur).
+          Pas encore de données. Elles viennent des parties libres d’élèves connectés ; si rien n’apparaît, vérifiez la mise à jour SQL « exercices ».
         </p>
       ) : (
         <>
