@@ -8,7 +8,8 @@ import { Sfx } from '../game/audio';
 import { newRunId } from '../game/history';
 import { parseFacteur } from '../game/sessionConfig';
 import { enqueue, flush } from '../server/outbox';
-import { sendRun } from '../server/student';
+import { dropCave, sendRun } from '../server/student';
+import { feedBoss } from '../game/boss/state';
 import type { RunPayload } from '../server/types';
 import { effectiveGrade, gradeLabel } from '../game/grade';
 import { loadSettings, saveSettings } from '../game/storage';
@@ -203,6 +204,11 @@ export default function Facteur({ account, onHome, onSessionLost, session, onSes
       duration: Math.min(7200, Math.max(1, Math.round((performance.now() - startedAt.current) / 1000))),
       playedMs: Date.now(),
     };
+    // grotte : les colis ratés nourrissent la créature, les colis rangés renforcent la classe (hors séance)
+    if (!sesRef.current.sess && r.delivered + r.slips > 0) {
+      feedBoss(r.delivered, r.slips);
+      payload.cave = { ink: r.slips, power: r.delivered };
+    }
     if (sesRef.current.sess) {
       sesRef.current.submit(payload, () => {
         lost.current = true;
@@ -221,6 +227,8 @@ export default function Facteur({ account, onHome, onSessionLost, session, onSes
           enqueue(acct.student.id, payload);
           setCloud('queued');
         });
+    } else if (acct && payload.cave) {
+      void dropCave(acct.student.id, acct.token, payload.clientId, payload.cave.ink, payload.cave.power);
     }
   };
 

@@ -13,6 +13,7 @@ import {
   POWER_STEPS,
   addName,
   bossHp,
+  bossSpeech,
   bossKind,
   bossName,
   fillOf,
@@ -110,6 +111,8 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
   const ink = inkLevel(boss);
   const power = powerLevel(boss);
   const left = monthsToFinal();
+  const [dice] = useState(() => Math.random());
+  const speech = bossSpeech(phase, ink, dice);
 
   // Le titre de la page suit la créature : utile quand plusieurs onglets sont ouverts en classe
   useEffect(() => {
@@ -177,6 +180,10 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
           </CaveScene>
 
           <div className="cave-vitals">
+            <p className="cave-say">
+              <span className="sr-only">{bossName(boss)} dit : </span>
+              « {speech} »
+            </p>
             <p className="cave-name">{bossName(boss)}</p>
             <p className="cave-hp" role="status">
               <span aria-hidden="true">♥</span>

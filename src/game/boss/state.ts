@@ -130,6 +130,19 @@ export const BASE_HP = 10;
 /** Points de vie affichés : chaque faute des élèves en ajoute un ; une règle retravaillée en retire (voir CALM). */
 export const bossHp = (s: Pick<BossState, 'ink'>): number => BASE_HP + Math.max(0, Math.round(s.ink));
 
+/** Ce que dit la créature aux enfants : elle veut les faire partir (taquine, jamais effrayante). Plus elle grossit, plus elle se vante. */
+export const BOSS_SPEECH: Record<'small' | 'big' | 'final', readonly string[]> = {
+  small: ['Chut… Je dors ! Partez, petits.', 'Hé ! C’est ma grotte. Filez !', 'Allez, ouste ! Laissez-moi tranquille.'],
+  big: ['Vos fautes me rendent fort ! Partez !', 'Je grossis, je grossis… Partez vite !', 'Pas de place pour vous ici. Sortez !'],
+  final: ['Vous revenez ? Partez, je suis trop fort !', 'Dernière chance : partez d’ici !', 'Ma grotte, mes règles. Dehors !'],
+};
+
+/** Une phrase de la créature, selon la phase et sa taille ; `pick` (0 à 1) choisit parmi les phrases possibles. */
+export function bossSpeech(phase: BossPhase, ink: number, pick: number): string {
+  const list = phase === 'final' ? BOSS_SPEECH.final : ink >= 3 ? BOSS_SPEECH.big : BOSS_SPEECH.small;
+  return list[Math.min(list.length - 1, Math.max(0, Math.floor(pick * list.length)))];
+}
+
 export const inkLevel = (s: BossState) => stepOf(s.ink, INK_STEPS);
 export const powerLevel = (s: BossState) => stepOf(s.power, POWER_STEPS);
 export const bossName = (s: BossState) => BOSS_NAMES[inkLevel(s)];

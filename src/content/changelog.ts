@@ -24,6 +24,16 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.25',
+    date: '20 novembre 2026',
+    iso: '2026-11-20',
+    title: 'La grotte parle',
+    changes: [
+      { kind: 'fix', text: 'Le facteur nourrit enfin la grotte : colis ratés et rangés comptent comme dans les autres jeux.' },
+      { kind: 'new', text: 'La créature de la grotte dit aux enfants de partir.' },
+    ],
+  },
+  {
     version: '1.24',
     date: '20 novembre 2026',
     iso: '2026-11-20',

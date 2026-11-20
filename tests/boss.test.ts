@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BASE_HP, BOSS_NAMES, INK_STEPS, bossHp, POWER_STEPS, fillOf, monthsToFinal, parseNames, phaseOf, saveNames, schoolYear, stepOf } from '../src/game/boss/state';
+import { BASE_HP, BOSS_NAMES, BOSS_SPEECH, bossSpeech, INK_STEPS, bossHp, POWER_STEPS, fillOf, monthsToFinal, parseNames, phaseOf, saveNames, schoolYear, stepOf } from '../src/game/boss/state';
 import type { BossState } from '../src/game/boss/state';
 import { LOW, buildFight, stateAt } from '../src/game/boss/fight';
 
@@ -84,4 +84,16 @@ test('points de vie : ils montent avec les fautes et redescendent quand on revoi
   assert.equal(bossHp(S({ ink: 37 })), BASE_HP + 37);
   assert.ok(bossHp(S({ ink: 38 })) > bossHp(S({ ink: 37 })), 'une faute de plus = un point de vie de plus');
   assert.equal(bossHp(S({ ink: -5 })), BASE_HP, 'jamais en dessous du départ');
+});
+
+test('la créature parle : une phrase par phase, jamais vide, indice borné', () => {
+  for (const pick of [0, 0.5, 0.999, 1, 7, -3]) {
+    for (const [phase, ink] of [['early', 0], ['growing', 200], ['final', 900]] as const) {
+      const t = bossSpeech(phase, ink, pick);
+      assert.ok(t.length > 5 && t.length < 60, `phrase courte : ${t}`);
+    }
+  }
+  assert.ok(BOSS_SPEECH.final.includes(bossSpeech('final', 0, 0)));
+  assert.ok(BOSS_SPEECH.small.includes(bossSpeech('early', 0, 0)));
+  assert.ok(BOSS_SPEECH.big.includes(bossSpeech('growing', 150, 0)));
 });
