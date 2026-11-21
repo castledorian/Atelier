@@ -9,7 +9,7 @@ import type { LetterStats } from './analysis';
  * Rien n'est envoyé : ni prénom, ni résultat. L'élève peut tout effacer depuis la page elle-même.
  */
 
-export type ProgressGame = 'typing' | 'math' | 'spelling' | 'memory' | 'lexique';
+export type ProgressGame = 'typing' | 'math' | 'spelling' | 'memory' | 'lexique' | 'facteur';
 
 /** Une partie, résumée : de quoi tracer une tendance sans garder de données personnelles. */
 export interface GameLog {

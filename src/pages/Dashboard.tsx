@@ -1,3 +1,4 @@
+import { GAME_NAMES } from '../game/sessionConfig';
 import { BackButton } from '../components/BackButton';
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
@@ -544,7 +545,7 @@ function ClassPanel({
   const exportRuns = async () => {
     const runs = await act(() => T.classRuns(cls.id));
     if (!runs) return;
-    const GAME: Record<string, string> = { typing: 'Frappe !', math: 'Course à l’encre', memory: 'Mémoire d’encre', spelling: 'Chasse aux fautes', lexique: 'Mots en orbite', facteur: 'Le facteur' };
+    const GAME: Record<string, string> = GAME_NAMES;
     downloadText(
       `resultats-${cls.name.replace(/[^\w-]+/g, '_')}.csv`,
       toCsv(

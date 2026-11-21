@@ -33,6 +33,18 @@ interface HomeProps {
   install: InstallInfo;
 }
 
+type GameId = HomeProps['onPlay'] extends (g: infer G) => void ? G : never;
+
+/** Les cartes de l'accueil, dans l'ordre d'affichage (seuls les jeux du niveau choisi apparaissent). */
+const CARDS: { id: GameId & PreviewGame; tag: string; name: string; text: string; stamps?: () => number }[] = [
+  { id: 'typing', tag: 'Clavier', name: 'Frappe\u00a0!', text: 'Tape les mots avant que l’encre n’atteigne la marge.', stamps: loadTypingStamps },
+  { id: 'math', tag: 'Maths', name: 'Course à l’encre', text: 'Choisis la bonne réponse et fuis la tache d’encre !', stamps: loadCourseStamps },
+  { id: 'spelling', tag: 'Orthographe', name: 'Chasse aux fautes', text: 'Trouve la faute dans la phrase, puis corrige-la.' },
+  { id: 'facteur', tag: 'Lecture', name: 'Le facteur', text: 'Range chaque colis dans la boîte qui porte son mot.' },
+  { id: 'lexique', tag: 'Vocabulaire', name: 'Mots en orbite', text: 'Relie le mot du centre à son synonyme, son contraire ou sa famille.' },
+  { id: 'memory', tag: 'Mémoire', name: 'Mémoire d’encre', text: 'Retiens les taches qui s’allument, puis refais la suite.' },
+];
+
 export default function Home({ student, teacher, onPlay, onSessions, onLogin, onDashboard, onAdmin, onCave, onInfo, onLogout, install }: HomeProps) {
   const boss = loadBoss();
   const bossPhase = phaseOf(boss);
@@ -189,81 +201,25 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
 
       {grade !== null && <h2 className="subhead mt-[var(--sp)]">Choisis un jeu</h2>}
       {grade !== null && <div className="games">
-        {isAvailable('typing', grade) && (
-          <div className="gwrap">
-            <button type="button" className="gcard" onClick={() => onPlay('typing')}>
-            <span className="gcard-tag">Clavier</span>
-            <span className="gcard-name">Frappe&nbsp;!</span>
-            <span className="gcard-text">Tape les mots avant que l’encre n’atteigne la marge.</span>
-            {loadTypingStamps() > 0 && (
-            <span className="gcard-stamps" role="img" aria-label={`Tampons : ${loadTypingStamps()} sur 6`}>
-              {Array.from({ length: 6 }, (_, k) => (k < loadTypingStamps() ? '●' : '○')).join(' ')}
-            </span>
-          )}
-            <span className="gcard-go">Jouer →</span>
-          </button>
-            <InfoButton onClick={() => setPreview('typing')} label="Voir un extrait : Frappe !" />
-          </div>
-        )}
-        {isAvailable('math', grade) && (
-          <div className="gwrap">
-            <button type="button" className="gcard" onClick={() => onPlay('math')}>
-            <span className="gcard-tag">Maths</span>
-            <span className="gcard-name">Course à l’encre</span>
-            <span className="gcard-text">Choisis la bonne réponse et fuis la tache d’encre !</span>
-            {loadCourseStamps() > 0 && (
-            <span className="gcard-stamps" role="img" aria-label={`Tampons : ${loadCourseStamps()} sur 6`}>
-              {Array.from({ length: 6 }, (_, k) => (k < loadCourseStamps() ? '●' : '○')).join(' ')}
-            </span>
-          )}
-            <span className="gcard-go">Jouer →</span>
-          </button>
-            <InfoButton onClick={() => setPreview('math')} label="Voir un extrait : Course à l’encre" />
-          </div>
-        )}
-        {isAvailable('spelling', grade) && (
-          <div className="gwrap">
-            <button type="button" className="gcard" onClick={() => onPlay('spelling')}>
-            <span className="gcard-tag">Orthographe</span>
-            <span className="gcard-name">Chasse aux fautes</span>
-            <span className="gcard-text">Trouve la faute dans la phrase, puis corrige-la.</span>
-            <span className="gcard-go">Jouer →</span>
-          </button>
-            <InfoButton onClick={() => setPreview('spelling')} label="Voir un extrait : Chasse aux fautes" />
-          </div>
-        )}
-        {isAvailable('facteur', grade) && (
-          <div className="gwrap">
-            <button type="button" className="gcard" onClick={() => onPlay('facteur')}>
-              <span className="gcard-tag">Lecture</span>
-              <span className="gcard-name">Le facteur</span>
-              <span className="gcard-text">Range chaque colis dans la boîte qui porte son mot.</span>
-              <span className="gcard-go">Jouer →</span>
-            </button>
-          </div>
-        )}
-        {isAvailable('lexique', grade) && (
-          <div className="gwrap">
-            <button type="button" className="gcard" onClick={() => onPlay('lexique')}>
-              <span className="gcard-tag">Vocabulaire</span>
-              <span className="gcard-name">Mots en orbite</span>
-              <span className="gcard-text">Relie le mot du centre à son synonyme, son contraire ou sa famille.</span>
-              <span className="gcard-go">Jouer →</span>
-            </button>
-            <InfoButton onClick={() => setPreview('lexique')} label="Voir un extrait : Mots en orbite" />
-          </div>
-        )}
-        {isAvailable('memory', grade) && (
-          <div className="gwrap">
-            <button type="button" className="gcard" onClick={() => onPlay('memory')}>
-            <span className="gcard-tag">Mémoire</span>
-            <span className="gcard-name">Mémoire d’encre</span>
-            <span className="gcard-text">Retiens les taches qui s’allument, puis refais la suite.</span>
-            <span className="gcard-go">Jouer →</span>
-          </button>
-            <InfoButton onClick={() => setPreview('memory')} label="Voir un extrait : Mémoire d’encre" />
-          </div>
-        )}
+        {CARDS.filter((c) => isAvailable(c.id, grade)).map((c) => {
+          const stamps = c.stamps?.() ?? 0;
+          return (
+            <div key={c.id} className="gwrap">
+              <button type="button" className="gcard" onClick={() => onPlay(c.id)}>
+                <span className="gcard-tag">{c.tag}</span>
+                <span className="gcard-name">{c.name}</span>
+                <span className="gcard-text">{c.text}</span>
+                {stamps > 0 && (
+                  <span className="gcard-stamps" role="img" aria-label={`Tampons : ${stamps} sur 6`}>
+                    {Array.from({ length: 6 }, (_, k) => (k < stamps ? '●' : '○')).join(' ')}
+                  </span>
+                )}
+                <span className="gcard-go">Jouer →</span>
+              </button>
+              <InfoButton onClick={() => setPreview(c.id)} label={`Voir un extrait : ${c.name}`} />
+            </div>
+          );
+        })}
         <div className="gcard gcard-soon" aria-label="Autres jeux à venir">
           <span className="gcard-tag">Bientôt</span>
           <span className="gcard-name">Autres jeux</span>

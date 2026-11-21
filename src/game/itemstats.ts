@@ -124,6 +124,20 @@ export function spellingOutcome(rule: string, ruleLabel: string, id: string, sen
   };
 }
 
+// ───────────── Mots du « Facteur » ─────────────
+
+/** Un colis : le mot, rangé du premier coup ou non, et les mauvaises boîtes touchées (des mots du jeu, jamais du texte libre). */
+export function facteurOutcome(word: string, level: number, ok: boolean, picks: readonly string[]): ItemOutcome {
+  return {
+    rule: `n${level}`,
+    ruleLabel: `Mots du niveau ${level}`,
+    item: word.slice(0, 80),
+    itemLabel: word.slice(0, 160),
+    ok,
+    picks: picks.filter((p) => p.length > 0 && p.length <= 40),
+  };
+}
+
 // ───────────── Regroupement avant envoi ─────────────
 
 /** Regroupe les résultats d'une partie en compteurs. Les exercices précis qui reviennent plus de 5 fois sont plafonnés. */

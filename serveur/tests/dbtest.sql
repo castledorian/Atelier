@@ -304,16 +304,19 @@ select public.submit_item_stats((select v from ctx where k='tok_lea'),'math','cm
 select pg_temp.eq('jeton inconnu : refusé', public.submit_item_stats('x','math','cm1','standard',1,'[]'::jsonb)->>'error', 'invalid_session');
 select pg_temp.eq('réglages personnalisés : refusés', public.submit_item_stats((select v from ctx where k='tok_lea'),'math','cm1','perso',1,'[]'::jsonb)->>'error', 'invalid_data');
 select pg_temp.eq('jeu non joué récemment : refusé', public.submit_item_stats((select v from ctx where k='tok_tom'),'spelling','cm1','standard',1,'[]'::jsonb)->>'error', 'invalid_data');
+select pg_temp.eq('facteur : niveau autre que CP refusé', public.submit_item_stats((select v from ctx where k='tok_lea'),'facteur','cm1','n1',1,'[]'::jsonb)->>'error', 'invalid_data');
 select pg_temp.eq('contenu qui n''est pas une liste : refusé', public.submit_item_stats((select v from ctx where k='tok_lea'),'math','cm1','standard',1,'{"a":1}'::jsonb)->>'error', 'invalid_data');
 select pg_temp.fails($$select * from public.item_stats$$, 'permission denied');
 select pg_temp.fails($$select public.admin_item_stats()$$, 'permission denied');
 select pg_temp.fails($$select public.admin_balance()$$, 'permission denied');
+select pg_temp.fails($$select public.admin_game_stats(30)$$, 'permission denied');
 select pg_temp.fails($$select private.store_items('math','cm1','standard',1,'[]'::jsonb)$$, 'permission denied');
 
 -- un enseignant ordinaire n'a pas accès
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 select pg_temp.fails($$select public.admin_item_stats()$$, 'forbidden');
 select pg_temp.fails($$select public.admin_balance()$$, 'forbidden');
+select pg_temp.fails($$select public.admin_game_stats(30)$$, 'forbidden');
 select pg_temp.fails($$select * from public.item_stats$$, 'permission denied');
 
 -- limite : 60 envois par heure et par élève
@@ -438,6 +441,12 @@ select pg_temp.eq('les calculs vus moins de 3 fois sont masqués', (select count
 select pg_temp.eq('filtre par jeu', jsonb_array_length(public.admin_item_stats('spelling', null)->'rules'), 0);
 select pg_temp.eq('aucun élève dans les compteurs', (public.admin_item_stats()::text ~* '(léa|tom|nina|student)'), false);
 select pg_temp.eq('bilan d''équilibrage : 50 réussites, 28 erreurs', (select x->>'ok' || '/' || (x->>'err') from jsonb_array_elements(public.admin_balance()->'levels') x where x->>'game'='math' and x->>'level'='cm1' and x->>'difficulty'='standard'), '50/28');
+-- statistiques détaillées des parties (version 1.27)
+select pg_temp.eq('stats : clés présentes', (select count(*)::int from jsonb_object_keys(public.admin_game_stats(30)) k where k in ('totals','by_grade','by_class','weekly','hours','loyalty','cheats','balance')), 8);
+select pg_temp.eq('stats : période bornée (7 à 400 jours)', (public.admin_game_stats(1)->>'days') || '/' || (public.admin_game_stats(9999)->>'days'), '7/400');
+select pg_temp.eq('stats : des parties comptées', (public.admin_game_stats(90)->'totals'->>'runs')::int > 0, true);
+select pg_temp.eq('stats par classe : jamais de groupe de moins de 3 élèves', (select coalesce(min((x->>'players')::int), 3) from jsonb_array_elements(public.admin_game_stats(90)->'by_class') x) >= 3, true);
+select pg_temp.eq('stats : aucun prénom d''élève', (public.admin_game_stats(90)::text ~* '(léa|tom|nina)'), false);
 select pg_temp.as_admin();
 select pg_temp.eq('les consultations des compteurs sont tracées', (select count(*) >= 2 from private.admin_audit where action in ('item_stats','balance')), true);
 

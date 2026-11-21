@@ -8,19 +8,24 @@ import { Sfx } from '../game/audio';
 import { newRunId } from '../game/history';
 import { parseFacteur } from '../game/sessionConfig';
 import { enqueue, flush } from '../server/outbox';
-import { dropCave, sendRun } from '../server/student';
+import { dropCave, sendItemStats, sendRun } from '../server/student';
 import { feedBoss } from '../game/boss/state';
 import type { RunPayload } from '../server/types';
 import { effectiveGrade, gradeLabel } from '../game/grade';
 import { loadSettings, saveSettings } from '../game/storage';
 import type { Settings } from '../game/storage';
-import { hasPicture, pictureOf } from '../game/facteur/pictures';
+import { hasPicture } from '../game/facteur/pictures';
+import { Mailbox, Mark, PictureView } from '../components/FacteurParts';
 import { FacteurGame, TRAVEL_SECONDS, newSession } from '../game/facteur/rounds';
 import type { FResult, Parcel } from '../game/facteur/rounds';
 import { clearFScores, loadFBest, loadFLevel, saveFLevel, saveFResult } from '../game/facteur/scores';
+import { GameProgress } from '../components/GameProgress';
+import { addLog } from '../game/progress';
+import { facteurOutcome, summarize as summarizeItems } from '../game/itemstats';
+import { clearReview, noteReview, reviewWords } from '../game/facteur/review';
 import { preloadVoices, say as readAloud, stopSaying } from '../game/facteur/voice';
-import { F_LEVELS, WORDS, isFLevel, parts, plain } from '../game/facteur/words';
-import type { FLevel, FWord } from '../game/facteur/words';
+import { F_LEVELS, WORDS, isFLevel, plain } from '../game/facteur/words';
+import type { FLevel } from '../game/facteur/words';
 import type { SessionInfo, StudentAccount } from '../server/types';
 
 /**
@@ -37,60 +42,10 @@ interface Props {
 }
 
 type Phase = 'menu' | 'play' | 'over';
-type MenuView = 'main' | 'howto' | 'scores' | 'settings';
+type MenuView = 'main' | 'howto' | 'scores' | 'progress' | 'settings';
 
 const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(3 - n);
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-
-/** Les lettres d'un mot ; les lettres muettes sont grisées. */
-export function Mark({ mark }: { mark: string }) {
-  return (
-    <>
-      {parts(mark).map((p, i) => (
-        <span key={i} className={p.mute ? 'fct-mute' : undefined}>
-          {p.text}
-        </span>
-      ))}
-    </>
-  );
-}
-
-function PictureView({ word }: { word: FWord }) {
-  const pic = pictureOf(word);
-  const [broken, setBroken] = useState(false);
-  if (!pic) return null;
-  if (pic.src && !broken) return <img className="fct-img" src={pic.src} alt="" draggable={false} onError={() => setBroken(true)} />;
-  return (
-    <span className="fct-emoji" aria-hidden="true">
-      {pic.emoji}
-    </span>
-  );
-}
-
-function Mailbox({ i, word, state, onTap }: { i: number; word: FWord; state: 'idle' | 'off' | 'hint' | 'no' | 'ok'; onTap: (i: number) => void }) {
-  return (
-    <button
-      type="button"
-      className="fct-box"
-      data-state={state}
-      aria-disabled={state === 'off' ? true : undefined}
-      aria-label={`Boîte ${i + 1} : ${plain(word.mark)}`}
-      onClick={() => onTap(i)}
-    >
-      <svg className="fct-box-art" viewBox="0 0 120 80" aria-hidden="true" focusable="false">
-        <path className="fct-box-body" d="M8 78 V32 a52 30 0 0 1 104 0 V78 Z" />
-        <rect className="fct-box-slot" x="30" y="30" width="60" height="7" rx="3.5" />
-        <g className="fct-box-flag">
-          <rect x="104" y="12" width="4" height="30" />
-          <rect x="94" y="12" width="14" height="10" rx="2" />
-        </g>
-      </svg>
-      <span className="fct-word" style={{ fontSize: `clamp(20px, min(${(46 / Math.max(5, plain(word.mark).length)).toFixed(2)}cqw, 8cqh), 54px)` }}>
-        <Mark mark={word.mark} />
-      </span>
-    </button>
-  );
-}
 
 export default function Facteur({ account, onHome, onSessionLost, session, onSessions }: Props) {
   const [phase, setPhase] = useState<Phase>('menu');
@@ -161,7 +116,7 @@ export default function Facteur({ account, onHome, onSessionLost, session, onSes
     busy.current = false;
     saveFLevel(l);
     setLevel(l);
-    gameRef.current = newSession(l, Math.random, hasPicture);
+    gameRef.current = newSession(l, Math.random, hasPicture, s.sess ? [] : reviewWords());
     setSent(null);
     setNope(null);
     setSay('');
@@ -209,6 +164,28 @@ export default function Facteur({ account, onHome, onSessionLost, session, onSes
       feedBoss(r.delivered, r.slips);
       payload.cave = { ink: r.slips, power: r.delivered };
     }
+    // « Mes progrès » et mots à revoir : sur l'appareil seulement
+    if (r.delivered > 0) {
+      addLog('facteur', { t: Date.now(), ok: r.firstTry, err: r.delivered - r.firstTry, score: r.score, board: `n${r.level}` });
+      noteReview(r.missed, r.clean);
+    }
+    // résumé anonyme pour l'équilibrage (parties libres seulement)
+    if (!sesRef.current.sess && r.delivered > 0) {
+      payload.balance = {
+        game: 'facteur',
+        difficulty: `n${r.level}`,
+        level: 'cp',
+        version: 1,
+        outcome: 'finished',
+        score: r.score,
+        wave: r.firstTry,
+        acc: payload.acc,
+        duration: payload.duration,
+        rounds_ok: r.firstTry,
+        rounds_err: r.delivered - r.firstTry,
+      };
+    }
+    const items = summarizeItems(r.outcomes.map((o) => facteurOutcome(plain(o.word.mark), o.word.level, o.ok, o.picks)));
     if (sesRef.current.sess) {
       sesRef.current.submit(payload, () => {
         lost.current = true;
@@ -222,6 +199,7 @@ export default function Facteur({ account, onHome, onSessionLost, session, onSes
             lost.current = true;
           }
           setCloud(s === 'ok' ? 'sent' : 'queued');
+          if (s === 'ok' && payload.balance) void sendItemStats(acct.token, 'facteur', 'cp', `n${r.level}`, items);
         })
         .catch(() => {
           enqueue(acct.student.id, payload);
@@ -503,6 +481,8 @@ export default function Facteur({ account, onHome, onSessionLost, session, onSes
             </ConfirmButton>
           )}
         </>
+      ) : view === 'progress' ? (
+        <GameProgress game="facteur" extra={<ReviewList />} />
       ) : (
         <SettingsRow settings={settings} onChange={change} />
       );
@@ -516,7 +496,7 @@ export default function Facteur({ account, onHome, onSessionLost, session, onSes
                   <BackButton label="Retour" onClick={() => setView('main')} autoFocus />
                 </div>
                 <h2 id="sub-title" className="title-sm">
-                  {view === 'howto' ? 'Comment jouer' : view === 'scores' ? 'Scores' : 'Réglages'}
+                  {view === 'howto' ? 'Comment jouer' : view === 'scores' ? 'Scores' : view === 'progress' ? 'Mes progrès' : 'Réglages'}
                 </h2>
                 <div className="rule" aria-hidden="true" />
                 <div className="sub-body">{body}</div>
@@ -542,12 +522,15 @@ export default function Facteur({ account, onHome, onSessionLost, session, onSes
                 <StampTitle id="game-title" label="Le facteur" lines={[{ text: 'FACTEUR', ribbon: 'LE' }]} />
                 <div className="rule" aria-hidden="true" />
                 <p className="tagline menu-opt">Range chaque colis dans la bonne boîte&nbsp;!</p>
-                <div className="tools" data-n="3" role="group" aria-label="Plus d’options">
+                <div className="tools" data-n="4" role="group" aria-label="Plus d’options">
                   <button type="button" className="tool" onClick={() => setView('howto')}>
                     <span aria-hidden="true">?</span> Comment jouer
                   </button>
                   <button type="button" className="tool" onClick={() => setView('scores')}>
                     <span aria-hidden="true">★</span> Scores
+                  </button>
+                  <button type="button" className="tool" onClick={() => setView('progress')}>
+                    <span aria-hidden="true">↗</span> Mes progrès
                   </button>
                   <button type="button" className="tool" onClick={() => setView('settings')}>
                     <span aria-hidden="true">⚙</span> Réglages
@@ -575,5 +558,34 @@ export default function Facteur({ account, onHome, onSessionLost, session, onSes
         </div>
       </main>
     </div>
+  );
+}
+
+/** Mots ratés lors des séances précédentes : ils reviennent en premier dans les prochains colis. */
+function ReviewList() {
+  const [list, setList] = useState(reviewWords);
+  return (
+    <section aria-labelledby="fct-review" className="prog-rules">
+      <h3 id="fct-review" className="subhead">
+        Mots à revoir
+      </h3>
+      {list.length === 0 ? (
+        <p className="text-[15px] leading-snug">Aucun mot à revoir : bravo !</p>
+      ) : (
+        <>
+          <p className="fct-missed">
+            {list.map((w) => (
+              <span key={w.mark} className="fct-chip">
+                <Mark mark={w.mark} />
+              </span>
+            ))}
+          </p>
+          <p className="text-[15px] leading-snug mt-2">Ils reviendront dans tes prochains colis.</p>
+          <ConfirmButton className="btn btn-ghost mt-2" confirm="Sûr ?" onConfirm={() => { clearReview(); setList([]); }}>
+            Vider la liste
+          </ConfirmButton>
+        </>
+      )}
+    </section>
   );
 }

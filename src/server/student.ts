@@ -48,7 +48,7 @@ export const CHEAT_EVENT = 'atelier:cheat';
  * À appeler seulement après l'envoi réussi d'une partie libre. Facultatif : toute erreur est ignorée
  * (réseau coupé, mise à jour SQL « exercices » pas encore faite…).
  */
-export async function sendItemStats(token: string, game: 'math' | 'spelling', level: string, difficulty: string, items: ItemEntry[]): Promise<void> {
+export async function sendItemStats(token: string, game: 'math' | 'spelling' | 'facteur', level: string, difficulty: string, items: ItemEntry[]): Promise<void> {
   if (items.length === 0) return;
   try {
     await rpc('submit_item_stats', { p_token: token, p_game: game, p_level: level, p_difficulty: difficulty, p_version: ITEM_STATS_VERSION, p_items: items });

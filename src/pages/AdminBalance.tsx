@@ -1,18 +1,28 @@
 import { useMemo, useState } from 'react';
-import { TARGET, TOLERANCE, diffName, gameName, itemsCsv, levelName, levelsCsv, mergeRows, picksText, rank, summaryText, verdictOf } from '../game/balanceView';
-import { downloadText } from '../game/history';
+import { FACTEUR_TARGET, NO_END, TARGET, TOLERANCE, diffName, gameName, itemsCsv, levelName, levelsCsv, mergeRows, picksText, rank, summaryText, targetOf, verdictOf } from '../game/balanceView';
+import { adviceOf, asLevels, gradeRows, hourly, statsText, weeklyTotals } from '../game/statsView';
+import { downloadText, toCsv } from '../game/history';
 import { SortTh, sortRows, useSort } from '../components/SortTable';
 import type { SortValue } from '../components/SortTable';
-import type { AdminItems, BalanceLevel } from '../server/admin';
+import type { AdminItems, BalanceLevel, ClassStat, GameStats, GradeStat } from '../server/admin';
 
 const ORDER = ['cp', 'ce1', 'ce2', 'cm1', 'cm2'];
-const GAMES = ['math', 'spelling'];
+const GAMES = ['math', 'spelling', 'facteur'];
+const ALL_GAMES = ['typing', 'math', 'spelling', 'lexique', 'memory', 'facteur'];
+export const PERIODS: [number, string][] = [
+  [30, '30 jours'],
+  [90, '3 mois'],
+  [365, '1 an'],
+];
+const PRIO: Record<number, string> = { 1: 'À régler', 2: 'À surveiller', 3: 'Pour info' };
 const num = (n: number | null | undefined, unit = '') => (n === null || n === undefined ? '—' : `${String(n).replace('.', ',')}${unit}`);
 const today = () => new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 const stamp = () => new Date().toISOString().slice(0, 10);
 
 /** Onglet « Équilibrage » : où les élèves réussissent trop ou pas assez, et ce qui les fait échouer. */
-export default function AdminBalance({ levels, stats }: { levels: BalanceLevel[]; stats: AdminItems }) {
+export default function AdminBalance({ levels: allTime, stats, detail, days, onDays }: { levels: BalanceLevel[]; stats: AdminItems; detail: GameStats | null; days: number; onDays: (d: number) => void }) {
+  const levels = useMemo(() => (detail ? asLevels(detail.balance) : allTime), [detail, allTime]);
+  const advice = useMemo(() => (detail ? adviceOf(detail, stats) : []), [detail, stats]);
   const [game, setGame] = useState('math');
   const [level, setLevel] = useState('all');
   const [diff, setDiff] = useState('all');
@@ -34,7 +44,7 @@ export default function AdminBalance({ levels, stats }: { levels: BalanceLevel[]
   const itemRows = useMemo(() => sortRows(items, it.sort, itemValue), [items, it.sort]);
 
   const copy = async () => {
-    const text = summaryText(levels, stats.rules, stats.items, today());
+    const text = detail ? statsText(detail, stats, today()) : summaryText(levels, stats.rules, stats.items, today());
     try {
       await navigator.clipboard.writeText(text);
       setCopied('Résumé copié : collez-le dans la conversation.');
@@ -46,10 +56,46 @@ export default function AdminBalance({ levels, stats }: { levels: BalanceLevel[]
 
   return (
     <>
-      <h2 className="subhead mt-3">Réussite par niveau</h2>
+      <div className="adm-filters mt-3">
+        <span className="adm-note">Période</span>
+        <div className="seg" role="radiogroup" aria-label="Période étudiée">
+          {PERIODS.map(([d, label]) => (
+            <button key={d} type="button" role="radio" aria-checked={days === d} className="seg-b" onClick={() => onDays(d)} disabled={!detail && d !== days}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {!detail && (
+        <p className="adm-note">
+          Statistiques détaillées indisponibles : lancez <code>serveur/mise-a-jour-stats.sql</code> dans Supabase. En attendant, voici la réussite depuis le début.
+        </p>
+      )}
+      {detail && <Kpis g={detail} />}
+      {detail && (
+        <>
+          <h2 className="subhead mt-4">À régler en priorité</h2>
+          {advice.length === 0 ? (
+            <p className="adm-note">Rien de net pour l’instant : pas assez de parties, ou tout est bien réglé.</p>
+          ) : (
+            <ol className="adm-advice">
+              {advice.map((a, k) => (
+                <li key={k} data-p={a.priority}>
+                  <span className={`adm-verdict v-${a.priority === 1 ? 'hard' : a.priority === 2 ? 'few' : 'none'}`}>{PRIO[a.priority]}</span>
+                  <strong>{a.topic}</strong>
+                  <span>{a.fact}</span>
+                  <span className="adm-gap">{a.hint}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </>
+      )}
+
+      <h2 className="subhead mt-4">Réussite par niveau</h2>
       <p className="adm-note">
-        Objectif : Apprenti ≈ {TARGET.apprenti} %, Standard ≈ {TARGET.standard} %, Expert ≈ {TARGET.expert} % de manches réussies du premier coup (± {TOLERANCE} points), sans que les parties soient toujours gagnées ni toujours perdues.
-        Les moyennes ne sont jugées qu’à partir de 150 manches. Seules les parties libres jouées avec un compte élève sont comptées (ni séances, ni entraînements, ni réglages personnalisés).
+        Objectif : Apprenti ≈ {TARGET.apprenti} %, Standard ≈ {TARGET.standard} %, Expert ≈ {TARGET.expert} % de manches réussies du premier coup (± {TOLERANCE} points) ; Le facteur ≈ {FACTEUR_TARGET} % de colis rangés du premier coup.
+        Jugé à partir de 150 manches. Parties libres d’élèves connectés seulement.
       </p>
       <p className="adm-note adm-actions">
         <button type="button" className="link" onClick={() => downloadText(`reussite-par-niveau-${stamp()}.csv`, levelsCsv(levels))} disabled={levels.length === 0}>
@@ -93,26 +139,26 @@ export default function AdminBalance({ levels, stats }: { levels: BalanceLevel[]
             <tbody>
               {sorted.map((l) => {
                 const v = verdictOf(l);
-                const rated = TARGET[l.difficulty] !== undefined && GAMES.includes(l.game);
+                const target = targetOf(l.game, l.difficulty);
                 return (
                   <tr key={`${l.game}-${l.level}-${l.difficulty}-${l.version}`}>
                     <td className="adm-game">{gameName(l.game)}</td>
                     <td className="adm-nowrap">
-                      {l.level === '-' ? diffName(l.difficulty) : `${levelName(l.level)} · ${diffName(l.difficulty)}`}
+                      {l.level === '-' || /^(cp|ce1|ce2|cm1|cm2)(-|$)/.test(l.difficulty) ? diffName(l.difficulty) : `${levelName(l.level)} · ${diffName(l.difficulty)}`}
                     </td>
                     <td className="adm-nowrap">
                       {l.runs} · {l.ok + l.err}
                     </td>
                     <td className="adm-nowrap">
                       <strong>{num(l.success_pct, ' %')}</strong>
-                      {rated && <span className="adm-gap adm-block">objectif {TARGET[l.difficulty]} %</span>}
+                      {target !== undefined && <span className="adm-gap adm-block">objectif {target} %</span>}
                     </td>
                     <td>
                       <span className={`adm-verdict v-${v.verdict}`}>{v.label}</span>
                       {v.detail && <span className="adm-gap adm-block">{v.detail}</span>}
                     </td>
                     <td>
-                      {num(l.finished_pct, ' %')}
+                      {NO_END.includes(l.game) ? '—' : num(l.finished_pct, ' %')}
                       {v.note && <span className="adm-gap adm-block">{v.note}</span>}
                     </td>
                   </tr>
@@ -123,11 +169,13 @@ export default function AdminBalance({ levels, stats }: { levels: BalanceLevel[]
         </div>
       )}
 
+      {detail && <ByGrade g={detail} />}
+
       <h2 className="subhead mt-4">Ce qui fait échouer</h2>
       <div className="adm-filters">
         <label>
           Jeu
-          <select className="field" value={game} onChange={(e) => { setGame(e.target.value); setLevel('all'); }}>
+          <select className="field" value={game} onChange={(e) => { setGame(e.target.value); setLevel('all'); setDiff('all'); }}>
             {GAMES.map((g) => (
               <option key={g} value={g}>
                 {gameName(g)}
@@ -150,9 +198,11 @@ export default function AdminBalance({ levels, stats }: { levels: BalanceLevel[]
           Difficulté
           <select className="field" value={diff} onChange={(e) => setDiff(e.target.value)}>
             <option value="all">Toutes</option>
-            <option value="apprenti">Apprenti</option>
-            <option value="standard">Standard</option>
-            <option value="expert">Expert</option>
+            {(game === 'facteur' ? ['n1', 'n2', 'n3', 'n4'] : ['apprenti', 'standard', 'expert']).map((d) => (
+              <option key={d} value={d}>
+                {diffName(d)}
+              </option>
+            ))}
           </select>
         </label>
       </div>
@@ -169,7 +219,7 @@ export default function AdminBalance({ levels, stats }: { levels: BalanceLevel[]
         </p>
       ) : (
         <>
-          <h3 className="font-bold mt-2">{game === 'math' ? 'Familles de calculs' : 'Règles d’orthographe'}</h3>
+          <h3 className="font-bold mt-2">{game === 'math' ? 'Familles de calculs' : game === 'facteur' ? 'Mots par niveau' : 'Règles d’orthographe'}</h3>
           <div className="adm-wrap">
             <table className="adm-table">
               <caption className="sr-only">Familles les plus ratées</caption>
@@ -202,7 +252,7 @@ export default function AdminBalance({ levels, stats }: { levels: BalanceLevel[]
             </table>
           </div>
 
-          <h3 className="font-bold mt-3">{game === 'math' ? 'Calculs les plus ratés' : 'Phrases les plus ratées'}</h3>
+          <h3 className="font-bold mt-3">{game === 'math' ? 'Calculs les plus ratés' : game === 'facteur' ? 'Mots les plus ratés' : 'Phrases les plus ratées'}</h3>
           {items.length === 0 ? (
             <p className="adm-note">Aucun exercice posé au moins 5 fois pour l’instant.</p>
           ) : (
@@ -244,6 +294,7 @@ export default function AdminBalance({ levels, stats }: { levels: BalanceLevel[]
           )}
         </>
       )}
+      {detail && <Activity g={detail} />}
     </>
   );
 }
@@ -287,14 +338,356 @@ function itemValue(r: { label: string; level: string; shown: number; err_pct: nu
 }
 
 /** Pourcentage d'erreurs : le chiffre est toujours écrit, la barre n'est qu'un repère. */
-function Meter({ pct }: { pct: number | null }) {
+function Meter({ pct, good = false }: { pct: number | null; good?: boolean }) {
   const v = pct ?? 0;
   return (
-    <span className="adm-meter">
+    <span className={good ? 'adm-meter adm-meter-good' : 'adm-meter'}>
       <span className="adm-meter-bar" aria-hidden="true">
         <i style={{ width: `${Math.min(100, Math.max(0, v))}%` }} />
       </span>
       <strong>{num(pct, ' %')}</strong>
     </span>
+  );
+}
+
+const fmt = (n: number) => n.toLocaleString('fr-FR');
+const DAYS = ['', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+
+/** Chiffres clés de la période. */
+function Kpis({ g }: { g: GameStats }) {
+  const t = g.totals;
+  return (
+    <ul className="adm-kpis" aria-label="Chiffres clés de la période">
+      {(
+        [
+          ['Parties', t.runs],
+          ['Élèves', t.players],
+          ['Classes', t.classes],
+          ['Écoles', t.schools],
+          ['Minutes de jeu', t.minutes],
+          ['En séance', t.session_runs],
+        ] as [string, number][]
+      ).map(([k, v]) => (
+        <li key={k}>
+          <strong>{fmt(v)}</strong>
+          <span>{k}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Activité de la période : semaines, heures, fidélité, refus du serveur. */
+function Activity({ g }: { g: GameStats }) {
+  const weeks = weeklyTotals(g);
+  const wMax = Math.max(1, ...weeks.map((w) => w.runs));
+  const h = hourly(g);
+  const hMax = Math.max(1, ...h.hours);
+  const busiest = [...g.hours].sort((a, b) => b.runs - a.runs)[0];
+  return (
+    <>
+      <h2 className="subhead mt-5">Activité : parties par semaine</h2>
+      {weeks.length === 0 ? (
+        <p className="adm-note">Aucune partie sur la période.</p>
+      ) : (
+        <div className="adm-bars adm-bars-gap" role="img" aria-label={`Parties par semaine : ${weeks.map((w) => `semaine du ${w.week.slice(8)}/${w.week.slice(5, 7)} : ${w.runs}`).join(', ')}`}>
+          {weeks.map((w) => (
+            <div key={w.week} className="adm-bar" title={`Semaine du ${w.week.slice(8)}/${w.week.slice(5, 7)} : ${w.runs} parties`}>
+              <i style={{ height: `${Math.max(2, (w.runs / wMax) * 100)}%` }} />
+              <span>{weeks.length <= 16 ? `${w.week.slice(8)}/${w.week.slice(5, 7)}` : ''}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <h2 className="subhead">Heures de jeu</h2>
+      <p className="adm-note">
+        {h.schoolPct} % des parties sur le temps scolaire.
+        {busiest ? ` Moment le plus joué : le ${DAYS[busiest.dow]} vers ${busiest.hour} h.` : ''}
+      </p>
+      <div className="adm-bars adm-bars-gap" role="img" aria-label={`Parties par heure : ${h.hours.map((n, k) => `${k} h : ${n}`).join(', ')}`}>
+        {h.hours.map((n, k) => (
+          <div key={k} className="adm-bar" title={`${k} h : ${n} parties`}>
+            <i style={{ height: `${Math.max(n ? 2 : 0, (n / hMax) * 100)}%` }} />
+            <span>{k % 3 === 0 ? k : ''}</span>
+          </div>
+        ))}
+      </div>
+
+      {g.loyalty.length > 0 && (
+        <>
+          <h2 className="subhead">Fidélité</h2>
+          <div className="adm-wrap">
+            <table className="adm-table">
+              <caption className="sr-only">Fidélité des joueurs par jeu</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Jeu</th>
+                  <th scope="col">Élèves</th>
+                  <th scope="col">Parties par élève</th>
+                  <th scope="col">Revenus un autre jour</th>
+                  <th scope="col">10 parties ou plus</th>
+                  <th scope="col">Une seule partie</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...g.loyalty]
+                  .sort((a, b) => ALL_GAMES.indexOf(a.game) - ALL_GAMES.indexOf(b.game))
+                  .map((l) => (
+                    <tr key={l.game}>
+                      <td className="adm-game">{gameName(l.game)}</td>
+                      <td>{fmt(l.players)}</td>
+                      <td>{num(l.runs_per_player)}</td>
+                      <td>{num(l.back_pct, ' %')}</td>
+                      <td>{num(l.ten_pct, ' %')}</td>
+                      <td>{num(l.once_pct, ' %')}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {g.cheats.length > 0 && (
+        <>
+          <h2 className="subhead mt-4">Parties refusées par le serveur</h2>
+          <p className="adm-note">Beaucoup de refus pour une même raison, chez plusieurs élèves : la borne est sans doute trop stricte.</p>
+          <div className="adm-wrap">
+            <table className="adm-table">
+              <caption className="sr-only">Parties refusées, par jeu et par raison</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Jeu</th>
+                  <th scope="col">Raison</th>
+                  <th scope="col">Parties</th>
+                  <th scope="col">Élèves</th>
+                </tr>
+              </thead>
+              <tbody>
+                {g.cheats.map((c) => (
+                  <tr key={`${c.game}-${c.reason}`}>
+                    <td className="adm-game">{gameName(c.game)}</td>
+                    <td>{c.reason}</td>
+                    <td>{c.n}</td>
+                    <td>{c.players}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+type GradeKey = 'grade' | 'mode' | 'runs' | 'players' | 'acc' | 'score' | 'dur' | 'low' | 'high' | 'short';
+function gradeValue(r: GradeStat, k: GradeKey): SortValue {
+  switch (k) {
+    case 'grade':
+      return r.grade === '?' ? 'zz' : String(ORDER.indexOf(r.grade));
+    case 'mode':
+      return r.mode;
+    case 'runs':
+      return r.runs;
+    case 'players':
+      return r.players;
+    case 'acc':
+      return r.acc_med;
+    case 'score':
+      return r.score_med;
+    case 'dur':
+      return r.dur_med;
+    case 'low':
+      return r.low_pct;
+    case 'high':
+      return r.high_pct;
+    case 'short':
+      return r.short_pct;
+  }
+}
+type ClassKey = 'school' | 'grade' | 'runs' | 'players' | 'sessions' | 'acc' | 'score' | 'last';
+function classValue(r: ClassStat, k: ClassKey): SortValue {
+  switch (k) {
+    case 'school':
+      return `${r.school} ${r.class}`;
+    case 'grade':
+      return r.grade === '?' ? 'zz' : String(ORDER.indexOf(r.grade));
+    case 'runs':
+      return r.runs;
+    case 'players':
+      return r.players;
+    case 'sessions':
+      return r.session_runs;
+    case 'acc':
+      return r.acc;
+    case 'score':
+      return r.score_med;
+    case 'last':
+      return r.last_at;
+  }
+}
+
+function gradeCsv(g: GameStats): string {
+  return toCsv(
+    ['Jeu', 'Niveau de la classe', 'Mode', 'Parties', 'Élèves', 'Classes', 'Réussite moyenne %', 'Réussite médiane %', 'Score 1er quartile', 'Score médian', 'Score 3e quartile', 'Durée médiane (s)', 'Bonnes réponses moyennes', 'Vague moyenne', '< 60 % (%)', '≥ 95 % (%)', '< 30 s (%)'],
+    g.by_grade.map((r) => [gameName(r.game), r.grade === '?' ? 'non fixé' : levelName(r.grade), diffName(r.mode), r.runs, r.players, r.classes, r.acc ?? '', r.acc_med ?? '', r.score_p25 ?? '', r.score_med ?? '', r.score_p75 ?? '', r.dur_med ?? '', r.correct ?? '', r.wave ?? '', r.low_pct, r.high_pct, r.short_pct]),
+  );
+}
+
+/** Par niveau de classe, puis par classe : ce que les élèves réussissent vraiment, jeu par jeu. */
+function ByGrade({ g }: { g: GameStats }) {
+  const present = ALL_GAMES.filter((x) => g.by_grade.some((r) => r.game === x) || g.by_class.some((r) => r.game === x));
+  const [game, setGame] = useState(present[0] ?? 'math');
+  const gs = useSort<GradeKey>('grade', 'asc');
+  const cs = useSort<ClassKey>('runs', 'desc');
+  const rows = useMemo(() => sortRows(gradeRows(g, game), gs.sort, gradeValue), [g, game, gs.sort]);
+  const classes = useMemo(() => sortRows(g.by_class.filter((r) => r.game === game), cs.sort, classValue), [g, game, cs.sort]);
+  if (present.length === 0) return null;
+  return (
+    <>
+      <h2 className="subhead mt-4">Par niveau de classe</h2>
+      <p className="adm-note">
+        Parties libres, regroupées par niveau de la classe (fixé par l’enseignant) et par mode joué. Réussite : médiane des parties ; score : médiane (1er–3e quartile).
+      </p>
+      <div className="adm-filters">
+        <label>
+          Jeu
+          <select className="field" value={game} onChange={(e) => setGame(e.target.value)}>
+            {present.map((x) => (
+              <option key={x} value={x}>
+                {gameName(x)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="button" className="link" onClick={() => downloadText(`stats-par-niveau-${stamp()}.csv`, gradeCsv(g))}>
+          Exporter tous les jeux en CSV
+        </button>
+      </div>
+      {rows.length === 0 ? (
+        <p className="adm-note">Aucune partie libre pour ce jeu sur la période.</p>
+      ) : (
+        <div className="adm-wrap">
+          <table className="adm-table">
+            <caption className="sr-only">{gameName(game)} : résultats par niveau de classe et par mode</caption>
+            <thead>
+              <tr>
+                <SortTh col="grade" sort={gs.sort} onSort={gs.toggle}>
+                  Classes
+                </SortTh>
+                <SortTh col="mode" sort={gs.sort} onSort={gs.toggle}>
+                  Mode
+                </SortTh>
+                <SortTh col="runs" sort={gs.sort} onSort={gs.toggle} numeric>
+                  Parties · élèves
+                </SortTh>
+                <SortTh col="acc" sort={gs.sort} onSort={gs.toggle} numeric>
+                  Réussite
+                </SortTh>
+                <SortTh col="score" sort={gs.sort} onSort={gs.toggle} numeric>
+                  Score
+                </SortTh>
+                <SortTh col="dur" sort={gs.sort} onSort={gs.toggle} numeric>
+                  Durée
+                </SortTh>
+                <SortTh col="low" sort={gs.sort} onSort={gs.toggle} numeric>
+                  &lt; 60 %
+                </SortTh>
+                <SortTh col="high" sort={gs.sort} onSort={gs.toggle} numeric>
+                  ≥ 95 %
+                </SortTh>
+                <SortTh col="short" sort={gs.sort} onSort={gs.toggle} numeric>
+                  &lt; 30 s
+                </SortTh>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={`${r.grade}-${r.mode}`}>
+                  <td className="adm-nowrap">{r.grade === '?' ? 'Sans niveau' : levelName(r.grade)}</td>
+                  <td className="adm-nowrap">{diffName(r.mode)}</td>
+                  <td className="adm-nowrap">
+                    {fmt(r.runs)} · {r.players}
+                    <span className="adm-gap adm-block">{r.classes} classe{r.classes > 1 ? 's' : ''}</span>
+                  </td>
+                  <td>
+                    <Meter pct={r.acc_med} good />
+                  </td>
+                  <td className="adm-nowrap">
+                    <strong>{r.score_med === null ? '—' : fmt(r.score_med)}</strong>
+                    <span className="adm-gap adm-block">
+                      {r.score_p25 === null ? '' : `${fmt(r.score_p25)} – ${fmt(r.score_p75 ?? 0)}`}
+                    </span>
+                  </td>
+                  <td className="adm-nowrap">{r.dur_med === null ? '—' : `${r.dur_med} s`}</td>
+                  <td>{num(r.low_pct, ' %')}</td>
+                  <td>{num(r.high_pct, ' %')}</td>
+                  <td>{num(r.short_pct, ' %')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <h3 className="font-bold mt-3">Par classe</h3>
+      <p className="adm-note">Seulement les classes où au moins 3 élèves ont joué à ce jeu (jamais un élève isolé). Séances comprises.</p>
+      {classes.length === 0 ? (
+        <p className="adm-note">Aucune classe de 3 joueurs ou plus pour ce jeu.</p>
+      ) : (
+        <div className="adm-wrap">
+          <table className="adm-table">
+            <caption className="sr-only">{gameName(game)} : résultats par classe</caption>
+            <thead>
+              <tr>
+                <SortTh col="school" sort={cs.sort} onSort={cs.toggle}>
+                  Classe
+                </SortTh>
+                <SortTh col="grade" sort={cs.sort} onSort={cs.toggle}>
+                  Niveau
+                </SortTh>
+                <SortTh col="runs" sort={cs.sort} onSort={cs.toggle} numeric>
+                  Parties · élèves
+                </SortTh>
+                <SortTh col="sessions" sort={cs.sort} onSort={cs.toggle} numeric>
+                  En séance
+                </SortTh>
+                <SortTh col="acc" sort={cs.sort} onSort={cs.toggle} numeric>
+                  Réussite
+                </SortTh>
+                <SortTh col="score" sort={cs.sort} onSort={cs.toggle} numeric>
+                  Score médian
+                </SortTh>
+                <SortTh col="last" sort={cs.sort} onSort={cs.toggle} numeric>
+                  Dernière partie
+                </SortTh>
+              </tr>
+            </thead>
+            <tbody>
+              {classes.map((r) => (
+                <tr key={`${r.school}-${r.class}`}>
+                  <td>
+                    {r.class}
+                    <span className="adm-gap adm-block">{r.school}</span>
+                  </td>
+                  <td>{r.grade === '?' ? '—' : levelName(r.grade)}</td>
+                  <td className="adm-nowrap">
+                    {fmt(r.runs)} · {r.players}
+                  </td>
+                  <td>{r.session_runs}</td>
+                  <td>
+                    <Meter pct={r.acc} good />
+                  </td>
+                  <td>{r.score_med === null ? '—' : fmt(r.score_med)}</td>
+                  <td className="adm-nowrap">{new Date(r.last_at).toLocaleDateString('fr-FR')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
   );
 }

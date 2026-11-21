@@ -24,6 +24,17 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.27',
+    date: '21 novembre 2026',
+    iso: '2026-11-21',
+    title: 'Le facteur se complète',
+    changes: [
+      { kind: 'new', text: 'Le facteur : extrait animé sur l’accueil (bouton « i »).' },
+      { kind: 'new', text: 'Le facteur : « Mes progrès » et mots à revoir, reproposés dans les séances suivantes.' },
+      { kind: 'better', text: 'Administration : statistiques par niveau de classe, par classe, activité et conseils de réglage.' },
+    ],
+  },
+  {
     version: '1.26',
     date: '20 novembre 2026',
     iso: '2026-11-20',

@@ -45,12 +45,17 @@ const shuffle = <T>(a: T[], rng: Rng): T[] => {
  * Les mots de la séance : au moins 60 % du niveau choisi, le reste vient des niveaux précédents (révision).
  * `hasPicture` écarte les mots dont on n'a ni image ni dessin de secours.
  */
-export function pickWords(level: FLevel, count: number, rng: Rng, hasPicture: (w: FWord) => boolean = () => true): FWord[] {
+export function pickWords(level: FLevel, count: number, rng: Rng, hasPicture: (w: FWord) => boolean = () => true, prefer: readonly FWord[] = []): FWord[] {
   const ok = wordsUpTo(level).filter((x) => !x.tool && hasPicture(x));
-  const now = shuffle(ok.filter((x) => x.level === level), rng);
-  const before = shuffle(ok.filter((x) => x.level < level), rng);
-  const wantNow = Math.min(now.length, Math.max(Math.ceil(count * 0.6), count - before.length));
-  const picked = [...now.slice(0, wantNow), ...before.slice(0, count - wantNow)];
+  // les mots à revoir (ratés lors des séances précédentes) passent en premier, s'ils sont de ce niveau ou d'un niveau d'avant
+  const again = prefer.filter((x) => ok.includes(x)).slice(0, Math.min(count, 3));
+  const rest = ok.filter((x) => !again.includes(x));
+  const now = shuffle(rest.filter((x) => x.level === level), rng);
+  const before = shuffle(rest.filter((x) => x.level < level), rng);
+  const n = count - again.length;
+  const nowAgain = again.filter((x) => x.level === level).length;
+  const wantNow = Math.min(now.length, Math.max(0, Math.max(Math.ceil(count * 0.6) - nowAgain, n - before.length)));
+  const picked = [...again, ...now.slice(0, Math.min(wantNow, n)), ...before.slice(0, n - Math.min(wantNow, n))];
   // si le niveau et les précédents ne suffisent pas, on complète avec ce qui reste du niveau
   for (const x of now.slice(wantNow)) if (picked.length < count) picked.push(x);
   return shuffle(picked, rng);
@@ -103,6 +108,10 @@ export interface FResult {
   stars: 1 | 2 | 3;
   /** mots ratés au moins une fois (à revoir) */
   missed: string[];
+  /** mots rangés du premier coup à chaque passage */
+  clean: string[];
+  /** chaque colis, pour le suivi anonyme des mots (bonne boîte du premier coup ? mauvais mots choisis) */
+  outcomes: Array<{ word: FWord; ok: boolean; picks: string[] }>;
 }
 
 export type Tap = { kind: 'ok'; points: number; first: boolean } | { kind: 'wrong'; hint: boolean } | { kind: 'ignored' };
@@ -124,6 +133,9 @@ export class FacteurGame {
   private slips = 0;
   private score = 0;
   private missed = new Set<string>();
+  private seen = new Set<string>();
+  private outcomes: FResult['outcomes'] = [];
+  private picksNow: string[] = [];
   private seq = 0;
   readonly total: number;
   private pool: FWord[];
@@ -151,6 +163,7 @@ export class FacteurGame {
     const mix = shuffle([word, ...distractors(word, this.pool, this.rng)], this.rng);
     this.cur = { id: ++this.seq, word, choices: mix, tried: mix.map(() => false) };
     this.slipsNow = 0;
+    this.picksNow = [];
     this.requeued = false;
   }
 
@@ -181,6 +194,8 @@ export class FacteurGame {
       const points = first ? answerPoints(base, 0, this.mult) : base;
       this.score += points;
       this.delivered++;
+      this.seen.add(plain(p.word.mark));
+      this.outcomes.push({ word: p.word, ok: first, picks: this.picksNow });
       if (first) {
         this.firstTry++;
         this.streak++;
@@ -189,6 +204,7 @@ export class FacteurGame {
       return { kind: 'ok', points, first };
     }
     p.tried[i] = true;
+    this.picksNow = [...this.picksNow, plain(p.choices[i].mark)];
     this.slipsNow++;
     this.slips++;
     this.missed.add(plain(p.word.mark));
@@ -210,11 +226,13 @@ export class FacteurGame {
       score: this.score,
       stars: starsFor(this.firstTry, this.delivered),
       missed: [...this.missed],
+      clean: [...this.seen].filter((x) => !this.missed.has(x)),
+      outcomes: this.outcomes.slice(),
     };
   }
 }
 
 /** Raccourci : une séance complète pour un niveau. */
-export function newSession(level: FLevel, rng: Rng, hasPicture?: (w: FWord) => boolean): FacteurGame {
-  return new FacteurGame(level, pickWords(level, WORDS_PER_SESSION, rng, hasPicture), wordsUpTo(level), rng);
+export function newSession(level: FLevel, rng: Rng, hasPicture?: (w: FWord) => boolean, prefer: readonly FWord[] = []): FacteurGame {
+  return new FacteurGame(level, pickWords(level, WORDS_PER_SESSION, rng, hasPicture, prefer), wordsUpTo(level), rng);
 }

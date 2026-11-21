@@ -9,7 +9,7 @@ export function InfoButton({ onClick, label = 'Voir un extrait du jeu' }: { onCl
   );
 }
 
-export type PreviewGame = 'typing' | 'math' | 'memory' | 'spelling' | 'lexique';
+export type PreviewGame = 'typing' | 'math' | 'memory' | 'spelling' | 'lexique' | 'facteur';
 
 export interface PreviewStep {
   /** titre court, en gras */
@@ -69,6 +69,16 @@ export const PREVIEWS: Record<PreviewGame, PreviewInfo> = {
       { title: 'Les mots arrivent', text: 'Des taches d’encre portant chacune un mot avancent vers le centre, de toutes les directions.', example: 'logis · jardin · toit · maison : lequel a le même sens ?', sound: 'spawn' },
       { title: 'Touche le bon mot', text: 'Touche la tache dont le mot répond à la consigne.', example: '« logis » a le même sens que « maison » : tu le touches.', sound: 'select' },
       { title: 'Onde de choc', text: 'Une bonne réponse fait éclater les taches et montre comment le mot est construit. Trois de suite : la série monte.', example: 'en- + terr + -er : préfixe, racine, suffixe.', sound: 'mult' },
+    ],
+  },
+  facteur: {
+    title: 'Le facteur',
+    goal: 'Lis les mots et range chaque colis dans la bonne boîte aux lettres.',
+    steps: [
+      { title: 'Un colis arrive', text: 'Un colis avance doucement sur le tapis. Regarde son image.', example: 'Le colis montre une vache.', sound: 'spawn' },
+      { title: 'Lis les trois mots', text: 'Chaque boîte porte un mot. Les lettres grises ne se prononcent pas.', example: 'vélo · vache · vis : le « e » de vache est gris.', sound: 'select' },
+      { title: 'Pas grave si tu te trompes', text: 'La boîte se grise. Le colis reviendra un peu plus tard.', example: 'Tu touches « vélo » : la boîte se grise.', sound: 'error' },
+      { title: 'La bonne boîte', text: 'Le colis part dans la boîte et le mot est lu à voix haute.', example: '« vache » ✓ le colis est rangé.', sound: 'correct' },
     ],
   },
   spelling: {

@@ -1,3 +1,4 @@
+import { GAME_NAMES } from '../game/sessionConfig';
 import { rpc } from './api';
 import { freshToken } from './teacher';
 import type { StudentAccount } from './types';
@@ -109,6 +110,78 @@ export interface AdminItems {
   items: ItemStatRow[];
 }
 
+// ───────────────────────── Statistiques détaillées (mise à jour « stats ») ─────────────────────────
+
+/** Parties libres d'un jeu et d'un mode, pour les classes d'un niveau (« ? » : niveau de classe non fixé). */
+export interface GradeStat {
+  game: string;
+  mode: string;
+  grade: string;
+  runs: number;
+  players: number;
+  classes: number;
+  acc: number | null;
+  acc_med: number | null;
+  score_p25: number | null;
+  score_med: number | null;
+  score_p75: number | null;
+  dur_med: number | null;
+  correct: number | null;
+  wave: number | null;
+  /** % de parties sous 60 % de réussite, à 95 % ou plus, de moins de 30 s */
+  low_pct: number;
+  high_pct: number;
+  short_pct: number;
+}
+/** Une classe (au moins 3 élèves) pour un jeu. */
+export interface ClassStat {
+  school: string;
+  class: string;
+  grade: string;
+  game: string;
+  runs: number;
+  players: number;
+  session_runs: number;
+  acc: number | null;
+  score_med: number | null;
+  dur_med: number | null;
+  last_at: number;
+}
+export interface LoyaltyStat {
+  game: string;
+  players: number;
+  runs_per_player: number;
+  /** % d'élèves revenus un autre jour, ayant joué 10 parties ou plus, n'ayant joué qu'une fois */
+  back_pct: number;
+  ten_pct: number;
+  once_pct: number;
+}
+export interface PeriodBalance {
+  game: string;
+  level: string;
+  difficulty: string;
+  runs: number;
+  ok: number;
+  err: number;
+  success_pct: number | null;
+  finished_pct: number | null;
+  /** % de parties perdues en moins de 45 s */
+  early_loss_pct: number;
+  dur_med: number | null;
+  wave_med: number | null;
+}
+export interface GameStats {
+  days: number;
+  totals: { runs: number; players: number; classes: number; schools: number; session_runs: number; drills: number; minutes: number };
+  by_grade: GradeStat[];
+  by_class: ClassStat[];
+  weekly: { week: string; game: string; runs: number; players: number }[];
+  hours: { dow: number; hour: number; runs: number }[];
+  loyalty: LoyaltyStat[];
+  cheats: { game: string; reason: string; n: number; players: number }[];
+  balance: PeriodBalance[];
+}
+
 const authed = async <T>(f: (token: string) => Promise<T>): Promise<T> => f(await freshToken());
 
 /** Vrai si ce compte est administrateur du site (faux aussi si la mise à jour SQL n'est pas encore faite). */
@@ -123,6 +196,7 @@ export async function isAdmin(): Promise<boolean> {
 export const adminOverview = () => authed((t) => rpc<AdminOverview>('admin_overview', {}, t));
 export const adminSchool = (id: string) => authed((t) => rpc<AdminSchool>('admin_school', { p_school: id }, t));
 export const adminBalance = () => authed((t) => rpc<AdminBalance>('admin_balance', {}, t));
+export const adminGameStats = (days: number) => authed((t) => rpc<GameStats>('admin_game_stats', { p_days: days }, t));
 export const adminItemStats = () => authed((t) => rpc<AdminItems>('admin_item_stats', {}, t));
 export const adminLogs = (limit = 200) => authed((t) => rpc<AdminLogs>('admin_logs', { p_limit: limit }, t));
 
@@ -148,12 +222,8 @@ export const adminCreateInvitation = (label: string, maxUses: number, days: numb
 export const adminRevokeInvitation = (code: string) => authed((t) => rpc('admin_revoke_invitation', { p_code: code }, t));
 export const adminSetInviteOnly = (on: boolean) => authed((t) => rpc('admin_set_invite_only', { p_on: on }, t));
 
-export const GAME_NAME: Record<string, string> = {
-  typing: 'Frappe !',
-  math: 'Course à l’encre',
-  memory: 'Mémoire d’encre',
-  spelling: 'Chasse aux fautes',
-};
+/** Noms des jeux (la liste complète, partagée avec les séances). */
+export const GAME_NAME: Record<string, string> = GAME_NAMES;
 
 /** Note le début d'une observation dans le journal de l'administration (le serveur refuse si le compte n'est pas administrateur). */
 export const adminObserve = (kind: 'school' | 'student', id: string) => authed((t) => rpc<unknown>('admin_observe', { p_kind: kind, p_target: id }, t));

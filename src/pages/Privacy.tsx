@@ -80,8 +80,8 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
         <h3 className="font-bold">Statistiques anonymes</h3>
         <p>
           Après une partie libre d’un élève connecté, un résumé <strong>sans aucun identifiant</strong> (jeu, niveau, score, réussites et erreurs, durée) sert à régler la difficulté.
-          Des compteurs par exercice (« posé tant de fois, raté tant de fois ») servent à repérer les exercices trop durs ; ils ne gardent jamais ce qu’un élève écrit et ne sont lisibles que
-          par l’administrateur.
+          Des compteurs par exercice (« posé tant de fois, raté tant de fois », et pour Le facteur les mots confondus) servent à repérer les exercices trop durs ; ils ne gardent jamais ce
+          qu’un élève écrit et ne sont lisibles que par l’administrateur. Celui-ci voit aussi des moyennes par niveau et par classe (jamais pour moins de 3 élèves).
         </p>
         <h3 className="font-bold">Enseignant</h3>
         <p>Adresse e-mail et mot de passe (protégé par le service d’identification, lisible par personne), nom de l’école et des classes.</p>

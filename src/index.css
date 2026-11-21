@@ -2570,6 +2570,47 @@ html[data-comfort='on'] .title-sm {
   background: var(--color-ink);
 }
 
+/* « À régler en priorité » : une carte par conseil, le niveau d'urgence écrit en toutes lettres */
+.adm-advice {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.adm-advice li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  align-items: baseline;
+  padding: 8px 10px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+}
+.adm-advice li[data-p="1"] {
+  border-width: 3px;
+}
+.adm-advice li > :not(.adm-verdict):not(strong) {
+  grid-column: 2;
+}
+.adm-advice strong {
+  font-size: 15px;
+}
+@media (max-width: 640px) {
+  .adm-advice li {
+    grid-template-columns: 1fr;
+  }
+  .adm-advice li > * {
+    grid-column: 1 !important;
+  }
+}
+.adm-filters .seg {
+  margin: 0;
+}
+.adm-bars-gap {
+  margin-bottom: 32px;
+}
+
 /* ───── Téléphone en paysage : message « tourne ton téléphone » ───── */
 .rotate-notice {
   position: fixed;
@@ -3828,6 +3869,55 @@ button.hx-w:enabled:active {
   }
   .hx-fixed.on .hx-was {
     opacity: 1;
+  }
+}
+
+/* Extrait du Facteur (fenêtre d'aperçu de l'accueil) : la scène du jeu, à la taille de la fenêtre */
+.pw-view.pw-doc:has(.pw-fct) {
+  padding: 0;
+}
+.pw-fct {
+  width: 100%;
+  height: 100%;
+  padding: 8px 12px 10px;
+}
+.pw-fct .fct-parcel {
+  --pw: min(30cqw, 38cqh);
+}
+.pw-fct .fct-word {
+  font-size: clamp(15px, min(5cqw, 9cqh), 34px) !important;
+}
+.pw-fct .fct-box {
+  cursor: default;
+}
+.pw-fct .fct-parcel.pw-fct-ride {
+  animation-duration: 16s;
+}
+.pw-fct .fct-parcel.pw-fct-sent {
+  animation: pw-fct-send 1.1s ease-in 0.4s both;
+}
+@keyframes pw-fct-send {
+  to {
+    transform: translateY(40cqh) scale(0.3);
+    opacity: 0;
+  }
+}
+.pw-fct-dim .fct-box {
+  opacity: 0.35;
+}
+/* fenêtre d'extrait basse (téléphone) : le colis et les mots d'abord, les boîtes sans dessin */
+@container (max-height: 260px) {
+  .pw-fct .fct-box-art {
+    display: none;
+  }
+  .pw-fct .fct-parcel {
+    --pw: min(28cqw, 46cqh);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pw-fct .fct-parcel.pw-fct-ride,
+  .pw-fct .fct-parcel.pw-fct-sent {
+    animation: none;
   }
 }
 

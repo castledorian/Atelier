@@ -10,6 +10,9 @@ import type { Grade } from '../game/grade';
 import { PREVIEWS } from './Preview';
 import type { PreviewGame, PreviewStep } from './Preview';
 import { useDialog } from './Dialog';
+import { Mailbox, PictureView } from './FacteurParts';
+import type { MailboxState } from './FacteurParts';
+import { WORDS } from '../game/facteur/words';
 
 /**
  * Fenêtre d'extrait : s'ouvre par-dessus l'accueil comme un petit onglet. En haut, le jeu joué tout seul
@@ -114,8 +117,14 @@ export default function PreviewWindow({ game, grade, onClose, onPlay }: { game: 
           </button>
         </div>
 
-        <div className={`pw-view${game === 'spelling' ? ' pw-doc' : ''}`}>
-          {game === 'spelling' ? <SpellingScene step={step} /> : <canvas ref={canvasRef} role="img" aria-label={`Extrait de ${info.title} : ${info.goal}`} />}
+        <div className={`pw-view${game === 'spelling' || game === 'facteur' ? ' pw-doc' : ''}`}>
+          {game === 'spelling' ? (
+            <SpellingScene step={step} />
+          ) : game === 'facteur' ? (
+            <FacteurScene step={step} />
+          ) : (
+            <canvas ref={canvasRef} role="img" aria-label={`Extrait de ${info.title} : ${info.goal}`} />
+          )}
         </div>
 
         <div className="pw-body">
@@ -226,6 +235,35 @@ function SpellingScene({ step }: { step: number }) {
           <span key={c} className="hx-choice">
             {c}
           </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Mots de l'extrait du « Facteur » : la vache, et deux mots qui commencent pareil. */
+const F_DEMO = ['vélo', 'vach(e)', 'vis'].map((m) => WORDS.find((w) => w.mark === m)).filter((w) => w !== undefined);
+
+/** Extrait du « Facteur » : même dessin que le jeu (tapis, colis, boîtes aux lettres) ; décor seulement, rien n'est cliquable. */
+function FacteurScene({ step }: { step: number }) {
+  const target = F_DEMO[1];
+  const state = (k: number): MailboxState => {
+    if (step < 2) return 'idle';
+    if (step === 2) return k === 0 ? 'no' : 'idle';
+    return k === 1 ? 'ok' : k === 0 ? 'off' : 'idle';
+  };
+  return (
+    <div className="fct pw-fct" aria-hidden="true" style={{ ['--ride' as string]: '44s' }}>
+      <div className="fct-belt">
+        {target && (
+          <div key={step === 3 ? 'sent' : 'ride'} className={step === 3 ? 'fct-parcel pw-fct-sent' : 'fct-parcel pw-fct-ride'}>
+            <PictureView word={target} />
+          </div>
+        )}
+      </div>
+      <div className={`fct-boxes${step === 0 ? ' pw-fct-dim' : ''}`}>
+        {F_DEMO.map((w, k) => (
+          <Mailbox key={w.mark} i={k} word={w} state={state(k)} />
         ))}
       </div>
     </div>

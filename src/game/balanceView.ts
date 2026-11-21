@@ -1,5 +1,6 @@
 import type { BalanceLevel, ItemStatRow } from '../server/admin';
 import { toCsv } from './history';
+import { GAME_NAMES } from './sessionConfig';
 
 /**
  * Lecture des statistiques d'équilibrage (espace administrateur) : à quel point chaque niveau est-il réussi,
@@ -16,7 +17,26 @@ export const TOLERANCE = 5;
 /** En dessous, une moyenne n'est pas assez solide pour décider de régler quoi que ce soit. */
 export const MIN_ROUNDS = 150;
 /** Jeux dont la réussite est mesurée par manche. (Frappe ! et Mémoire d'encre se règlent autrement.) */
-export const RATED_GAMES = ['math', 'spelling'];
+export const RATED_GAMES = ['math', 'spelling', 'lexique', 'facteur'];
+/** Jeux sans fin de partie gagnante (on joue jusqu'à la fin de la séance, ou jusqu'à perdre) : « parties gagnées » n'y a pas de sens. */
+export const NO_END = ['facteur', 'lexique'];
+/** Le facteur (CP) : colis rangés du premier coup visés, quel que soit le niveau (le seuil des 3 étoiles). */
+export const FACTEUR_TARGET = 85;
+
+const DIFFS = ['apprenti', 'standard', 'expert'];
+/** Difficulté d'un classement : « cm1-expert » → expert, « synonyme » → standard, « apprenti » → apprenti. */
+export function diffOf(mode: string): string {
+  if (DIFFS.includes(mode)) return mode;
+  const tail = mode.split('-').pop() ?? '';
+  return DIFFS.includes(tail) ? tail : 'standard';
+}
+
+/** Réussite visée pour un jeu et une difficulté (undefined si le jeu ne se règle pas ainsi). */
+export function targetOf(game: string, difficulty: string): number | undefined {
+  if (!RATED_GAMES.includes(game)) return undefined;
+  if (game === 'facteur') return FACTEUR_TARGET;
+  return TARGET[diffOf(difficulty)];
+}
 
 export type Verdict = 'few' | 'easy' | 'ok' | 'hard' | 'none';
 
@@ -34,20 +54,39 @@ export interface LevelVerdict {
 
 const LEVEL_NAME: Record<string, string> = { cp: 'CP', ce1: 'CE1', ce2: 'CE2', cm1: 'CM1', cm2: 'CM2', '-': '—' };
 export const levelName = (l: string) => LEVEL_NAME[l] ?? l.toUpperCase();
-const GAME_LABEL: Record<string, string> = { typing: 'Frappe !', math: 'Course à l’encre', memory: 'Mémoire d’encre', spelling: 'Chasse aux fautes' };
-export const gameName = (g: string) => GAME_LABEL[g] ?? g;
-const DIFF_NAME: Record<string, string> = { apprenti: 'Apprenti', standard: 'Standard', expert: 'Expert' };
-export const diffName = (d: string) => DIFF_NAME[d] ?? d;
+export const gameName = (g: string) => (GAME_NAMES as Record<string, string>)[g] ?? g;
+const DIFF_NAME: Record<string, string> = { apprenti: 'Apprenti', standard: 'Standard', expert: 'Expert', perso: 'Personnalisé' };
+const PART_NAME: Record<string, string> = {
+  ...DIFF_NAME,
+  ...LEVEL_NAME,
+  synonyme: 'Synonymes',
+  contraire: 'Contraires',
+  famille: 'Familles',
+  melange: 'Mélange',
+  suite: 'La Suite',
+  cases: 'Les Cases',
+  n1: 'Niveau 1',
+  n2: 'Niveau 2',
+  n3: 'Niveau 3',
+  n4: 'Niveau 4',
+  n5: 'Niveau 5',
+};
+/** « cm1-expert » → « CM1 · Expert », « synonyme » → « Synonymes », « n2 » → « Niveau 2 ». */
+export const diffName = (d: string) =>
+  d
+    .split('-')
+    .map((p) => PART_NAME[p] ?? p)
+    .join(' · ');
 
-export function verdictOf(l: BalanceLevel): LevelVerdict {
-  const target = TARGET[l.difficulty];
+export function verdictOf(l: Pick<BalanceLevel, 'game' | 'difficulty' | 'runs' | 'ok' | 'err' | 'success_pct' | 'finished_pct'>): LevelVerdict {
+  const target = targetOf(l.game, l.difficulty);
   const rounds = l.ok + l.err;
   let note = '';
-  if (l.runs >= 10 && l.finished_pct !== null) {
+  if (l.runs >= 10 && l.finished_pct !== null && !NO_END.includes(l.game)) {
     if (l.finished_pct >= 95) note = 'presque toutes les parties sont gagnées';
     else if (l.finished_pct <= 15) note = 'presque toutes les parties sont perdues';
   }
-  if (!RATED_GAMES.includes(l.game) || target === undefined || l.success_pct === null) return { verdict: 'none', label: 'Non évalué', gap: null, detail: '', note };
+  if (target === undefined || l.success_pct === null) return { verdict: 'none', label: 'Non évalué', gap: null, detail: '', note };
   if (rounds < MIN_ROUNDS) return { verdict: 'few', label: 'Trop peu de données', gap: null, detail: `${rounds} manches sur ${MIN_ROUNDS} nécessaires`, note };
   const gap = Math.round((l.success_pct - target) * 10) / 10;
   const detail = gap === 0 ? 'pile sur l’objectif' : `${gap > 0 ? '+' : '−'}${String(Math.abs(gap)).replace('.', ',')} point${Math.abs(gap) >= 2 ? 's' : ''}`;
@@ -103,7 +142,7 @@ export function levelsCsv(levels: readonly BalanceLevel[]): string {
     ['Jeu', 'Niveau', 'Difficulté', 'Version', 'Parties', 'Manches réussies', 'Manches ratées', 'Réussite %', 'Objectif %', 'Verdict', 'Écart (points)', 'Parties gagnées %', 'Score moyen', 'Durée moyenne (s)'],
     levels.map((l) => {
       const v = verdictOf(l);
-      return [gameName(l.game), levelName(l.level), diffName(l.difficulty), l.version, l.runs, l.ok, l.err, l.success_pct ?? '', TARGET[l.difficulty] ?? '', v.label, v.gap ?? '', l.finished_pct ?? '', l.avg_score ?? '', l.avg_duration ?? ''];
+      return [gameName(l.game), levelName(l.level), diffName(l.difficulty), l.version, l.runs, l.ok, l.err, l.success_pct ?? '', targetOf(l.game, l.difficulty) ?? '', v.label, v.gap ?? '', l.finished_pct ?? '', l.avg_score ?? '', l.avg_duration ?? ''];
     }),
   );
 }

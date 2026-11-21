@@ -1077,7 +1077,7 @@ create table if not exists private.schema_migrations (
   applied_at timestamptz not null default now()
 );
 alter table private.schema_migrations enable row level security;
-insert into private.schema_migrations (id) values ('2026-11-fiabilite'), ('2026-11-codes'), ('2026-11-grotte'), ('2026-11-lexique'), ('2026-11-bareme'), ('2026-11-facteur') on conflict (id) do nothing;
+insert into private.schema_migrations (id) values ('2026-11-fiabilite'), ('2026-11-codes'), ('2026-11-grotte'), ('2026-11-lexique'), ('2026-11-bareme'), ('2026-11-facteur'), ('2026-11-stats') on conflict (id) do nothing;
 
 create table if not exists private.invitations (
   code       text primary key check (code ~ '^[A-Z0-9]{8}$'),
@@ -1302,10 +1302,12 @@ begin
     'lexique',     v_ov like '%best_lexique%' and exists (select 1 from pg_constraint where conname = 'class_sessions_game_check' and pg_get_constraintdef(oid) like '%lexique%'),
     'bareme',      v_rv like '%840 * c%',
     'facteur',     v_rv like '%facteur%' and v_ov like '%best_facteur%' and exists (select 1 from pg_constraint where conname = 'class_sessions_game_check' and pg_get_constraintdef(oid) like '%facteur%'),
+    'stats',       to_regprocedure('public.admin_game_stats(integer)') is not null
+                   and exists (select 1 from pg_constraint where conname = 'item_stats_game_check' and pg_get_constraintdef(oid) like '%facteur%'),
     'nettoyage_auto', v_cron
   );
   return jsonb_build_object(
-    'version', 16,
+    'version', 17,
     'features', f,
     'migrations', coalesce((select jsonb_agg(id order by id) from private.schema_migrations), '[]'::jsonb),
     'plain_codes', (select count(*) from public.students where access_code is not null),
@@ -1650,7 +1652,7 @@ create policy runs_admin_read     on public.runs     for select to authenticated
 -- ───────────────────────── Table ─────────────────────────
 
 create table if not exists public.item_stats (
-  game        text    not null check (game in ('math', 'spelling')),
+  game        text    not null check (game in ('math', 'spelling', 'facteur')),
   level       text    not null check (level in ('cp', 'ce1', 'ce2', 'cm1', 'cm2')),
   difficulty  text    not null check (difficulty ~ '^[a-z0-9_-]{1,20}$'),
   version     integer not null default 1 check (version between 0 and 999),
@@ -1753,7 +1755,8 @@ declare
   v_n   integer;
 begin
   if v_sid is null then return jsonb_build_object('error', 'invalid_session'); end if;
-  if p_game not in ('math', 'spelling') or p_level not in ('cp', 'ce1', 'ce2', 'cm1', 'cm2')
+  if p_game not in ('math', 'spelling', 'facteur') or p_level not in ('cp', 'ce1', 'ce2', 'cm1', 'cm2')
+     or (p_game = 'facteur' and (p_level <> 'cp' or p_difficulty !~ '^n[1-9]$'))
      or p_difficulty is null or p_difficulty !~ '^[a-z0-9_-]{1,20}$'
      or p_difficulty = 'perso'
      or p_version is null or p_version < 0 or p_version > 999
@@ -1833,6 +1836,123 @@ begin
   );
 end $$;
 
+-- Statistiques des parties pour l'équilibrage (administrateur du site seulement). p_days : période étudiée (7 à 400 jours).
+-- Parties libres = ni séance de classe, ni entraînement. Le « niveau » est celui de la CLASSE (fixé par l'enseignant), « ? » s'il n'est pas fixé.
+create or replace function public.admin_game_stats(p_days integer default 90) returns jsonb
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  v_days integer := least(400, greatest(7, coalesce(p_days, 90)));
+  v_from timestamptz := now() - make_interval(days => least(400, greatest(7, coalesce(p_days, 90))));
+begin
+  perform private.assert_site_admin();
+  insert into private.admin_audit (admin_id, action, target) values (auth.uid(), 'game_stats', v_days::text);
+  delete from private.admin_audit where at < now() - interval '1 year';
+  return jsonb_build_object(
+    'days', v_days,
+    'totals', (
+      select jsonb_build_object(
+        'runs', count(*), 'players', count(distinct r.student_id), 'classes', count(distinct r.class_id), 'schools', count(distinct r.school_id),
+        'session_runs', count(*) filter (where r.session_id is not null), 'drills', count(*) filter (where r.kind = 'drill'),
+        'minutes', coalesce(round(sum(r.duration) / 60.0), 0))
+      from public.runs r where r.played_at >= v_from),
+    'by_grade', (
+      select coalesce(jsonb_agg(to_jsonb(t) order by t.game, t.grade, t.mode), '[]'::jsonb)
+      from (
+        select r.game, r.mode, coalesce(c.grade, '?') as grade,
+               count(*)::integer as runs,
+               count(distinct r.student_id)::integer as players,
+               count(distinct r.class_id)::integer as classes,
+               round(avg(r.acc), 1) as acc,
+               round(percentile_cont(0.5) within group (order by r.acc)::numeric, 1) as acc_med,
+               round(percentile_cont(0.25) within group (order by r.score)::numeric)::integer as score_p25,
+               round(percentile_cont(0.5) within group (order by r.score)::numeric)::integer as score_med,
+               round(percentile_cont(0.75) within group (order by r.score)::numeric)::integer as score_p75,
+               round(percentile_cont(0.5) within group (order by r.duration)::numeric)::integer as dur_med,
+               round(avg(r.correct), 1) as correct,
+               round(avg(r.wave), 1) as wave,
+               round(100.0 * count(*) filter (where r.acc < 60) / count(*), 1) as low_pct,
+               round(100.0 * count(*) filter (where r.acc >= 95) / count(*), 1) as high_pct,
+               round(100.0 * count(*) filter (where r.duration < 30) / count(*), 1) as short_pct
+        from public.runs r join public.classes c on c.id = r.class_id
+        where r.played_at >= v_from and r.session_id is null and r.kind = 'game'
+        group by r.game, r.mode, coalesce(c.grade, '?')
+      ) t),
+    'by_class', (
+      select coalesce(jsonb_agg(to_jsonb(t) order by t.runs desc), '[]'::jsonb)
+      from (
+        select s.name as school, c.name as class, coalesce(c.grade, '?') as grade, r.game,
+               count(*)::integer as runs,
+               count(distinct r.student_id)::integer as players,
+               count(*) filter (where r.session_id is not null)::integer as session_runs,
+               round(avg(r.acc), 1) as acc,
+               round(percentile_cont(0.5) within group (order by r.score)::numeric)::integer as score_med,
+               round(percentile_cont(0.5) within group (order by r.duration)::numeric)::integer as dur_med,
+               (extract(epoch from max(r.played_at)) * 1000)::bigint as last_at
+        from public.runs r join public.classes c on c.id = r.class_id join public.schools s on s.id = r.school_id
+        where r.played_at >= v_from and r.kind = 'game'
+        group by s.name, c.id, c.name, c.grade, r.game
+        having count(distinct r.student_id) >= 3
+        order by count(*) desc
+        limit 400
+      ) t),
+    'weekly', (
+      select coalesce(jsonb_agg(to_jsonb(t) order by t.week, t.game), '[]'::jsonb)
+      from (
+        select to_char(date_trunc('week', r.played_at at time zone 'Europe/Paris'), 'YYYY-MM-DD') as week, r.game,
+               count(*)::integer as runs, count(distinct r.student_id)::integer as players
+        from public.runs r where r.played_at >= v_from
+        group by 1, 2
+      ) t),
+    'hours', (
+      select coalesce(jsonb_agg(to_jsonb(t) order by t.dow, t.hour), '[]'::jsonb)
+      from (
+        select extract(isodow from r.played_at at time zone 'Europe/Paris')::integer as dow,
+               extract(hour from r.played_at at time zone 'Europe/Paris')::integer as hour,
+               count(*)::integer as runs
+        from public.runs r where r.played_at >= v_from
+        group by 1, 2
+      ) t),
+    'loyalty', (
+      select coalesce(jsonb_agg(to_jsonb(t) order by t.game), '[]'::jsonb)
+      from (
+        select p.game, count(*)::integer as players,
+               round(avg(p.n), 1) as runs_per_player,
+               round(100.0 * count(*) filter (where p.days >= 2) / count(*), 1) as back_pct,
+               round(100.0 * count(*) filter (where p.n >= 10) / count(*), 1) as ten_pct,
+               round(100.0 * count(*) filter (where p.n = 1) / count(*), 1) as once_pct
+        from (
+          select r.game, r.student_id, count(*) as n, count(distinct (r.played_at at time zone 'Europe/Paris')::date) as days
+          from public.runs r where r.played_at >= v_from and r.kind = 'game'
+          group by r.game, r.student_id
+        ) p
+        group by p.game
+      ) t),
+    'cheats', (
+      select coalesce(jsonb_agg(to_jsonb(t) order by t.n desc), '[]'::jsonb)
+      from (
+        select coalesce(l.game, '?') as game, l.reason, count(*)::integer as n, count(distinct l.student_id)::integer as players
+        from private.cheat_log l where l.at >= v_from
+        group by 1, 2
+      ) t),
+    'balance', (
+      select coalesce(jsonb_agg(to_jsonb(t) order by t.game, t.level, t.difficulty), '[]'::jsonb)
+      from (
+        select b.game, coalesce(b.level, '-') as level, b.difficulty,
+               count(*)::integer as runs,
+               coalesce(sum(b.rounds_ok), 0)::bigint as ok,
+               coalesce(sum(b.rounds_err), 0)::bigint as err,
+               round(100.0 * sum(b.rounds_ok) / nullif(sum(b.rounds_ok + b.rounds_err), 0), 1) as success_pct,
+               round(100.0 * count(*) filter (where b.outcome = 'finished') / count(*), 1) as finished_pct,
+               round(100.0 * count(*) filter (where b.outcome = 'lost' and coalesce(b.duration, 0) < 45) / count(*), 1) as early_loss_pct,
+               round(percentile_cont(0.5) within group (order by b.duration)::numeric)::integer as dur_med,
+               round(percentile_cont(0.5) within group (order by b.wave)::numeric, 1) as wave_med
+        from public.balance_runs b
+        where not b.custom and b.played_at >= v_from
+        group by b.game, coalesce(b.level, '-'), b.difficulty
+      ) t)
+  );
+end $$;
+
 revoke all on function private.merge_picks(jsonb, jsonb) from public, anon, authenticated;
 revoke all on function private.is_site_admin()                  from public, anon, authenticated;
 revoke all on function private.is_member(uuid)                  from public, anon, authenticated;
@@ -1865,3 +1985,5 @@ revoke all on function public.admin_item_stats(text, text) from public;
 grant execute on function public.submit_item_stats(text, text, text, text, integer, jsonb) to anon, authenticated;
 grant execute on function public.admin_balance()                to authenticated;
 grant execute on function public.admin_item_stats(text, text)   to authenticated;
+revoke all on function public.admin_game_stats(integer) from public, anon;
+grant execute on function public.admin_game_stats(integer) to authenticated;
