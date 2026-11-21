@@ -90,7 +90,7 @@ create table public.runs (
 create index on public.runs (class_id, game, mode, student_id, score desc);
 create index on public.runs (school_id, game, mode, student_id, score desc);
 create index on public.runs (student_id, played_at desc);
-create index on public.runs (student_id, received_at desc);
+create index if not exists runs_received_idx on public.runs (student_id, received_at desc);
 
 -- Journal des codes élèves refusés (limite anti-devinette). Jamais accessible depuis le navigateur.
 create table private.login_attempts (
@@ -1303,6 +1303,7 @@ begin
     'bareme',      v_rv like '%840 * c%',
     'facteur',     v_rv like '%facteur%' and v_ov like '%best_facteur%' and exists (select 1 from pg_constraint where conname = 'class_sessions_game_check' and pg_get_constraintdef(oid) like '%facteur%'),
     'stats',       to_regprocedure('public.admin_game_stats(integer)') is not null
+                   and coalesce((select pg_get_functiondef(p.oid) from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'submit_item_stats'), '') like '%facteur%'
                    and exists (select 1 from pg_constraint where conname = 'item_stats_game_check' and pg_get_constraintdef(oid) like '%facteur%'),
     'nettoyage_auto', v_cron
   );

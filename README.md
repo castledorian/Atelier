@@ -13,8 +13,9 @@ Site de petits jeux éducatifs pour l'école primaire (CP → CM2), gratuit, **s
 | **Chasse aux fautes** | Orthographe | CE1 → CM2 | Repérer puis corriger la faute dans une phrase |
 | **Mémoire d'encre** | Mémoire | CP → CM2 | Retenir une suite (La Suite) ou des places (Les Cases) |
 | **Mots en orbite** | Vocabulaire | CE1 → CM2 | Relier le mot du centre à son synonyme, son contraire ou sa famille (préfixes, suffixes) |
+| **Le facteur** | Lecture | CP | Ranger chaque colis (une image) dans la boîte aux lettres qui porte le bon mot |
 
-Chaque jeu propose trois difficultés (**Apprenti**, **Standard**, **Expert**) réglées pour chaque classe. La difficulté dépend du temps, jamais de la taille de l'écran. Seuls les jeux adaptés à la classe choisie s'affichent.
+Chaque jeu (sauf Le facteur, qui a quatre niveaux de sons) propose trois difficultés (**Apprenti**, **Standard**, **Expert**) réglées pour chaque classe. La difficulté dépend du temps, jamais de la taille de l'écran. Seuls les jeux adaptés à la classe choisie s'affichent.
 
 ## Fonctionnement
 

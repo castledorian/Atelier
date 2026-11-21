@@ -1,7 +1,7 @@
 {
   "name": "Atelier — jeux pour apprendre",
   "short_name": "Atelier",
-  "description": "Jeux pour apprendre : dactylographie (Frappe !), calcul mental… avec comptes d’école et classements de classe.",
+  "description": "Six jeux pour apprendre, du CP au CM2 : lecture, clavier, calcul mental, orthographe, vocabulaire, mémoire. Avec espace enseignant.",
   "lang": "fr",
   "start_url": "./",
   "scope": "./",

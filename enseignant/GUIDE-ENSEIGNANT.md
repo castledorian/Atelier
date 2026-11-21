@@ -20,8 +20,19 @@ Sur le site : **Je suis élève**, taper son code, choisir un jeu. Plus rien à 
 - Dans chaque jeu, le bouton **← Accueil** (toujours en haut à gauche) ramène à la liste des jeux.
 - Ils se comparent **dans leur classe** et **dans leur école** (onglets *Classe* / *École*).
 - Les scores sont gardés sur le serveur : ils retrouvent leur courbe de progression sur n'importe quel appareil.
-- **Course à l'encre** (maths, niveaux CM1 et CM2) : l'élève place sa plume sous la bonne réponse parmi trois étiquettes qui tombent (flèches, 1-2-3 ou toucher), puis valide (Entrée, flèche ↑ ou glisser vers le haut sur tablette/téléphone) pour gagner un bonus de vitesse ; l'encre monte à chaque erreur. Une partie = un cahier de 6 pages de 8 calculs, de plus en plus difficiles (environ 5 minutes) ; terminer le cahier donne un bonus. Les calculs suivent les repères annuels de cycle 3 : CM1 (tables, doubles et moitiés, compléments à 100 et 1 000, ×10/100/1 000, multiples de 25 et 50, quotients et restes, premiers décimaux) ; CM2 (calcul astucieux, décimaux ×/÷ 10, 100, 1 000, compléments, fractions simples, pourcentages 10/25/50/75 %). À la fin, le jeu affiche les calculs ratés et propose de s'entraîner dessus. Les scores apparaissent dans le tableau de bord (colonne maths).
-- **Mémoire d'encre** (mémoire de travail, tous niveaux CM1-CM2) : deux modes, avec des taches d'encre qui dorment puis se réveillent. *La Suite* : une suite de taches s'allume sur une grille 3×3 (avec une note de musique chacune) ; l'élève la refait dans le même ordre, puis la **même suite s'allonge d'une tache** à chaque réussite (comme « Sequence Memory » de Human Benchmark), de 1 jusqu'à 30 taches. *Les Cases* : des taches apparaissent un instant sur une grille qui grandit (3×3 jusqu'à 6×6), l'élève retrouve leurs places. 3 vies, 6 pages (paliers), une vie regagnée par page sans erreur ; chaque élève est invité à battre **son propre record** (affiché pendant la partie), et une astuce de mémorisation lui est proposée après chaque partie. Au clavier : flèches + Entrée ; au toucher : on touche les taches. Les scores apparaissent dans le tableau de bord (colonne « Record mémoire »).
+- Seuls les jeux de la classe s'affichent (le niveau de la classe se règle dans l'espace enseignant). Chaque jeu a un bouton **i** : un court extrait animé qui montre comment jouer.
+
+| Jeu | Classes | En bref |
+|---|---|---|
+| **Le facteur** (lecture) | CP | Un colis-image avance ; l'élève le range dans la boîte qui porte le bon mot. 4 niveaux qui suivent les sons vus en classe, lettres muettes en gris. Pas de vie ni de chrono ; un mot raté revient plus tard, et dans les séances suivantes. |
+| **Course à l'encre** (calcul mental) | CP → CM2 | Choisir la bonne réponse parmi trois avant que l'encre ne monte. Calculs selon les repères annuels de la classe ; les calculs ratés sont proposés en entraînement. |
+| **Chasse aux fautes** (orthographe) | CE1 → CM2 | Repérer la faute dans une phrase, puis choisir la bonne écriture ; une astuce rappelle la règle. |
+| **Mots en orbite** (vocabulaire) | CE1 → CM2 | Toucher le mot qui a le même sens, le sens contraire ou qui est de la même famille. |
+| **Frappe !** (clavier) | CE1 → CM2 | Taper les mots avant qu'ils n'atteignent la marge. |
+| **Mémoire d'encre** (mémoire de travail) | CP → CM2 | Refaire une suite qui s'allonge (*La Suite*) ou retrouver des places (*Les Cases*). |
+
+- **Mes progrès** (dans chaque jeu) : tendance, points à revoir et entraînement ciblé. Ces données restent sur l'appareil de l'élève.
+- **La grotte** (accueil) : les erreurs des parties libres de la classe nourrissent une créature d'encre, les réussites renforcent la classe ; grand combat en fin d'année. Vous pouvez la remettre à zéro.
 
 ## 4. Suivre et exporter
 
@@ -70,8 +81,10 @@ Espace enseignant → votre classe → onglet **Séances** → **+ Nouvelle séa
 
 1. Donnez un **titre** (vu par les élèves), choisissez le **jeu** et ses réglages :
    - **Frappe !** : Apprenti, Standard, Expert ou Personnalisé (vitesse, vies, mots ou lettres, longueur des mots…).
-   - **Course à l'encre** : niveau CM1 ou CM2 (les calculs suivent le programme) et difficulté Apprenti / Standard / Expert.
-   - **Mémoire d'encre** : La Suite ou Les Cases, et la page de départ.
+   - **Course à l'encre** et **Chasse aux fautes** : niveau de classe et difficulté Apprenti / Standard / Expert.
+   - **Mots en orbite** : consigne (synonymes, contraires, familles, mélange), niveau des mots et difficulté.
+   - **Le facteur** : niveau (1 à 4).
+   - **Mémoire d'encre** : La Suite ou Les Cases, et la difficulté.
 2. Choisissez le nombre d'**essais par élève** (1 à 3). Un essai est compté quand la partie est terminée.
 3. Les élèves retrouvent la séance dans **Mes séances** (après connexion avec leur code). **Seul leur meilleur score compte** ; vous voyez tous les essais dans **Résultats**, avec un export CSV.
 
@@ -79,4 +92,4 @@ Vous pouvez fermer une séance (les élèves ne peuvent plus jouer) ou augmenter
 
 ## Difficultés
 
-Chaque jeu propose trois niveaux : **Apprenti** (pour débuter), **Standard** (rythme de référence) et **Expert**. Dans Course à l'encre, ils se combinent avec CM1 / CM2 ; chaque difficulté a son propre classement. Mémoire d'encre est un jeu universel, sans niveau scolaire.
+Chaque jeu (sauf Le facteur) propose trois niveaux : **Apprenti** (pour débuter), **Standard** (rythme de référence) et **Expert**. Dans Course à l'encre et Chasse aux fautes, ils se combinent avec le niveau de la classe ; chaque difficulté a son propre classement.
