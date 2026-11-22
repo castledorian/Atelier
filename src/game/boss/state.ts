@@ -5,8 +5,9 @@
  * et les réussites donnent de la force à la classe. En fin d'année, la classe descend dans la grotte et
  * l'affronte : le combat est écrit d'avance, la classe gagne toujours — mais elle doit y croire.
  *
- * Tout est gardé SUR L'APPAREIL (localStorage) : aucun prénom, aucun compteur n'est envoyé au serveur.
- * Les prénoms du combat final sont saisis par la classe (ou l'enseignant) et restent sur cet appareil.
+ * Ce module garde la grotte SUR L'APPAREIL (sans compte, ou en secours). Avec un compte, la grotte est celle de la classe,
+ * additionnée par le serveur (src/server/cave.ts), et l'équipe du combat final vient de « Ma goutte » (src/server/goutte.ts).
+ * Sans compte, les prénoms du combat sont saisis sur l'appareil et y restent.
  *
  * Visible seulement pour un élève ou un enseignant connecté (sans compte, la porte n'apparaît pas).
  * Mettre CAVE_ON à false la masque pour tout le monde : la porte disparaît, la page est inaccessible
@@ -29,6 +30,8 @@ export interface BossState {
   wonAt: number | null;
   /** la grotte a déjà été ouverte au moins une fois */
   seen: boolean;
+  /** jour par jour (AAAA-MM-JJ) : fautes et réussites (pour la courbe d'évolution quand il n'y a pas de serveur) */
+  log: Array<[string, number, number]>;
 }
 
 const KEY = 'atelier.boss.v1';
@@ -45,7 +48,24 @@ export function schoolYear(d: Date = new Date()): string {
   return d.getMonth() >= 7 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
 }
 
-const blank = (d?: Date): BossState => ({ year: schoolYear(d), ink: 0, power: 0, games: 0, wonAt: null, seen: false });
+const blank = (d?: Date): BossState => ({ year: schoolYear(d), ink: 0, power: 0, games: 0, wonAt: null, seen: false, log: [] });
+
+const cleanLog = (v: unknown): Array<[string, number, number]> =>
+  Array.isArray(v)
+    ? v
+        .filter((x): x is [string, number, number] => Array.isArray(x) && typeof x[0] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x[0]) && Number.isFinite(x[1]) && Number.isFinite(x[2]))
+        .slice(-400)
+    : [];
+
+const dayOf = (d: Date) => d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+
+/** Ajoute des fautes et réussites au jour donné du journal. */
+function logDay(log: Array<[string, number, number]>, d: Date, ink: number, power: number): Array<[string, number, number]> {
+  const day = dayOf(d);
+  const last = log[log.length - 1];
+  if (last && last[0] === day) return [...log.slice(0, -1), [day, last[1] + ink, last[2] + power]];
+  return [...log, [day, ink, power] as [string, number, number]].slice(-400);
+}
 
 const clean = (v: unknown, d?: Date): BossState => {
   const s = v as Partial<BossState> | null;
@@ -57,6 +77,7 @@ const clean = (v: unknown, d?: Date): BossState => {
     games: Number.isFinite(s.games) ? Math.max(0, Number(s.games)) : 0,
     wonAt: Number.isFinite(s.wonAt) ? Number(s.wonAt) : null,
     seen: s.seen === true,
+    log: cleanLog(s.log),
   };
 };
 
@@ -81,14 +102,15 @@ function save(s: BossState): BossState {
 export function feedBoss(ok: number, err: number, d?: Date): BossState {
   const s = loadBoss(d);
   if (!CAVE_ON || ok + err <= 0) return s;
-  return save({ ...s, ink: s.ink + Math.max(0, err), power: s.power + Math.max(0, ok), games: s.games + 1 });
+  return save({ ...s, ink: s.ink + Math.max(0, err), power: s.power + Math.max(0, ok), games: s.games + 1, log: logDay(s.log, d ?? new Date(), Math.max(0, err), Math.max(0, ok)) });
 }
 
 /** Une règle retravaillée (entraînement réussi) : on retire de l'encre à la créature. */
 export function calmBoss(n: number = CALM, d?: Date): BossState {
   const s = loadBoss(d);
   if (!CAVE_ON) return s;
-  return save({ ...s, ink: Math.max(0, s.ink - Math.max(0, n)) });
+  const cut = Math.min(s.ink, Math.max(0, n));
+  return save({ ...s, ink: s.ink - cut, log: logDay(s.log, d ?? new Date(), -cut, 0) });
 }
 
 export function markSeen(d?: Date): BossState {

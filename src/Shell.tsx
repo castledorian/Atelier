@@ -13,6 +13,9 @@ import Memory from './games/Memory';
 import Spelling from './games/Spelling';
 import Admin from './pages/Admin';
 import Cave from './pages/Cave';
+import MaGoutte from './pages/MaGoutte';
+import GainToast from './components/GainToast';
+import { setGoutteOwner } from './game/goutte/store';
 import { CAVE_ON } from './game/boss/state';
 import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
@@ -28,7 +31,7 @@ import { loadTeacher, saveTeacher, signOut, takeAuthHash } from './server/teache
 import type { TeacherSession } from './server/teacher';
 import type { SessionInfo, StudentAccount } from './server/types';
 
-type View = 'home' | 'login' | 'dashboard' | 'admin' | 'cave' | InfoView | 'sessions' | 'typing' | 'math' | 'memory' | 'spelling' | 'lexique' | 'facteur';
+type View = 'home' | 'login' | 'dashboard' | 'admin' | 'cave' | 'goutte' | InfoView | 'sessions' | 'typing' | 'math' | 'memory' | 'spelling' | 'lexique' | 'facteur';
 
 // Lien reçu par email (confirmation d'inscription / mot de passe oublié) : lu une seule fois, au chargement de la page.
 const ARRIVAL = serverEnabled() ? takeAuthHash() : null;
@@ -40,12 +43,15 @@ export default function Shell() {
     <>
       <Pages />
       <CheatNotice />
+      <GainToast />
     </>
   );
 }
 
 function Pages() {
   const [student, setStudent] = useState<StudentAccount | null>(() => (serverEnabled() ? loadStudent() : null));
+  // chaque élève a sa goutte, même sur une tablette partagée
+  setGoutteOwner(student?.student.id ?? null);
   const [teacher, setTeacher] = useState<TeacherSession | null>(() => (serverEnabled() ? loadTeacher() : null));
   const [recovery, setRecovery] = useState(ARRIVAL?.type === 'recovery');
   const [tab, setTab] = useState<'student' | 'teacher'>('student');
@@ -164,6 +170,7 @@ function Pages() {
     return <Admin email={teacher.email} onHome={home} onSignOut={teacherLost} />;
   }
 
+  if (view === 'goutte' && !teacher) return <MaGoutte token={student?.token ?? null} onBack={home} />;
   if (view === 'cave' && CAVE_ON && (student || teacher)) return <Cave onBack={home} studentName={student?.student.name ?? null} isTeacher={teacher !== null} token={student?.token ?? null} />;
 
   if (view === 'sessions' && student) {
@@ -212,6 +219,7 @@ function Pages() {
       onDashboard={() => setView('dashboard')}
       onAdmin={admin ? () => setView('admin') : undefined}
       onCave={() => CAVE_ON && (student || teacher) && setView('cave')}
+      onGoutte={() => setView('goutte')}
       onInfo={setView}
       onLogout={logout}
       install={install}

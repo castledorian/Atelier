@@ -103,7 +103,8 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
             <strong>L’enseignant</strong> : prénoms et résultats de ses classes (tableau de bord, export CSV). Il ne voit un code qu’à sa création ou son renouvellement.
           </li>
           <li>
-            <strong>Un élève connecté</strong> : prénoms (ou pseudos) et scores de sa classe, et de son école s’il ouvre ce classement. Rien d’autre.
+            <strong>Un élève connecté</strong> : prénoms (ou pseudos) et scores de sa classe, et de son école s’il ouvre ce classement ; la goutte et le niveau des élèves de
+            sa classe (équipe de la grotte). Rien d’autre.
           </li>
           <li>Les autres écoles et le public ne voient rien.</li>
         </ul>
@@ -120,7 +121,13 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
         </p>
         <p>
           «&nbsp;La grotte&nbsp;» (élèves et enseignants connectés) est celle de <strong>la classe</strong> : seuls les nombres de fautes et de réussites sont ajoutés aux parties, et le serveur n’en
-          montre que la <strong>somme par classe</strong>. L’enseignant peut la remettre à zéro.
+          montre que la <strong>somme par classe</strong>, jour par jour pour la courbe. L’enseignant peut la remettre à zéro.
+        </p>
+        <p>
+          «&nbsp;Ma goutte&nbsp;» grandit avec les parties déjà envoyées (nombre de parties, de jours de jeu, de séances, de records personnels) : rien de nouveau n’est
+          collecté. Avec un code, le serveur garde en plus son <strong>apparence</strong> (objets et nom choisis dans des listes, jamais de texte libre) et le nombre de
+          friandises données. Pour le combat de fin d’année, <strong>la classe et ses enseignants</strong> voient le prénom, la goutte et le niveau de chaque élève de la
+          classe. Sans code, la goutte reste sur l’appareil (une par élève sur une tablette partagée).
         </p>
         <p>
           Sur un ordinateur partagé, l’élève utilise <strong>« Changer d’élève »</strong>. On efface tout avec les réglages du navigateur (« effacer les données du site »).

@@ -1,3 +1,4 @@
+import { noteGame } from './goutte/store';
 import { RULES } from './encre/rules';
 import type { Family, RuleId } from './encre/rules';
 import { loadStore, recentFaults, saveStore, stateOf } from './encre/tracker';
@@ -54,6 +55,8 @@ export function loadLog(game: ProgressGame): GameLog[] {
 export function addLog(game: ProgressGame, entry: GameLog): GameLog[] {
   const list = loadLog(game);
   if (entry.ok + entry.err <= 0) return list;
+  // la goutte de l'élève grandit à chaque partie terminée (effort et records personnels)
+  noteGame(game, entry.board, entry.score);
   const next = [...list, entry].slice(-MAX_LOG);
   const all = readLogs();
   all[game] = next;

@@ -10,6 +10,7 @@ import { effectiveGrade } from './game/grade';
 import { Game } from './game/engine';
 import { addLetters } from './game/progress';
 import { feedBoss } from './game/boss/state';
+import { noteGame } from './game/goutte/store';
 import type { RunStats } from './game/engine';
 import { addRun, loadHistory, newRunId, renameRun } from './game/history';
 import { parseTyping } from './game/sessionConfig';
@@ -110,6 +111,7 @@ export default function App({ account, onHome, onSessionLost, install, session, 
       addLetters(stats.letters);
       feedBoss(stats.correct, stats.errors);
     }
+    if (stats.correct + stats.errors > 0) noteGame('typing', diff, stats.score, stats.time);
     const ranked = !isDrill && diff !== 'perso' && !sesRef.current.sess;
     const acct = accountRef.current;
     const name = (acct ? acct.student.name.slice(0, 12).toUpperCase() : st.name) || 'ANONYME';

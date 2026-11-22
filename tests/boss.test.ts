@@ -1,10 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BASE_HP, BOSS_NAMES, BOSS_SPEECH, bossSpeech, INK_STEPS, bossHp, POWER_STEPS, fillOf, monthsToFinal, parseNames, phaseOf, saveNames, schoolYear, stepOf } from '../src/game/boss/state';
+import { BASE_HP, BOSS_NAMES, BOSS_SPEECH, bossSpeech, INK_STEPS, bossHp, POWER_STEPS, fillOf, monthsToFinal, parseNames, phaseOf, saveNames, schoolYear, stepOf, feedBoss, calmBoss, loadBoss } from '../src/game/boss/state';
 import type { BossState } from '../src/game/boss/state';
 import { LOW, buildFight, stateAt } from '../src/game/boss/fight';
+import { cumulate, lastWeek, shortDate, xOf } from '../src/game/boss/history';
+import { installFakeStorage } from './helpers';
 
-const S = (o: Partial<BossState> = {}): BossState => ({ year: '2026-2027', ink: 0, power: 0, games: 0, wonAt: null, seen: true, ...o });
+const S = (o: Partial<BossState> = {}): BossState => ({ year: '2026-2027', ink: 0, power: 0, games: 0, wonAt: null, seen: true, log: [], ...o });
 
 test('année scolaire : elle bascule en août', () => {
   assert.equal(schoolYear(new Date('2026-11-17T12:00:00')), '2026-2027');
@@ -96,4 +98,35 @@ test('la créature parle : une phrase par phase, jamais vide, indice borné', ()
   assert.ok(BOSS_SPEECH.final.includes(bossSpeech('final', 0, 0)));
   assert.ok(BOSS_SPEECH.small.includes(bossSpeech('early', 0, 0)));
   assert.ok(BOSS_SPEECH.big.includes(bossSpeech('growing', 150, 0)));
+});
+
+test('journal de la grotte : un point par jour, fautes retirées comptées en négatif', () => {
+  installFakeStorage();
+  const d1 = new Date('2026-11-10T10:00:00Z');
+  const d2 = new Date('2026-11-11T10:00:00Z');
+  feedBoss(5, 2, d1);
+  feedBoss(3, 1, d1);
+  feedBoss(4, 0, d2);
+  calmBoss(2, d2);
+  assert.deepEqual(loadBoss(d2).log, [['2026-11-10', 3, 8], ['2026-11-11', -2, 4]]);
+});
+
+test('courbe de la grotte : cumul jour par jour, dates placées, bilan de la semaine', () => {
+  const pts = cumulate(
+    [
+      { d: '2026-11-12', ink: 4, power: 10 },
+      { d: '2026-11-10', ink: 3, power: 8 },
+      { d: '2026-11-12', ink: -2, power: 1 },
+      { d: 'pas une date', ink: 99, power: 99 },
+    ],
+    10,
+  );
+  assert.deepEqual(pts, [
+    { d: '2026-11-10', hp: 13, power: 8 },
+    { d: '2026-11-12', hp: 15, power: 19 },
+  ]);
+  assert.deepEqual(xOf(pts, '2026-11-14'), [0, 0.5]);
+  assert.deepEqual(lastWeek(pts, '2026-11-14', 10), { hp: 5, power: 19 });
+  assert.deepEqual(lastWeek(pts, '2026-11-18', 10), { hp: 2, power: 11 });
+  assert.equal(shortDate('2026-03-05'), '5 mars');
 });

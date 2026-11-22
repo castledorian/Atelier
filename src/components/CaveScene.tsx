@@ -5,14 +5,27 @@ import type { ReactNode } from 'react';
  * dort la créature d'encre. La salle est sombre, mais un éclairage ciblé tombe sur la créature : elle se détache toujours bien.
  *
  * `depth` (0 à 1) : jusqu'où la lanterne est descendue (elle s'enfonce un peu plus à chaque saison de l'année).
+ * `stage` (0 à 6) : l'étape de la créature. La grotte change avec elle : l'encre coule des stalactites, tache les parois,
+ *   forme un lac qui s'étale, puis des veines violettes s'allument et une cascade d'encre apparaît.
+ * `lanterns` (0 à 6) : la force de la classe. Chaque palier allume une lanterne sur les parois : la classe éclaire la grotte.
  * `children` : la créature.
  */
-export default function CaveScene({ depth, children }: { depth: number; children: ReactNode }) {
+
+/** Pointes des stalactites (d'où coule l'encre). */
+const TIPS: Array<[number, number]> = [[73, 46], [229, 52], [93, 28], [250, 30], [193, 24], [126, 20]];
+/** Taches d'encre sur les parois, dans l'ordre où elles apparaissent. */
+const STAINS: Array<[number, number, number]> = [[46, 150, 14], [272, 176, 16], [30, 262, 18], [284, 290, 15], [60, 320, 12]];
+/** Lanternes de la classe, de la plus haute à la plus basse. */
+const LANTERNS: Array<[number, number]> = [[40, 70], [282, 86], [24, 180], [292, 200], [52, 286], [268, 312]];
+
+export default function CaveScene({ depth, stage = 0, lanterns = 0, children }: { depth: number; stage?: number; lanterns?: number; children: ReactNode }) {
+  const st = Math.max(0, Math.min(6, Math.round(stage)));
+  const lit = Math.max(0, Math.min(LANTERNS.length, Math.round(lanterns)));
   const d = Math.max(0, Math.min(1, depth));
   // la lanterne descend de 0 à 190 unités du dessin ; elle s'arrête plus ou moins bas selon l'avancée de l'année
   const dive = Math.round(40 + 150 * d);
   return (
-    <div className="descent" style={{ ['--dive' as string]: `${dive}px` }}>
+    <div className="descent" data-stage={st} style={{ ['--dive' as string]: `${dive}px` }}>
       <svg className="descent-art" viewBox="0 0 320 380" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
         <defs>
           <linearGradient id="rk" x1="0" x2="1">
@@ -58,6 +71,47 @@ export default function CaveScene({ depth, children }: { depth: number; children
           <polygon points="244,0 256,0 250,30" />
           <polygon points="188,0 198,0 193,24" />
           <polygon points="122,0 130,0 126,20" />
+        </g>
+        {/* l'encre envahit la grotte à mesure que la créature grandit */}
+        <g aria-hidden="true">
+          {/* coulures sous les stalactites */}
+          {TIPS.slice(0, st).map(([x, y], i) => (
+            <g key={`d${i}`} fill="#241a44">
+              <path d={`M${x - 3} ${y - 6} Q${x} ${y + 10} ${x + 3} ${y - 6} Z`} />
+              <circle className="cave-ink-drop" cx={x} cy={y + 6} r="3" style={{ animationDelay: `${i * 0.9}s` }} />
+            </g>
+          ))}
+          {/* taches sur les parois */}
+          {STAINS.slice(0, Math.max(0, st - 1)).map(([x, y, r], i) => (
+            <g key={`s${i}`} fill="#1d1538" opacity="0.95">
+              <ellipse cx={x} cy={y} rx={r} ry={r * 0.8} />
+              <circle cx={x + r * 0.9} cy={y + r * 0.6} r={r * 0.3} />
+              <circle cx={x - r * 0.7} cy={y - r * 0.8} r={r * 0.22} />
+            </g>
+          ))}
+          {/* veines violettes qui luisent (Monstre et après) */}
+          {st >= 4 && (
+            <g className="cave-veins" fill="none" stroke="#a68bff" strokeWidth="2" strokeLinecap="round">
+              <path d="M8 120 C30 140 20 170 44 190 C60 204 50 230 70 250" />
+              <path d="M312 110 C290 140 300 168 276 186 C262 200 272 232 252 250" />
+              {st >= 5 && <path d="M18 300 C40 310 52 330 80 336" />}
+              {st >= 5 && <path d="M304 300 C282 312 268 330 240 338" />}
+            </g>
+          )}
+          {/* cascade d'encre (Grand Pâté) */}
+          {st >= 6 && <path className="cave-fall" d="M70 108 C66 160 76 220 70 300 L84 300 C90 220 80 160 84 108 Z" fill="#241a44" />}
+          {/* lac d'encre au sol : il s'étale à chaque étape */}
+          <ellipse cx="160" cy="356" rx={24 + st * 22} ry={6 + st * 2.2} fill="#140f26" opacity={st ? 0.95 : 0.6} />
+        </g>
+        {/* lanternes allumées par la classe : une par palier de force */}
+        <g aria-hidden="true">
+          {LANTERNS.map(([x, y], i) => (
+            <g key={`l${i}`} className={i < lit ? 'cave-lamp cave-lamp-on' : 'cave-lamp'}>
+              {i < lit && <circle cx={x} cy={y} r="22" fill="url(#glow)" />}
+              <line x1={x} y1={y - 16} x2={x} y2={y - 8} stroke="#7a6548" strokeWidth="2" />
+              <rect x={x - 5} y={y - 8} width="10" height="13" rx="2" fill={i < lit ? '#f2c869' : '#2b251e'} stroke="#3b2d17" strokeWidth="1.5" />
+            </g>
+          ))}
         </g>
         {/* échelle de corde */}
         <g stroke="#7a6548" strokeWidth="2" fill="none" opacity="0.85">

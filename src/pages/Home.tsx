@@ -1,3 +1,4 @@
+import PlayerBar from '../components/PlayerBar';
 import { useEffect, useState } from 'react';
 import { Frame } from './Frame';
 import { SiteFooter } from './Info';
@@ -28,6 +29,8 @@ interface HomeProps {
   /** présent seulement pour l'administrateur du site */
   onAdmin?: () => void;
   onCave: () => void;
+  /** ouvre « Ma goutte » */
+  onGoutte: () => void;
   onInfo: (v: InfoView) => void;
   onLogout: () => void;
   install: InstallInfo;
@@ -45,7 +48,7 @@ const CARDS: { id: GameId & PreviewGame; tag: string; name: string; text: string
   { id: 'memory', tag: 'Mémoire', name: 'Mémoire d’encre', text: 'Retiens les taches qui s’allument, puis refais la suite.' },
 ];
 
-export default function Home({ student, teacher, onPlay, onSessions, onLogin, onDashboard, onAdmin, onCave, onInfo, onLogout, install }: HomeProps) {
+export default function Home({ student, teacher, onPlay, onSessions, onLogin, onDashboard, onAdmin, onCave, onGoutte, onInfo, onLogout, install }: HomeProps) {
   const boss = loadBoss();
   const bossPhase = phaseOf(boss);
   const online = serverEnabled();
@@ -146,6 +149,8 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
         )}
       </div>
       <div className="rule" aria-hidden="true" />
+
+      {!teacher && <PlayerBar token={token} onOpen={onGoutte} />}
 
       {student && (
         <div className="home-cta">

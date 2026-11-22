@@ -615,4 +615,53 @@ update public.runs set cave_ink = null, cave_power = null, received_at = now() w
 select pg_temp.eq('reprise : partie récente laissée à son compteur exact', (select cave_ink is null from public.runs where client_id = 'renew000001')::text, 'true');
 select pg_temp.as_admin();
 
+-- ───── Ma goutte (version 1.28) ─────
+reset role;
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+insert into ctx select 'stuG', public.add_students((select v::uuid from ctx where k='classX'), array['Gaby'])::text;
+select pg_temp.as_admin();
+insert into ctx select 'tom_id', (select v::jsonb->0->>'id' from ctx where k='stuG');
+select pg_temp.as_anon();
+insert into ctx select 'tok_gtt', public.student_login((select v::jsonb->0->>'access_code' from ctx where k='stuG'))->>'token';
+select pg_temp.eq('goutte : élève de test connecté', length((select v from ctx where k='tok_gtt')), 64);
+reset role;
+insert into public.runs (client_id, student_id, class_id, school_id, game, mode, kind, score, wave, wpm, acc, correct, duration, played_at)
+select x.cid, (select v::uuid from ctx where k='tom_id'), s.class_id, s.school_id, 'math', 'cm1', 'game', x.score, 1, 0, 90, 10, x.dur, now() - x.ago
+from public.students s, (values ('gtt0000001', 100, 60, interval '2 days'), ('gtt0000002', 90, 60, interval '1 day'), ('gtt0000003', 150, 60, interval '1 hour'), ('gtt0000004', 999, 5, interval '1 hour')) as x(cid, score, dur, ago)
+where s.id = (select v::uuid from ctx where k='tom_id');
+select pg_temp.as_anon();
+select pg_temp.eq('goutte : parties de 20 s et plus comptées', (public.goutte_get((select v from ctx where k='tok_gtt'))->'counters'->'runs'->>'math'), '3');
+select pg_temp.eq('goutte : record personnel battu compté', (public.goutte_get((select v from ctx where k='tok_gtt'))->'counters'->>'records')::int >= 1, true);
+reset role;
+select pg_temp.eq('goutte : expérience = formule de l''appareil', (select (a->>'xp')::bigint = private.goutte_xp(a->'counters') from (select public.goutte_get((select v from ctx where k='tok_gtt')) a) t), true);
+select pg_temp.as_anon();
+select pg_temp.eq('goutte : nom hors des listes refusé', public.goutte_save((select v from ctx where k='tok_gtt'), '{"name":"Gros nul"}'::jsonb, 0)->>'error', 'invalid_data');
+select pg_temp.eq('goutte : clé inconnue refusée', public.goutte_save((select v from ctx where k='tok_gtt'), '{"pirate":"x"}'::jsonb, 0)->>'error', 'invalid_data');
+select pg_temp.eq('goutte : objet mal formé refusé', public.goutte_save((select v from ctx where k='tok_gtt'), '{"hat":"<b>"}'::jsonb, 0)->>'error', 'invalid_data');
+select pg_temp.eq('goutte : friandises plafonnées à celles gagnées',
+  (select (a->>'fed')::bigint = (a->>'treats')::bigint from (select public.goutte_save((select v from ctx where k='tok_gtt'), '{"name":"Plume la Brave","color":"sapin","hat":null,"weapon":"plume"}'::jsonb, 999999) a) t), true);
+select pg_temp.eq('goutte : apparence gardée', public.goutte_get((select v from ctx where k='tok_gtt'))->'look'->>'name', 'Plume la Brave');
+select pg_temp.eq('goutte : jeton invalide', public.goutte_get('nope')->>'error', 'invalid_session');
+select pg_temp.fails($$select count(*) from public.goutte$$, 'permission denied');
+reset role;
+delete from public.runs where client_id like 'gtt%';
+select pg_temp.as_anon();
+select pg_temp.eq('goutte : rien ne recule quand de vieilles parties sont effacées', (public.goutte_get((select v from ctx where k='tok_gtt'))->'counters'->'runs'->>'math'), '3');
+reset role;
+select pg_temp.eq('formule d''expérience (même exemple que tests/goutte.test.ts)', private.goutte_xp('{"runs":{"math":3,"facteur":2},"days":2,"records":1,"sessions":1}'::jsonb), 135::bigint);
+select pg_temp.as_anon();
+select pg_temp.eq('équipe : toute la classe, avec la goutte d''Ana',
+  (select count(*) filter (where e->'look'->>'name' = 'Plume la Brave')::int from jsonb_array_elements(public.goutte_team((select v from ctx where k='tok_gtt'))->'team') e), 1);
+insert into ctx select 'team', (public.goutte_team((select v from ctx where k='tok_gtt'))->'team')::text;
+reset role;
+select pg_temp.eq('équipe : seulement la classe de l''élève', (select bool_and(s.class_id = (select v::uuid from ctx where k='classX')) from jsonb_array_elements((select v::jsonb from ctx where k='team')) e join public.students s on s.id = (e->>'id')::uuid), true);
+select pg_temp.as_anon();
+select pg_temp.eq('historique de la grotte : une liste de jours', jsonb_typeof(public.cave_history((select v from ctx where k='tok_gtt'))->'days'), 'array');
+select pg_temp.as_user('bbbbbbbb-0000-0000-0000-000000000002');
+select pg_temp.fails($$select public.teacher_goutte_team(array[(select v::uuid from ctx where k='classX')])$$, 'forbidden');
+select pg_temp.fails($$select public.teacher_cave_history(array[(select v::uuid from ctx where k='classX')])$$, 'forbidden');
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select pg_temp.eq('équipe côté enseignant', jsonb_array_length(public.teacher_goutte_team(array[(select v::uuid from ctx where k='classX')])->'team') > 0, true);
+select pg_temp.as_admin();
+
 \echo TOUS LES TESTS SQL PASSENT

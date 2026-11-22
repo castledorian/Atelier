@@ -1,29 +1,37 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { InkEnemy } from './InkEnemy';
+import { InkBoss } from './InkBoss';
+import { GoutteArt } from './GoutteArt';
+import type { Fighter } from './CaveParts';
+import { stageOf } from '../game/goutte/rules';
 import { Sfx } from '../game/audio';
 import { buildFight, stateAt } from '../game/boss/fight';
-import { bossKind } from '../game/boss/state';
 
 /**
- * Le grand combat de fin d'année : les prénoms de la classe attaquent la créature d'encre.
+ * Le grand combat de fin d'année : la classe attaque la créature d'encre. Avec un compte, chaque élève combat avec sa goutte
+ * guerrière (`fighters`) ; sinon, avec les prénoms saisis sur l'appareil.
  * La scène suit le scénario écrit dans `src/game/boss/fight.ts` ; elle ne fait que l'afficher.
  * Accessibilité : le récit est annoncé (aria-live), un bouton « Passer » saute à la fin,
  * et tout fonctionne sans animation si l'appareil demande à les réduire.
  */
 export default function BossFight({
   names,
+  fighters = [],
   ink,
+  grow = 0,
   power,
   sound,
   onDone,
 }: {
   names: string[];
+  fighters?: Fighter[];
   ink: number;
+  grow?: number;
   power: number;
   sound: boolean;
   onDone: () => void;
 }) {
-  const fight = useMemo(() => buildFight(names, ink, power), [names, ink, power]);
+  const roster = useMemo(() => (fighters.length ? fighters.map((f) => f.name) : names), [fighters, names]);
+  const fight = useMemo(() => buildFight(roster, ink, power), [roster, ink, power]);
   const [ms, setMs] = useState(0);
   const [hit, setHit] = useState<number | null>(null);
   const [all, setAll] = useState(false);
@@ -87,14 +95,21 @@ export default function BossFight({
     <div className={`bf${shake ? ' bf-shake' : ''}`} data-low={view.classHp <= 20 ? 'yes' : 'no'}>
       <div className="bf-stage">
         <div className="bf-boss" style={{ ['--bsize' as string]: String(size) }} data-dead={over ? 'yes' : 'no'}>
-          <InkEnemy kind={bossKind(ink)} mood={view.mood} name={fight.name} />
+          <InkBoss stage={ink} grow={grow} mood={view.mood} />
         </div>
         <ul className="bf-names" data-low={view.classHp <= 20 ? 'yes' : 'no'} aria-hidden="true">
-          {(names.length ? names : ['La classe']).map((n, i) => (
-            <li key={`${n}-${i}`} className={`bf-name${hit === i ? ' bf-hit' : ''}${all ? ' bf-all' : ''}`}>
-              {n}
-            </li>
-          ))}
+          {fighters.length
+            ? fighters.map((f, i) => (
+                <li key={`${f.name}-${i}`} className={`bf-name bf-fighter${f.me ? ' is-me' : ''}${hit === i ? ' bf-hit' : ''}${all ? ' bf-all' : ''}`}>
+                  <GoutteArt look={f.look} stage={stageOf(f.level)} mood={hit === i || all ? 'cheer' : 'happy'} />
+                  <span>{f.name}</span>
+                </li>
+              ))
+            : (names.length ? names : ['La classe']).map((n, i) => (
+                <li key={`${n}-${i}`} className={`bf-name${hit === i ? ' bf-hit' : ''}${all ? ' bf-all' : ''}`}>
+                  {n}
+                </li>
+              ))}
         </ul>
       </div>
 

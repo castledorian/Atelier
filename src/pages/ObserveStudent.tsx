@@ -6,15 +6,17 @@ import { freshToken } from '../server/teacher';
 import { fetchMyRuns } from '../server/student';
 import type { ServerRun, StudentAccount } from '../server/types';
 import Cave from './Cave';
+import MaGoutte from './MaGoutte';
 import Home from './Home';
 import { Frame } from './Frame';
 import Sessions from './Sessions';
 
-type Tab = 'home' | 'sessions' | 'cave' | 'runs';
+type Tab = 'home' | 'sessions' | 'goutte' | 'cave' | 'runs';
 
 const TABS: Array<[Tab, string]> = [
   ['home', 'Accueil'],
   ['sessions', 'Séances'],
+  ['goutte', 'Goutte'],
   ['cave', 'Grotte'],
   ['runs', 'Parties'],
 ];
@@ -77,6 +79,7 @@ export default function ObserveStudent({ account, label, onQuit }: { account: St
               onLogin={noop}
               onDashboard={noop}
               onCave={noop}
+              onGoutte={noop}
               onInfo={noop}
               onLogout={noop}
               install={{ mode: null, onInstall: noop }}
@@ -88,6 +91,7 @@ export default function ObserveStudent({ account, label, onQuit }: { account: St
             <Sessions account={account} onBack={noop} onPlay={noop} onSessionLost={noop} />
           </ReadOnlyZone>
         )}
+        {tab === 'goutte' && <ObservedGoutte account={account} onBack={() => setTab('home')} />}
         {tab === 'cave' && <Cave onBack={() => setTab('home')} studentName={account.student.name} observe={{ source: { kind: 'observe-student', studentId: account.student.id }, label, onQuit, embedded: true }} />}
         {tab === 'runs' && <Runs account={account} />}
       </div>
@@ -156,5 +160,14 @@ function Runs({ account }: { account: StudentAccount }) {
         </div>
       )}
     </Frame>
+  );
+}
+
+/** La goutte de l'élève observé : seulement ce que dit le serveur (rien de l'appareil de l'administrateur). */
+function ObservedGoutte({ account, onBack }: { account: StudentAccount; onBack: () => void }) {
+  return (
+    <ReadOnlyZone>
+      <MaGoutte token={account.token} onBack={onBack} readOnly />
+    </ReadOnlyZone>
   );
 }

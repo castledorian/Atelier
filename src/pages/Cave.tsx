@@ -4,7 +4,11 @@ import { BackButton } from '../components/BackButton';
 import BossFight from '../components/BossFight';
 import CaveClasses from '../components/CaveClasses';
 import CaveScene from '../components/CaveScene';
-import { InkEnemy } from '../components/InkEnemy';
+import { InkBoss } from '../components/InkBoss';
+import CaveChart from '../components/CaveChart';
+import { CaveTeam, LanternHint, StageStrip, fightersOf } from '../components/CaveParts';
+import { fetchCaveHistory, fetchTeam } from '../server/goutte';
+import type { CaveDay, Team } from '../server/goutte';
 import { ObserveBar } from '../components/ObserveBar';
 import { Frame } from './Frame';
 import {
@@ -14,7 +18,6 @@ import {
   addName,
   bossHp,
   bossSpeech,
-  bossKind,
   bossName,
   fillOf,
   inkLevel,
@@ -77,6 +80,10 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
   const source: CaveSource | null = observe ? observe.source : isTeacher ? { kind: 'teacher', classes: picked } : token ? { kind: 'student', token } : null;
   const sourceKey = JSON.stringify(source);
 
+  /** équipe de la classe et courbe : facultatives (mise à jour SQL « goutte ») */
+  const [team, setTeam] = useState<Team | null>(null);
+  const [history, setHistory] = useState<CaveDay[] | null>(null);
+
   const refresh = useCallback(async () => {
     if (!source) return;
     try {
@@ -85,6 +92,9 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
     } catch {
       /* session perdue : la page garde ce qu'elle montre */
     }
+    const [t, h] = await Promise.all([fetchTeam(source).catch(() => null), fetchCaveHistory(source)]);
+    if (t) setTeam(t);
+    if (h) setHistory(h);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceKey]);
 
@@ -101,9 +111,9 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
   /** une grotte de classe existe : on attend sa réponse avant d'afficher un chiffre (sinon le nombre de l'appareil clignote puis change) */
   const waiting = source !== null && remote === undefined;
   const boss: BossState = remote
-    ? { year: schoolYear(), ink: remote.ink, power: remote.power, games: remote.games, wonAt: remote.won_at, seen: true }
+    ? { year: schoolYear(), ink: remote.ink, power: remote.power, games: remote.games, wonAt: remote.won_at, seen: true, log: [] }
     : readOnly || waiting
-      ? { year: schoolYear(), ink: 0, power: 0, games: 0, wonAt: null, seen: true }
+      ? { year: schoolYear(), ink: 0, power: 0, games: 0, wonAt: null, seen: true, log: [] }
       : localBoss;
   const [fight, setFight] = useState<null | { real: boolean }>(null);
   const sound = useMemo(() => loadSettings().sound, []);
@@ -115,6 +125,9 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
   const left = monthsToFinal();
   const [dice] = useState(() => Math.random());
   const speech = bossSpeech(phase, ink, dice);
+  const fighters = useMemo(() => fightersOf(team), [team]);
+  const days: CaveDay[] = remote && history ? history : remote || readOnly || waiting ? [] : localBoss.log.map(([d, i, p]) => ({ d, ink: i, power: p }));
+  const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
 
   // Le titre de la page suit la créature : utile quand plusieurs onglets sont ouverts en classe
   useEffect(() => {
@@ -140,7 +153,9 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
         </div>
         <BossFight
           names={names}
+          fighters={fighters}
           ink={ink}
+          grow={fillOf(boss.ink, INK_STEPS)}
           power={power}
           sound={sound}
           onDone={() => {
@@ -175,9 +190,9 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
         <Victory boss={boss} names={names} onReplay={() => setFight({ real: false })} />
       ) : (
         <>
-          <CaveScene depth={depth}>
+          <CaveScene depth={depth} stage={waiting ? 0 : ink} lanterns={waiting ? 0 : power}>
             <div className="cave-boss" style={{ ['--bsize' as string]: String(ink / 6) }}>
-              <InkEnemy kind={bossKind(ink)} mood={phase === 'early' ? 'idle' : 'angry'} name={bossName(boss)} />
+              <InkBoss stage={ink} grow={fillOf(boss.ink, INK_STEPS)} mood={phase === 'early' ? 'sleep' : 'angry'} />
             </div>
           </CaveScene>
 
@@ -196,6 +211,15 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
               </span>
             </p>
           </div>
+
+          {!waiting && (
+            <>
+              <LanternHint power={boss.power} level={power} />
+              <StageStrip stage={ink} />
+              <CaveChart days={days} today={today} ink={boss.ink} power={boss.power} />
+              <CaveTeam fighters={fighters} />
+            </>
+          )}
 
           {phase === 'final' && !readOnly && (
             <div className="mt-[var(--sp)] flex justify-center">
