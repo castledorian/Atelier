@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BASE_HP, BOSS_NAMES, BOSS_SPEECH, bossSpeech, INK_STEPS, bossHp, POWER_STEPS, fillOf, monthsToFinal, parseNames, phaseOf, saveNames, schoolYear, stepOf, feedBoss, calmBoss, loadBoss } from '../src/game/boss/state';
+import { BASE_HP, BOSS_NAMES, BOSS_SPEECH, bossSpeech, INK_STEPS, bossHp, POWER_STEPS, fillOf, monthsToFinal, parseNames, phaseOf, saveNames, schoolYear, stepOf, feedBoss, calmBoss, loadBoss, CAVE_ON } from '../src/game/boss/state';
 import type { BossState } from '../src/game/boss/state';
 import { LOW, buildFight, stateAt } from '../src/game/boss/fight';
 import { cumulate, lastWeek, shortDate, xOf } from '../src/game/boss/history';
@@ -100,7 +100,7 @@ test('la créature parle : une phrase par phase, jamais vide, indice borné', ()
   assert.ok(BOSS_SPEECH.big.includes(bossSpeech('growing', 150, 0)));
 });
 
-test('journal de la grotte : un point par jour, fautes retirées comptées en négatif', () => {
+test('journal de la grotte : un point par jour, fautes retirées comptées en négatif', { skip: !CAVE_ON && 'grotte masquée (CAVE_ON = false)' }, () => {
   installFakeStorage();
   const d1 = new Date('2026-11-10T10:00:00Z');
   const d2 = new Date('2026-11-11T10:00:00Z');

@@ -32,6 +32,7 @@ Sur le site : **Je suis élève**, taper son code, choisir un jeu. Plus rien à 
 | **Mémoire d'encre** (mémoire de travail) | CP → CM2 | Refaire une suite qui s'allonge (*La Suite*) ou retrouver des places (*Les Cases*). |
 
 - **Mes progrès** (dans chaque jeu) : tendance, points à revoir et entraînement ciblé. Ces données restent sur l'appareil de l'élève.
+- *(En travaux, masquées pour l'instant : « Ma goutte » et « La grotte ». Les parties continuent de compter.)*
 - **Ma goutte** (accueil) : chaque élève a une goutte guerrière qui grandit avec son **effort** (parties terminées, jours de jeu, séances faites, records personnels battus), jamais avec son niveau scolaire. Il gagne des friandises à lui donner, des objets et des succès. Elle ne disparaît jamais. Avec un code, elle suit l'élève sur tous les appareils.
 - **La grotte** (accueil) : les erreurs des parties libres de la classe nourrissent une créature d'encre, les réussites renforcent la classe ; grand combat en fin d'année, où chaque élève combat avec sa goutte. La grotte change d'aspect à chaque étape de la créature, et une courbe montre son évolution depuis la rentrée. Vous pouvez la remettre à zéro.
 

@@ -1,3 +1,4 @@
+import { GOUTTE_ON } from '../game/goutte/store';
 import PlayerBar from '../components/PlayerBar';
 import { useEffect, useState } from 'react';
 import { Frame } from './Frame';
@@ -150,7 +151,7 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
       </div>
       <div className="rule" aria-hidden="true" />
 
-      {!teacher && <PlayerBar token={token} onOpen={onGoutte} />}
+      {GOUTTE_ON && !teacher && <PlayerBar token={token} onOpen={onGoutte} />}
 
       {student && (
         <div className="home-cta">

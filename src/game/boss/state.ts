@@ -15,7 +15,7 @@
  */
 
 /** Interrupteur unique de la grotte : passer à `true` pour la rendre de nouveau visible. */
-export const CAVE_ON = true;
+export const CAVE_ON = false;
 
 export interface BossState {
   /** année scolaire en cours, ex. « 2026-2027 » (tout repart à zéro à la rentrée) */

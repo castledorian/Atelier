@@ -15,7 +15,7 @@ import Admin from './pages/Admin';
 import Cave from './pages/Cave';
 import MaGoutte from './pages/MaGoutte';
 import GainToast from './components/GainToast';
-import { setGoutteOwner } from './game/goutte/store';
+import { GOUTTE_ON, setGoutteOwner } from './game/goutte/store';
 import { CAVE_ON } from './game/boss/state';
 import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
@@ -43,7 +43,7 @@ export default function Shell() {
     <>
       <Pages />
       <CheatNotice />
-      <GainToast />
+      {GOUTTE_ON && <GainToast />}
     </>
   );
 }
@@ -170,7 +170,7 @@ function Pages() {
     return <Admin email={teacher.email} onHome={home} onSignOut={teacherLost} />;
   }
 
-  if (view === 'goutte' && !teacher) return <MaGoutte token={student?.token ?? null} onBack={home} />;
+  if (view === 'goutte' && GOUTTE_ON && !teacher) return <MaGoutte token={student?.token ?? null} onBack={home} />;
   if (view === 'cave' && CAVE_ON && (student || teacher)) return <Cave onBack={home} studentName={student?.student.name ?? null} isTeacher={teacher !== null} token={student?.token ?? null} />;
 
   if (view === 'sessions' && student) {
@@ -219,7 +219,7 @@ function Pages() {
       onDashboard={() => setView('dashboard')}
       onAdmin={admin ? () => setView('admin') : undefined}
       onCave={() => CAVE_ON && (student || teacher) && setView('cave')}
-      onGoutte={() => setView('goutte')}
+      onGoutte={() => GOUTTE_ON && setView('goutte')}
       onInfo={setView}
       onLogout={logout}
       install={install}

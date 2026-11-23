@@ -7,6 +7,7 @@ import { fetchMyRuns } from '../server/student';
 import type { ServerRun, StudentAccount } from '../server/types';
 import Cave from './Cave';
 import MaGoutte from './MaGoutte';
+import { GOUTTE_ON } from '../game/goutte/store';
 import Home from './Home';
 import { Frame } from './Frame';
 import Sessions from './Sessions';
@@ -16,7 +17,7 @@ type Tab = 'home' | 'sessions' | 'goutte' | 'cave' | 'runs';
 const TABS: Array<[Tab, string]> = [
   ['home', 'Accueil'],
   ['sessions', 'Séances'],
-  ['goutte', 'Goutte'],
+  ...(GOUTTE_ON ? ([['goutte', 'Goutte']] as [Tab, string][]) : []),
   ['cave', 'Grotte'],
   ['runs', 'Parties'],
 ];

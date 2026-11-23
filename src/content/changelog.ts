@@ -24,15 +24,11 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
-    version: '1.28',
-    date: '22 novembre 2026',
-    iso: '2026-11-22',
-    title: 'Ma goutte',
-    changes: [
-      { kind: 'new', text: 'Ma goutte : une goutte guerrière qui grandit quand tu joues, avec friandises, objets et succès.' },
-      { kind: 'new', text: 'La grotte change avec la créature : 7 étapes, des lanternes pour la classe, et la courbe depuis la rentrée.' },
-      { kind: 'new', text: 'Combat final : chaque élève combat avec sa goutte.' },
-    ],
+    version: '1.29',
+    date: '23 novembre 2026',
+    iso: '2026-11-23',
+    title: 'La grotte en travaux',
+    changes: [{ kind: 'better', text: 'La grotte est masquée le temps de la refaire. Les parties continuent de compter pour elle.' }],
   },
   {
     version: '1.27',
