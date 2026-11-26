@@ -76,5 +76,39 @@ export function saveClassGrade(studentId: string, grade: Grade | null) {
   }
 }
 
-/** Classe à utiliser : celle de l'enseignant si elle est fixée, sinon celle choisie sur cet appareil. */
-export const effectiveGrade = (studentId: string | null): Grade | null => loadClassGrade(studentId) ?? loadGrade();
+// ───────────── Niveau d'entraînement choisi par l'élève (descendre pour réviser, monter pour prendre de l'avance) ─────────────
+
+const PRACTICE_KEY = 'atelier.grade.practice.v1';
+
+/**
+ * Niveau choisi par l'élève connecté pour ses parties libres, s'il diffère de celui de sa classe.
+ * Les séances de l'enseignant gardent toujours leur propre réglage : ce choix ne touche que le jeu libre.
+ */
+export function loadPracticeGrade(studentId: string | null): Grade | null {
+  if (!studentId) return null;
+  try {
+    const v = JSON.parse(localStorage.getItem(PRACTICE_KEY) ?? 'null') as { id?: unknown; grade?: unknown } | null;
+    return v && v.id === studentId && isGrade(v.grade) ? v.grade : null;
+  } catch {
+    return null;
+  }
+}
+
+/** `null` = revenir au niveau de la classe. */
+export function savePracticeGrade(studentId: string, grade: Grade | null) {
+  try {
+    if (grade) localStorage.setItem(PRACTICE_KEY, JSON.stringify({ id: studentId, grade }));
+    else localStorage.removeItem(PRACTICE_KEY);
+  } catch {
+    /* ignoré */
+  }
+}
+
+/** Écart entre le niveau joué et celui de la classe : négatif = révision, positif = avance. */
+export const gradeShift = (played: Grade, home: Grade): number => ALL.indexOf(played) - ALL.indexOf(home);
+
+/**
+ * Classe à utiliser pour le jeu libre : le choix d'entraînement de l'élève, sinon celle fixée par l'enseignant (valeur par défaut),
+ * sinon celle choisie sur cet appareil.
+ */
+export const effectiveGrade = (studentId: string | null): Grade | null => loadPracticeGrade(studentId) ?? loadClassGrade(studentId) ?? loadGrade();

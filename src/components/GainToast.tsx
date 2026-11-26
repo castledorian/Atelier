@@ -46,7 +46,7 @@ export default function GainToast() {
           ))}
           {gain.items.map((i) => (
             <span key={i} className="gain-item">
-              Nouvel objet : {i}
+              Cadeau à déballer : {i}
             </span>
           ))}
         </button>

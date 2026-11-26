@@ -35,23 +35,29 @@ test('expérience : effort récompensé, formule identique au serveur', () => {
   // même formule que private.goutte_xp (serveur/mise-a-jour-goutte.sql) : 10 par partie, 25 par jour, 15 par record, 20 par séance
   assert.equal(xpOf(c({ runs: { math: 3, facteur: 2 }, days: 2, records: 1, sessions: 1 })), 50 + 50 + 15 + 20);
   assert.equal(levelOf(0), 1);
-  assert.equal(levelOf(19), 1);
-  assert.equal(levelOf(20), 2);
+  assert.equal(levelOf(29), 1);
+  assert.equal(levelOf(30), 2);
+  assert.equal(levelOf(35), 2, 'première partie du premier jour : niveau 2 tout de suite');
   assert.equal(levelOf(xpForLevel(20)), 20);
   assert.equal(levelOf(10 ** 9), MAX_LEVEL);
-  const p = levelProgress(40);
+  const p = levelProgress(60);
   assert.equal(p.level, 2);
-  assert.equal(p.toNext, 20);
+  assert.equal(p.toNext, 30);
   assert.equal(p.fill, 0.5);
+  // les paliers s'espacent : chaque niveau demande plus que le précédent
+  for (let l = 2; l < MAX_LEVEL; l++) assert.ok(xpForLevel(l + 1) - xpForLevel(l) > xpForLevel(l) - xpForLevel(l - 1));
 });
 
-test('une année réaliste : deux séances de jeu par semaine mènent vers la légende', () => {
+test('une année réaliste : deux jours de jeu par semaine mènent vers le Héros, la Légende demande plus', () => {
   // 36 semaines, 2 jours par semaine, 3 parties par jour, un record par semaine, une séance de classe toutes les 2 semaines
   const year = c({ runs: { math: 120, spelling: 96 }, days: 72, records: 36, sessions: 18 });
   const l = levelOf(xpOf(year));
-  assert.ok(l >= 18 && l <= 24, `niveau en fin d'année : ${l}`);
-  // un élève qui joue peu atteint quand même plusieurs étapes
-  assert.ok(stageOf(levelOf(xpOf(c({ runs: { math: 20 }, days: 8 })))) >= 2);
+  assert.ok(l >= 15 && l <= 19, `niveau en fin d'année : ${l}`);
+  assert.ok(stageOf(l) >= 4, 'Héros d’encre');
+  // un élève qui joue peu (20 parties en 8 jours) dépasse quand même la Gouttelette
+  assert.ok(stageOf(levelOf(xpOf(c({ runs: { math: 20 }, days: 8 })))) >= 1);
+  // pas trop facile : une semaine de jeu ne suffit pas pour atteindre le Chevalier
+  assert.ok(stageOf(levelOf(xpOf(c({ runs: { math: 10 }, days: 3, records: 2 })))) <= 1);
 });
 
 test('étapes, friandises, humeur jamais triste', () => {
@@ -86,7 +92,11 @@ test('succès et objets : identifiants uniques, conditions existantes, débloqu�
   assert.ok(ITEMS.some((i) => i.slot === 'weapon' && unlocked(i, start)));
   const one = progressOf(c({ runs: { facteur: 1 }, days: 1 }), 0);
   assert.ok(achievedIds(one).includes('premier-pas'));
-  assert.ok(unlocked(ITEMS.find((i) => i.id === 'bonnet')!, progressOf(emptyCounters(), 5)));
+  assert.ok(!unlocked(ITEMS.find((i) => i.id === 'bonnet')!, progressOf(emptyCounters(), 5)), 'pas de bonnet après 5 friandises');
+  assert.ok(unlocked(ITEMS.find((i) => i.id === 'bonnet')!, progressOf(emptyCounters(), 15)));
+  // après une semaine de jeu, il reste beaucoup à débloquer
+  const week = progressOf(c({ runs: { math: 12 }, days: 3, records: 2 }), 8);
+  assert.ok(ITEMS.filter((i) => unlocked(i, week)).length <= 8, `objets ouverts après une semaine : ${ITEMS.filter((i) => unlocked(i, week)).length}`);
 });
 
 test('nom choisi dans des listes, apparence nettoyée et limitée aux objets débloqués', () => {
@@ -107,7 +117,8 @@ test('gains annoncés après une partie : niveau, étape, succès, objets', () =
   const g = gainBetween(before, after);
   assert.equal(g.xp, 25);
   assert.equal(g.treats, 3);
-  assert.equal(g.level, 3, '35 → 60 points : niveau 3');
+  assert.equal(g.level, null, '35 → 60 points : toujours niveau 2');
+  assert.equal(gainBetween(before, progressOf(c({ runs: { math: 4 }, days: 2 }), 0)).level, 3, '90 points : niveau 3');
   assert.ok(g.achievements.includes('Plus fort qu’hier'));
   assert.ok(g.items.includes('Médaille'));
 });

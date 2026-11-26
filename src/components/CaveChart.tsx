@@ -5,14 +5,14 @@ import type { DayPoint } from '../game/boss/history';
 
 /**
  * L'évolution de la grotte depuis la rentrée, en deux petits graphiques côte à côte (jamais deux échelles sur un même graphique) :
- * les points de vie de la créature (ils suivent les fautes), et la force de la classe, avec ses lanternes.
+ * les points de vie de la créature (ils suivent les fautes), et la force de la classe, avec ses paliers.
  * Survol ou toucher : la date et la valeur du jour. Les chiffres sont aussi dans un tableau (bouton « Voir les chiffres »).
  */
 
 const W = 320;
 const H = 150;
 const PAD = { l: 6, r: 8, t: 12, b: 22 };
-const LEVEL_NAMES = ['Aucune lanterne', '1 lanterne', '2 lanternes', '3 lanternes', '4 lanternes', '5 lanternes', '6 lanternes'];
+const LEVEL_NAMES = ['Départ', 'Palier 1', 'Palier 2', 'Palier 3', 'Palier 4', 'Palier 5', 'Palier 6'];
 
 function Panel({
   title,

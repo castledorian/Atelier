@@ -5,13 +5,13 @@ import CaveChart from '../components/CaveChart';
 import CaveStage from '../components/CaveStage';
 import CaveTeacher from '../components/CaveTeacher';
 import CaveVictory from '../components/CaveVictory';
-import { CaveTeam, LanternHint, fightersOf } from '../components/CaveParts';
+import { CaveTeam, fightersOf } from '../components/CaveParts';
 import { fetchCaveHistory, fetchTeam } from '../server/goutte';
 import type { CaveDay, Team } from '../server/goutte';
 import { ObserveBar } from '../components/ObserveBar';
 import { Frame } from './Frame';
 import { formAt } from '../game/boss/forms';
-import { addName, bossHp, bossSpeech, loadBoss, loadNames, markSeen, monthsToFinal, phaseOf, powerLevel, resetBoss, saveNames, schoolYear, winBoss } from '../game/boss/state';
+import { addName, bossHp, loadBoss, loadNames, markSeen, monthsToFinal, phaseOf, powerLevel, resetBoss, saveNames, schoolYear, winBoss } from '../game/boss/state';
 import type { BossPhase, BossState } from '../game/boss/state';
 import { CaveSound } from '../game/caveSound';
 import { loadSettings } from '../game/storage';
@@ -96,8 +96,6 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
   const phase: BossPhase = phaseOf(boss);
   const { form, grow } = formAt();
   const power = powerLevel(boss);
-  const [dice] = useState(() => Math.random());
-  const speech = bossSpeech(phase, form, dice);
   /** aperçu des formes à venir (enseignant) */
   const [preview, setPreview] = useState(false);
   const fighters = useMemo(() => fightersOf(team), [team]);
@@ -164,14 +162,16 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
         <CaveVictory boss={boss} form={form} names={names} onReplay={() => setFight({ real: false })} />
       ) : (
         <>
-          <CaveStage today={form} grow={grow} phase={phase} preview={preview && (isTeacher || readOnly)} depth={depth} lanterns={waiting ? 0 : power} waiting={waiting} speech={speech} hp={bossHp(boss)} />
+          <CaveStage today={form} grow={grow} phase={phase} preview={preview && (isTeacher || readOnly)} depth={depth} waiting={waiting} hp={bossHp(boss)} />
 
           {!waiting && (
-            <>
-              <LanternHint power={boss.power} level={power} />
-              <CaveChart days={days} today={today} ink={boss.ink} power={boss.power} />
-              <CaveTeam fighters={fighters} />
-            </>
+            <details className="fold sec cave-more">
+              <summary>Plus d’informations</summary>
+              <div className="fold-in">
+                <CaveChart days={days} today={today} ink={boss.ink} power={boss.power} />
+                <CaveTeam fighters={fighters} />
+              </div>
+            </details>
           )}
 
           {phase === 'final' && !readOnly && (

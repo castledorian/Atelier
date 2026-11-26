@@ -14,7 +14,8 @@ import { serverEnabled } from '../server/api';
 import { fetchSessionsInfo } from '../server/student';
 import type { StudentAccount } from '../server/types';
 import { loadCourseStamps } from '../game/course/scores';
-import { GRADES, gradeLabel, isAvailable, loadClassGrade, loadGrade, saveClassGrade, saveGrade } from '../game/grade';
+import { isAvailable, loadClassGrade, loadGrade, loadPracticeGrade, saveClassGrade, saveGrade, savePracticeGrade } from '../game/grade';
+import GradePicker from '../components/GradePicker';
 import type { Grade } from '../game/grade';
 import { loadSettings, loadTypingStamps } from '../game/storage';
 import { Ambiance } from '../game/ambiance';
@@ -79,11 +80,20 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
   const studentId = student?.student.id ?? null;
   /** niveau fixé par l'enseignant pour la classe de l'élève connecté */
   const [classGrade, setClassGradeState] = useState<Grade | null>(() => loadClassGrade(studentId));
-  const grade = classGrade ?? ownGrade;
+  /** niveau d'entraînement choisi par l'élève (révision ou avance) ; null = celui de sa classe */
+  const [practice, setPractice] = useState<Grade | null>(() => loadPracticeGrade(studentId));
+  const grade = (classGrade ? practice : null) ?? classGrade ?? ownGrade;
   useEffect(() => {
     setClassGradeState(loadClassGrade(studentId));
+    setPractice(loadPracticeGrade(studentId));
   }, [studentId]);
-  const pick = (g: Grade) => {
+  const pick = (g: Grade | null) => {
+    if (classGrade && studentId) {
+      savePracticeGrade(studentId, g);
+      setPractice(g);
+      return;
+    }
+    if (!g) return;
     saveGrade(g);
     setGrade(g);
   };
@@ -176,26 +186,10 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
       )}
       {!student && !teacher && !online && <p className="mt-3 text-[14px] leading-snug text-ink/75">Tes scores restent sur cet appareil.</p>}
 
-      <h2 className="subhead mt-[var(--sp)]" id="grade-h">
-        Ma classe
-      </h2>
-      {classGrade ? (
-        <p className="mt-1 text-[16px]">
-          <strong>{gradeLabel(classGrade)}</strong>
-          <Tip label="Pourquoi je ne peux pas changer ?">Ta classe est choisie par ton enseignant.</Tip>
-        </p>
-      ) : (
-        <div className="seg mt-1" role="radiogroup" aria-labelledby="grade-h">
-          {GRADES.map((g) => (
-            <button key={g.id} type="button" role="radio" aria-checked={grade === g.id} className="seg-b" onClick={() => pick(g.id)}>
-              {g.label}
-            </button>
-          ))}
-        </div>
-      )}
+      <GradePicker grade={grade} home={classGrade} onPick={pick} />
       {grade === null && (
         <>
-          <p className="mt-2 text-[15px] leading-snug">Choisis ta classe pour voir tes jeux.</p>
+          <p className="mt-2 text-[15px] leading-snug">Choisis ton niveau pour voir tes jeux.</p>
           <h2 className="subhead mt-[var(--sp)]">Les jeux</h2>
           <ul className="intro-games" aria-label="Les jeux d’Atelier">
             {GAMES.map((g) => (

@@ -1,4 +1,4 @@
-import { itemById } from '../game/goutte/rules';
+import { GOUTTE_SCALE, itemById } from '../game/goutte/rules';
 import type { Look, Mood } from '../game/goutte/rules';
 
 /**
@@ -7,7 +7,10 @@ import type { Look, Mood } from '../game/goutte/rules';
  * Les objets choisis (chapeau, arme, bouclier, accessoire) sont dessinés par-dessus. Décor : le nom est écrit à côté.
  */
 
-const SCALE = [0.62, 0.72, 0.8, 0.88, 0.95, 1];
+const SCALE = GOUTTE_SCALE;
+
+/** Toutes les expressions : celles de l'humeur, et celles des moments (manger, être caressée, faire la fête). */
+export type ArtMood = Mood | 'cheer' | 'eat' | 'radiant' | 'giggle';
 const BODY = 'M80 22 C96 46 124 72 124 104 C124 130 104 146 80 146 C56 146 36 130 36 104 C36 72 64 46 80 22 Z';
 
 function Hat({ id }: { id: string | null }) {
@@ -104,6 +107,14 @@ function Weapon({ id }: { id: string | null }) {
           <path d="M128 34 v-6 M120 40 l-4 -4 M136 40 l4 -4" stroke="#f2c14e" strokeWidth="2" strokeLinecap="round" />
         </g>
       );
+    case 'fourchette':
+      return (
+        <g transform="rotate(18 128 112)">
+          <rect x="125" y="78" width="6" height="50" rx="3" fill="#c3ccd4" stroke="#1b1915" strokeWidth="2" />
+          <path d="M118 52 V70 C118 80 138 80 138 70 V52 M124.5 52 V68 M131.5 52 V68" fill="none" stroke="#1b1915" strokeWidth="5" strokeLinecap="round" />
+          <path d="M118 52 V70 C118 80 138 80 138 70 V52 M124.5 52 V68 M131.5 52 V68" fill="none" stroke="#c3ccd4" strokeWidth="2.4" strokeLinecap="round" />
+        </g>
+      );
     case 'stylo':
       return (
         <g transform="rotate(18 128 112)">
@@ -191,11 +202,13 @@ function Front({ acc }: { acc: string | null }) {
   return null;
 }
 
-export function GoutteArt({ look, stage, mood = 'happy', size, className }: { look: Look; stage: number; mood?: Mood | 'cheer'; size?: number; className?: string }) {
+export function GoutteArt({ look, stage, mood = 'happy', size, className }: { look: Look; stage: number; mood?: ArtMood; size?: number; className?: string }) {
   const s = Math.max(0, Math.min(SCALE.length - 1, stage));
   const k = SCALE[s];
   const color = itemById(look.color)?.hex ?? '#2f3a8f';
   const asleep = mood === 'sleep';
+  /** yeux plissés de bonheur : ^ ^ */
+  const glad = mood === 'eat' || mood === 'giggle' || mood === 'cheer';
   const style = size ? { width: size, height: size } : undefined;
   return (
     <svg className={`gt${className ? ` ${className}` : ''}`} data-mood={mood} viewBox="-10 -14 180 180" style={style} aria-hidden="true" focusable="false">
@@ -233,8 +246,13 @@ export function GoutteArt({ look, stage, mood = 'happy', size, className }: { lo
             <path d="M58 98 q8 6 16 0" />
             <path d="M86 98 q8 6 16 0" />
           </g>
+        ) : glad ? (
+          <g stroke="#1b1915" strokeWidth="3.2" strokeLinecap="round" fill="none">
+            <path d="M58 100 q8 -10 16 0" />
+            <path d="M86 100 q8 -10 16 0" />
+          </g>
         ) : (
-          <g>
+          <g className="gt-eyes">
             <ellipse cx="66" cy="96" rx="8" ry="10" fill="#fff" stroke="#1b1915" strokeWidth="2" />
             <ellipse cx="94" cy="96" rx="8" ry="10" fill="#fff" stroke="#1b1915" strokeWidth="2" />
             <circle cx="67" cy="98" r="4.5" fill="#1b1915" />
@@ -252,20 +270,22 @@ export function GoutteArt({ look, stage, mood = 'happy', size, className }: { lo
         {/* joues et bouche */}
         <circle cx="56" cy="112" r="5" fill="#ff8fa8" opacity="0.55" />
         <circle cx="104" cy="112" r="5" fill="#ff8fa8" opacity="0.55" />
-        {mood === 'hungry' ? (
+        {mood === 'eat' ? (
+          <ellipse className="gt-chew" cx="80" cy="117" rx="10" ry="9" fill="#7a2a3a" stroke="#1b1915" strokeWidth="2.5" />
+        ) : mood === 'hungry' ? (
           <ellipse cx="80" cy="116" rx="5" ry="6" fill="#1b1915" />
         ) : asleep ? (
           <path d="M75 116 h10" stroke="#1b1915" strokeWidth="3" strokeLinecap="round" />
         ) : (
-          <path d={mood === 'cheer' ? 'M68 110 q12 16 24 0 Z' : 'M70 112 q10 10 20 0'} stroke="#1b1915" strokeWidth="3" strokeLinecap="round" fill={mood === 'cheer' ? '#7a2a3a' : 'none'} />
+          <path d={mood === 'cheer' || mood === 'giggle' || mood === 'radiant' ? 'M68 110 q12 16 24 0 Z' : 'M70 112 q10 10 20 0'} stroke="#1b1915" strokeWidth="3" strokeLinecap="round" fill={mood === 'cheer' || mood === 'giggle' || mood === 'radiant' ? '#7a2a3a' : 'none'} />
         )}
         <Front acc={look.acc} />
         <Shield id={look.shield} />
         <Weapon id={look.weapon} />
         <Hat id={look.hat} />
       </g>
-      {/* étincelles du Héros */}
-      {s >= 4 && (
+      {/* étincelles du Héros, ou d'une goutte rayonnante de bonheur */}
+      {(s >= 4 || mood === 'radiant') && (
         <g className="gt-spark" fill="#f2c14e">
           <path d="M18 40 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3 Z" />
           <path d="M146 58 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2 Z" />

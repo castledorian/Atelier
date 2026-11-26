@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Monster } from './Monster';
-import { LAST_FORM } from '../game/boss/forms';
 import { GoutteArt } from './GoutteArt';
 import type { Fighter } from './CaveParts';
 import { stageOf } from '../game/goutte/rules';
@@ -91,7 +90,7 @@ export default function BossFight({
   };
 
   const over = done || view.hp <= 0;
-  const size = Math.max(0, Math.min(LAST_FORM, form)) / LAST_FORM;
+  const size = 1; // la taille de chaque forme est déjà donnée par le monstre lui-même
 
   return (
     <div className={`bf${shake ? ' bf-shake' : ''}`} data-low={view.classHp <= 20 ? 'yes' : 'no'}>

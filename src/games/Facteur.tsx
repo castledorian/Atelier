@@ -73,7 +73,7 @@ export default function Facteur({ account, onHome, onSessionLost, session, onSes
   const timer = useRef(0);
   const live = useRef({ phase, settings });
   live.current = { phase, settings };
-  const grade = effectiveGrade(null);
+  const grade = effectiveGrade(account?.student.id ?? null);
 
   useEffect(() => {
     document.documentElement.dataset.text = settings.textSize;

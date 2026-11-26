@@ -3,13 +3,12 @@ import CaveScene from './CaveScene';
 import { Monster } from './Monster';
 import { Tip } from './Tip';
 import type { BossMood } from './MonsterFace';
-import { FORM_COUNT, FORM_NAMES, LAST_FORM, daysToNextForm, formName, sceneStageOf, unlockDate } from '../game/boss/forms';
+import { FORM_COUNT, LAST_FORM, formName, sceneStageOf, unlockDate } from '../game/boss/forms';
 import type { BossPhase } from '../game/boss/state';
 
 /**
- * Le cœur de la grotte : le monstre dans sa salle, et un carrousel pour revoir toutes ses formes déjà apparues.
- * Flèches ◀ ▶ (ou touches ← →), pastilles numérotées ; les formes à venir restent des « ? » (seul l'enseignant peut les prévisualiser).
- * Le décor suit la forme montrée : on revoit la grotte s'encrer au fil de l'année. Les points de vie ne s'affichent que pour la forme du jour.
+ * Le cœur de la grotte, réduit à l'essentiel : le monstre, deux flèches pour revoir ses formes déjà apparues, ses points de vie.
+ * Flèches ◀ ▶ (ou touches ← →). Le décor suit la forme montrée. L'enseignant peut prévisualiser les formes à venir.
  */
 
 interface Props {
@@ -19,12 +18,10 @@ interface Props {
   phase: BossPhase;
   /** enseignant : peut voir aussi les formes pas encore apparues */
   preview?: boolean;
-  /** profondeur de la lanterne et lanternes allumées (force de la classe) */
+  /** profondeur de la lanterne */
   depth: number;
-  lanterns: number;
   /** la grotte de la classe n'a pas encore répondu : pas de chiffre à montrer */
   waiting: boolean;
-  speech: string;
   hp: number;
 }
 
@@ -33,7 +30,7 @@ const dateOf = (form: number) => unlockDate(form).toLocaleDateString('fr-FR', { 
 /** Les touches ← → ne doivent pas bouger le carrousel quand on tape dans un champ. */
 const typing = (t: EventTarget | null) => t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
 
-export default function CaveStage({ today, grow, phase, preview = false, depth, lanterns, waiting, speech, hp }: Props) {
+export default function CaveStage({ today, grow, phase, preview = false, depth, waiting, hp }: Props) {
   const max = preview ? LAST_FORM : today;
   const [picked, setPicked] = useState<number | null>(null);
   const [dir, setDir] = useState<'next' | 'prev'>('next');
@@ -60,14 +57,13 @@ export default function CaveStage({ today, grow, phase, preview = false, depth, 
   }, [go, cur]);
 
   const mood: BossMood = !isNow ? 'idle' : phase === 'early' ? 'sleep' : 'angry';
-  const left = daysToNextForm();
 
   return (
     <>
       <section className="cs" aria-roledescription="carrousel" aria-label="Les formes du monstre">
-        <CaveScene depth={depth} stage={sceneStageOf(cur)} lanterns={lanterns}>
+        <CaveScene depth={depth} stage={sceneStageOf(cur)}>
           <div className="cs-swap" key={cur} data-dir={dir}>
-            <div className="cave-boss" style={{ ['--bsize' as string]: String(0.2 + (0.8 * cur) / LAST_FORM) }}>
+            <div className="cave-boss">
               <Monster form={cur} grow={isNow ? grow : 1} mood={mood} />
             </div>
           </div>
@@ -79,61 +75,24 @@ export default function CaveStage({ today, grow, phase, preview = false, depth, 
           <span aria-hidden="true">▶</span>
         </button>
       </section>
-      <p className="sr-only" role="status" aria-live="polite">
-        Forme {cur + 1} sur {FORM_COUNT} : {formName(cur)}
-      </p>
 
       <div className="cave-vitals">
-        {isNow ? (
-          <>
-            <p className="cave-say">
-              <span className="sr-only">{formName(cur)} dit : </span>« {speech} »
-            </p>
-            <p className="cave-name">
-              {formName(cur)} <span aria-hidden="true">· forme {cur + 1}/{FORM_COUNT}</span>
-            </p>
-            <p className="cave-hp" role="status">
-              <span aria-hidden="true">♥</span>
-              <span className="sr-only">Points de vie de {formName(cur)} : </span>
-              <b>{waiting ? '…' : hp.toLocaleString('fr-FR')}</b>
-              <span className="cave-hp-unit" aria-hidden="true">
-                points de vie
-              </span>
-              <Tip label="Comment sont comptés les points de vie">Chaque faute des élèves ajoute un point de vie ; revoir une règle en retire.</Tip>
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="cave-name">
-              {formName(cur)} <span aria-hidden="true">· forme {cur + 1}/{FORM_COUNT}</span>
-            </p>
-            <p className="cs-note">
-              {cur < today ? `Apparue le ${dateOf(cur)}` : 'Aperçu : cette forme n’est pas encore apparue'}
-              <button type="button" onClick={() => go(today)}>
-                Revenir à aujourd’hui
-              </button>
-            </p>
-          </>
-        )}
-      </div>
-
-      <ol className="cs-dots" aria-label="Choisir une forme">
-        {FORM_NAMES.map((n, i) => (
-          <li key={n}>
-            <button
-              type="button"
-              className="cs-dot"
-              disabled={i > max}
-              aria-current={i === cur ? 'true' : undefined}
-              aria-label={i > max ? `Forme ${i + 1} : pas encore apparue` : `Forme ${i + 1} : ${n}`}
-              onClick={() => go(i)}
-            >
-              {i > max ? '?' : i + 1}
+        <p className="cave-name" role="status" aria-live="polite">
+          {formName(cur)}
+          <span className="sr-only">, forme {cur + 1} sur {FORM_COUNT}</span>
+          {!isNow && (
+            <button type="button" className="cs-back" onClick={() => go(today)}>
+              {cur < today ? `apparue le ${dateOf(cur)}` : 'aperçu'} · revenir
             </button>
-          </li>
-        ))}
-      </ol>
-      {isNow && left !== null && !waiting && <p className="cs-note">Prochaine forme {left <= 1 ? 'demain' : `dans ${left} jours`}</p>}
+          )}
+        </p>
+        <p className="cave-hp">
+          <span aria-hidden="true">♥</span>
+          <span className="sr-only">Points de vie : </span>
+          <b>{waiting ? '…' : hp.toLocaleString('fr-FR')}</b>
+          <Tip label="Comment sont comptés les points de vie">Un point de vie par faute de la classe ; revoir une règle en retire.</Tip>
+        </p>
+      </div>
     </>
   );
 }

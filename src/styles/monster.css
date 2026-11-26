@@ -12,7 +12,7 @@
 .mn-all {
   position: absolute;
   inset: 0;
-  transform-origin: 50% 92%;
+  transform-origin: 50% 98%;
   transition: transform 0.6s ease;
 }
 .mn-pop,
@@ -168,6 +168,48 @@
   }
 }
 
+/* — la scène : le monstre occupe toute la hauteur disponible, sa taille réelle vient de sa forme (FORM_SCALE) — */
+.descent-boss {
+  inset: 5% 0 2% 0;
+  align-items: flex-end;
+}
+.descent-boss .cave-boss {
+  display: flex;
+  align-items: flex-end;
+  width: auto;
+  height: 100%;
+  max-width: 88%;
+  aspect-ratio: 1;
+}
+.descent-boss .cave-boss .mn {
+  width: 100%;
+}
+/* halo derrière le monstre : la lumière violette de son encre, pas une lampe jaune (même famille que l'illustration) */
+.descent-boss::before {
+  background: radial-gradient(closest-side, rgba(233, 224, 255, 0.62), rgba(157, 139, 224, 0.26) 55%, rgba(157, 139, 224, 0) 100%);
+}
+.cs-back {
+  margin-left: 10px;
+  padding: 2px 6px;
+  border: 0;
+  background: transparent;
+  color: rgba(236, 226, 203, 0.8);
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.cave-more {
+  margin-top: calc(var(--sp) * 1.5);
+}
+.cave-more .fold-in {
+  display: grid;
+  gap: var(--sp);
+  margin-top: 10px;
+}
+
 /* — le carrousel des formes : flèches de chaque côté, pastilles dessous — */
 .cs {
   position: relative;
@@ -228,82 +270,14 @@
 .cs-next {
   right: 10px;
 }
-.cs-dots {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  margin: 14px 0 0;
-  padding: 0;
-  list-style: none;
-}
-.cs-dot {
-  display: grid;
-  place-items: center;
-  min-width: 36px;
-  height: 36px;
-  padding: 0;
-  border: 2px solid rgba(236, 226, 203, 0.45);
-  border-radius: 50%;
-  background: transparent;
-  color: rgba(236, 226, 203, 0.85);
-  font-family: var(--font-display);
-  font-size: 14px;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-.cs-dot[aria-current='true'] {
-  border-color: #b9a6ff;
-  background: rgba(139, 114, 230, 0.3);
-  color: #fff;
-}
-.cs-dot:disabled {
-  border-style: dashed;
-  border-color: rgba(236, 226, 203, 0.22);
-  color: rgba(236, 226, 203, 0.4);
-  cursor: default;
-}
-.cs-dot:focus-visible {
-  outline: 3px solid var(--color-ribbon);
-  outline-offset: 3px;
-}
-.cs-note {
-  margin: 10px 0 0;
-  text-align: center;
-  font-size: 15px;
-  color: rgba(236, 226, 203, 0.82);
-}
-.cs-note button {
-  margin-left: 8px;
-  padding: 2px 8px;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-}
 @media (pointer: coarse) {
   .cs-arrow {
     width: 56px;
     height: 56px;
     margin-top: -28px;
   }
-  .cs-dot {
-    min-width: 44px;
-    height: 44px;
-  }
 }
 @media (max-width: 480px) {
-  .cs-dots {
-    display: grid;
-    grid-template-columns: repeat(5, 44px);
-    justify-content: center;
-  }
-  .cs-dot {
-    min-width: 44px;
-    height: 44px;
-  }
   .cs-prev {
     left: 4px;
   }

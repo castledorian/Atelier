@@ -7,7 +7,6 @@ import type { ReactNode } from 'react';
  * `depth` (0 à 1) : jusqu'où la lanterne est descendue (elle s'enfonce un peu plus à chaque saison de l'année).
  * `stage` (0 à 6) : l'étape de la créature. La grotte change avec elle : l'encre coule des stalactites, tache les parois,
  *   forme un lac qui s'étale, puis des veines violettes s'allument et une cascade d'encre apparaît.
- * `lanterns` (0 à 6) : la force de la classe. Chaque palier allume une lanterne sur les parois : la classe éclaire la grotte.
  * `children` : la créature.
  */
 
@@ -15,12 +14,9 @@ import type { ReactNode } from 'react';
 const TIPS: Array<[number, number]> = [[73, 46], [229, 52], [93, 28], [250, 30], [193, 24], [126, 20]];
 /** Taches d'encre sur les parois, dans l'ordre où elles apparaissent. */
 const STAINS: Array<[number, number, number]> = [[46, 150, 14], [272, 176, 16], [30, 262, 18], [284, 290, 15], [60, 320, 12]];
-/** Lanternes de la classe, de la plus haute à la plus basse. */
-const LANTERNS: Array<[number, number]> = [[40, 70], [282, 86], [24, 180], [292, 200], [52, 286], [268, 312]];
 
-export default function CaveScene({ depth, stage = 0, lanterns = 0, children }: { depth: number; stage?: number; lanterns?: number; children: ReactNode }) {
+export default function CaveScene({ depth, stage = 0, children }: { depth: number; stage?: number; children: ReactNode }) {
   const st = Math.max(0, Math.min(6, Math.round(stage)));
-  const lit = Math.max(0, Math.min(LANTERNS.length, Math.round(lanterns)));
   const d = Math.max(0, Math.min(1, depth));
   // la lanterne descend de 0 à 190 unités du dessin ; elle s'arrête plus ou moins bas selon l'avancée de l'année
   const dive = Math.round(40 + 150 * d);
@@ -102,16 +98,6 @@ export default function CaveScene({ depth, stage = 0, lanterns = 0, children }: 
           {st >= 6 && <path className="cave-fall" d="M70 108 C66 160 76 220 70 300 L84 300 C90 220 80 160 84 108 Z" fill="#241a44" />}
           {/* lac d'encre au sol : il s'étale à chaque étape */}
           <ellipse cx="160" cy="356" rx={24 + st * 22} ry={6 + st * 2.2} fill="#140f26" opacity={st ? 0.95 : 0.6} />
-        </g>
-        {/* lanternes allumées par la classe : une par palier de force */}
-        <g aria-hidden="true">
-          {LANTERNS.map(([x, y], i) => (
-            <g key={`l${i}`} className={i < lit ? 'cave-lamp cave-lamp-on' : 'cave-lamp'}>
-              {i < lit && <circle cx={x} cy={y} r="22" fill="url(#glow)" />}
-              <line x1={x} y1={y - 16} x2={x} y2={y - 8} stroke="#7a6548" strokeWidth="2" />
-              <rect x={x - 5} y={y - 8} width="10" height="13" rx="2" fill={i < lit ? '#f2c869' : '#2b251e'} stroke="#3b2d17" strokeWidth="1.5" />
-            </g>
-          ))}
         </g>
         {/* échelle de corde */}
         <g stroke="#7a6548" strokeWidth="2" fill="none" opacity="0.85">

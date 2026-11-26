@@ -1,5 +1,4 @@
 import { GoutteArt } from './GoutteArt';
-import { POWER_STEPS } from '../game/boss/state';
 import { defaultLook, levelOf, stageOf } from '../game/goutte/rules';
 import type { Look } from '../game/goutte/rules';
 import type { Team } from '../server/goutte';
@@ -15,19 +14,6 @@ export interface Fighter {
 export function fightersOf(team: Team | null): Fighter[] {
   if (!team) return [];
   return team.team.map((m, i) => ({ name: m.name, look: m.look ?? defaultLook(i), level: levelOf(m.xp), me: team.me === m.id }));
-}
-
-/** Lanternes de la classe : une par palier de réussites, et ce qu'il reste pour la suivante (un objectif positif). */
-export function LanternHint({ power, level }: { power: number; level: number }) {
-  const next = POWER_STEPS[level + 1];
-  return (
-    <p className="cave-lanterns">
-      <span aria-hidden="true">{Array.from({ length: POWER_STEPS.length - 1 }, (_, i) => (i < level ? '◆' : '◇')).join(' ')}</span>{' '}
-      {next === undefined
-        ? 'Toutes les lanternes sont allumées : la classe est prête !'
-        : `${level} lanterne${level > 1 ? 's' : ''} allumée${level > 1 ? 's' : ''}. Encore ${(next - power).toLocaleString('fr-FR')} bonne${next - power > 1 ? 's' : ''} réponse${next - power > 1 ? 's' : ''} pour la suivante.`}
-    </p>
-  );
 }
 
 /** L'équipe de la classe pour le combat final : chaque élève avec sa goutte. */

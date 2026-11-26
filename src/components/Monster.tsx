@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { FALLBACK_STAGE, FORM_ART, artUrl } from '../game/boss/art';
-import { LAST_FORM } from '../game/boss/forms';
+import { LAST_FORM, sizeOf } from '../game/boss/forms';
 import { InkBoss } from './InkBoss';
 import { MonsterFace } from './MonsterFace';
 import type { BossMood } from './MonsterFace';
@@ -9,7 +9,8 @@ import type { BossMood } from './MonsterFace';
  * Le monstre de la grotte : l'illustration de sa forme (corps sans visage) + un visage et des animations dessinés en code.
  *  - il respire, cligne des yeux, regarde de côté ; il dort (paupières closes, « z ») ou s'agite selon `mood` ;
  *  - un toucher ou un clic le fait rebondir ;
- *  - entre deux formes il enfle doucement (`grow`) ; les grandes formes ont une aura qui pulse ;
+ *  - sa taille suit la forme (FORM_SCALE : toujours plus grand) et il enfle doucement entre deux formes (`grow`) ;
+ *  - les grandes formes ont une aura qui pulse ;
  *  - sans illustration pour cette forme, le dessin vectoriel de secours prend le relais (voir art.ts).
  * Décor seulement (aria-hidden) : le nom et les points de vie sont écrits à côté.
  * Toutes les animations sont coupées si l'appareil demande moins de mouvement (monster.css).
@@ -28,12 +29,11 @@ export function Monster({ form, grow = 0, mood = 'idle', title }: { form: number
     setBoing(true);
     timer.current = window.setTimeout(() => setBoing(false), 650);
   };
-  const g = Math.max(0, Math.min(1, grow));
   return (
     <div className={`mn${boing ? ' mn-boing' : ''}`} data-form={f} data-mood={mood} aria-hidden="true" onPointerDown={poke}>
       {title && <span className="sr-only">{title}</span>}
       {art.aura && <span className="mn-aura" />}
-      <div className="mn-all" style={{ transform: `scale(${1 + 0.06 * g})` }}>
+      <div className="mn-all" style={{ transform: `scale(${sizeOf(f, grow)})` }}>
         <div className="mn-pop">
           <div className="mn-breathe">
             <img className="mn-img" src={artUrl(f)} alt="" width={512} height={512} decoding="async" draggable={false} />
@@ -44,7 +44,7 @@ export function Monster({ form, grow = 0, mood = 'idle', title }: { form: number
         </div>
       </div>
       {mood === 'sleep' && (
-        <span className="mn-zzz" aria-hidden="true">
+        <span className="mn-zzz" aria-hidden="true" style={{ top: `${Math.round((1 - sizeOf(f, grow)) * 94)}%`, right: `${Math.round(30 - 26 * sizeOf(f, grow))}%` }}>
           z<b>Z</b>
         </span>
       )}

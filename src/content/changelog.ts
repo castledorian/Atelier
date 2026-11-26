@@ -24,6 +24,19 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.31',
+    date: '27 novembre 2026',
+    iso: '2026-11-27',
+    title: 'Niveau au choix, grotte épurée, goutte vivante',
+    changes: [
+      { kind: 'new', text: 'L’élève peut choisir un autre niveau pour ses parties libres (réviser ou prendre de l’avance) ; celui de sa classe reste la valeur par défaut.' },
+      { kind: 'better', text: 'La grotte ne montre plus que le monstre, ses flèches et ses points de vie (égaux aux fautes) ; la courbe et l’équipe passent dans « Plus d’informations ».' },
+      { kind: 'better', text: 'Le monstre grandit vraiment d’une forme à l’autre : la dernière est toujours la plus grande.' },
+      { kind: 'new', text: 'Ma goutte : ventre et bonheur, 12 saveurs de friandises à collectionner, animation quand on la nourrit ou la caresse, cadeaux à déballer.' },
+      { kind: 'better', text: 'Progression plus longue : les objets se gagnent en jouant régulièrement, pas en quelques parties.' },
+    ],
+  },
+  {
     version: '1.30',
     date: '26 novembre 2026',
     iso: '2026-11-26',

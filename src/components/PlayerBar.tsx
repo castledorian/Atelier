@@ -1,6 +1,6 @@
 import { GoutteArt } from './GoutteArt';
 import { useGoutte } from './useGoutte';
-import { ACHIEVEMENTS, STAGES, achieved, levelProgress, moodOf, stageOf, xpOf } from '../game/goutte/rules';
+import { ACHIEVEMENTS, STAGES, achieved, levelProgress, stageOf, xpOf } from '../game/goutte/rules';
 
 /**
  * La barre du joueur sur l'accueil : sa goutte, son niveau, sa barre d'expérience, ses friandises et ses succès.
@@ -11,10 +11,10 @@ export default function PlayerBar({ token, onOpen }: { token: string | null; onO
   const xp = xpOf(view.counters);
   const lp = levelProgress(xp);
   const stage = stageOf(lp.level);
-  const mood = moodOf(view.counters, view.treatsLeft);
+  const mood = view.mood;
   const done = ACHIEVEMENTS.filter((a) => achieved(a, view.progress)).length;
   return (
-    <button type="button" className="pbar" onClick={onOpen} aria-label={`Ma goutte : ${view.look.name}, niveau ${lp.level}, ${view.treatsLeft} friandises à donner. Ouvrir.`}>
+    <button type="button" className="pbar" onClick={onOpen} aria-label={`Ma goutte : ${view.look.name}, niveau ${lp.level}, ${view.treatsLeft} friandises à donner${mood === 'hungry' ? ', elle a faim' : ''}. Ouvrir.`}>
       <span className="pbar-art" aria-hidden="true">
         <GoutteArt look={view.look} stage={stage} mood={mood} />
         {view.treatsLeft > 0 && <span className="pbar-dot">{view.treatsLeft > 99 ? '99+' : view.treatsLeft}</span>}
@@ -32,6 +32,7 @@ export default function PlayerBar({ token, onOpen }: { token: string | null; onO
         <span>
           <b>{view.treatsLeft}</b> friandise{view.treatsLeft > 1 ? 's' : ''}
         </span>
+        {mood === 'hungry' && <span className="pbar-hungry">a faim !</span>}
         <span>
           <b>{done}</b>/{ACHIEVEMENTS.length} succès
         </span>

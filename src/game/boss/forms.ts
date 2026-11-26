@@ -75,3 +75,17 @@ export function daysToNextForm(d: Date = new Date()): number | null {
 export const sceneStageOf = (form: number): number => Math.round((Math.max(0, Math.min(LAST_FORM, form)) * 6) / LAST_FORM);
 
 export const formName = (form: number): string => FORM_NAMES[Math.max(0, Math.min(LAST_FORM, Math.round(form)))];
+
+/**
+ * Taille du monstre à chaque forme (1 = toute la scène) : elle ne fait que grandir, de la petite goutte au Grand Pâté.
+ * Les illustrations sont toutes cadrées pareil : c'est cette échelle qui donne la vraie taille à l'écran.
+ */
+export const FORM_SCALE: readonly number[] = [0.34, 0.42, 0.5, 0.58, 0.65, 0.72, 0.8, 0.87, 0.94, 1];
+
+/** Taille affichée : entre deux formes, le monstre enfle vers la suivante sans jamais l'atteindre. */
+export function sizeOf(form: number, grow = 0): number {
+  const f = Math.max(0, Math.min(LAST_FORM, Math.round(form)));
+  if (f >= LAST_FORM) return FORM_SCALE[LAST_FORM];
+  const g = Math.max(0, Math.min(1, grow));
+  return FORM_SCALE[f] + (FORM_SCALE[f + 1] - FORM_SCALE[f]) * 0.6 * g;
+}

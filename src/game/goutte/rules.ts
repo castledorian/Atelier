@@ -11,6 +11,9 @@
  * (impossible de tricher en modifiant le navigateur), et la formule d'expérience est recopiée dans private.goutte_xp (voir SQL).
  */
 
+/** Nombre de saveurs à découvrir (recopié de foods.ts pour éviter une dépendance circulaire ; vérifié par les tests). */
+export const TASTE_TOTAL = 12;
+
 export type GameId = 'typing' | 'math' | 'spelling' | 'memory' | 'lexique' | 'facteur';
 export const GAME_IDS: readonly GameId[] = ['typing', 'math', 'spelling', 'memory', 'lexique', 'facteur'];
 
@@ -69,8 +72,13 @@ export const XP = { run: 10, day: 25, record: 15, session: 20 } as const;
 export const xpOf = (c: Counters): number => XP.run * totalRuns(c) + XP.day * c.days + XP.record * c.records + XP.session * c.sessions;
 
 export const MAX_LEVEL = 30;
-/** Expérience totale pour atteindre un niveau : 0, 20, 60, 120… (≈ niveau 20 en fin d'année en jouant deux fois par semaine). */
-export const xpForLevel = (level: number): number => 10 * level * (level - 1);
+/**
+ * Expérience totale pour atteindre un niveau : 0, 30, 90, 180, 300…
+ * Courbe pensée comme celles des jeux à progression longue : une première victoire tout de suite (niveau 2 dès la première partie),
+ * puis des paliers de plus en plus espacés. En jouant deux fois par semaine on finit l'année vers le niveau 18 (Héros d'encre) ;
+ * la Légende (niveau 20) récompense les élèves les plus réguliers. Seul l'appareil calcule les niveaux : le serveur ne compte que l'expérience.
+ */
+export const xpForLevel = (level: number): number => 15 * level * (level - 1);
 
 export function levelOf(xp: number): number {
   let l = 1;
@@ -87,7 +95,7 @@ export function levelProgress(xp: number): { level: number; fill: number; toNext
   return { level, fill: (xp - from) / (to - from), toNext: to - xp };
 }
 
-/** Les grandes étapes de la goutte : son dessin change à chacune. */
+/** Les grandes étapes de la goutte : son dessin change et elle grandit à chacune. */
 export const STAGES = [
   { from: 1, name: 'Gouttelette' },
   { from: 3, name: 'Goutte' },
@@ -97,6 +105,9 @@ export const STAGES = [
   { from: 20, name: 'Légende d’encre' },
 ] as const;
 
+/** Taille dessinée à chaque étape : elle ne fait que grandir, de la Gouttelette à la Légende (vérifié par les tests). */
+export const GOUTTE_SCALE: readonly number[] = [0.5, 0.62, 0.73, 0.83, 0.92, 1];
+
 export function stageOf(level: number): number {
   let s = 0;
   for (let i = 0; i < STAGES.length; i++) if (level >= STAGES[i].from) s = i;
@@ -105,7 +116,7 @@ export function stageOf(level: number): number {
 
 // ───────────────────────── Friandises ─────────────────────────
 
-/** Friandises gagnées : une par partie, deux par record battu, une par jour de jeu. On les donne à sa goutte. */
+/** Friandises gagnées : une par partie, deux par record battu, une par jour de jeu. On les donne à sa goutte (voir foods.ts). */
 export const treatsEarned = (c: Counters): number => totalRuns(c) + 2 * c.records + c.days;
 
 // ───────────────────────── Humeur (jamais triste) ─────────────────────────
@@ -134,36 +145,38 @@ export interface Item {
 
 export const ITEMS: readonly Item[] = [
   { id: 'encre', slot: 'color', name: 'Encre bleue', unlock: { level: 1 }, hex: '#2f3a8f' },
-  { id: 'sapin', slot: 'color', name: 'Vert sapin', unlock: { level: 2 }, hex: '#1f6b4a' },
-  { id: 'prune', slot: 'color', name: 'Prune', unlock: { level: 4 }, hex: '#6a2c7a' },
-  { id: 'brique', slot: 'color', name: 'Brique', unlock: { level: 7 }, hex: '#a2412c' },
+  { id: 'sapin', slot: 'color', name: 'Vert sapin', unlock: { level: 3 }, hex: '#1f6b4a' },
+  { id: 'prune', slot: 'color', name: 'Prune', unlock: { level: 5 }, hex: '#6a2c7a' },
+  { id: 'brique', slot: 'color', name: 'Brique', unlock: { level: 8 }, hex: '#a2412c' },
   { id: 'ocean', slot: 'color', name: 'Océan', unlock: { ach: 'jours-10' }, hex: '#1c6f8f' },
-  { id: 'rose', slot: 'color', name: 'Framboise', unlock: { fed: 20 }, hex: '#b8336a' },
-  { id: 'nuit', slot: 'color', name: 'Nuit étoilée', unlock: { level: 12 }, hex: '#1d2246' },
+  { id: 'rose', slot: 'color', name: 'Framboise', unlock: { fed: 80 }, hex: '#b8336a' },
+  { id: 'nuit', slot: 'color', name: 'Nuit étoilée', unlock: { level: 13 }, hex: '#1d2246' },
   { id: 'or', slot: 'color', name: 'Or', unlock: { level: 20 }, hex: '#b8860b' },
+  { id: 'menthe', slot: 'color', name: 'Menthe', unlock: { ach: 'calin-25' }, hex: '#2a8a78' },
 
   { id: 'casquette', slot: 'hat', name: 'Casquette', unlock: { level: 2 } },
-  { id: 'bonnet', slot: 'hat', name: 'Bonnet', unlock: { fed: 5 } },
-  { id: 'casque', slot: 'hat', name: 'Casque', unlock: { level: 6 } },
+  { id: 'bonnet', slot: 'hat', name: 'Bonnet', unlock: { fed: 15 } },
+  { id: 'casque', slot: 'hat', name: 'Casque', unlock: { level: 7 } },
   { id: 'magicien', slot: 'hat', name: 'Chapeau de magicien', unlock: { ach: 'explorateur' } },
-  { id: 'pirate', slot: 'hat', name: 'Chapeau de pirate', unlock: { level: 9 } },
+  { id: 'pirate', slot: 'hat', name: 'Chapeau de pirate', unlock: { ach: 'gourmet' } },
   { id: 'couronne', slot: 'hat', name: 'Couronne de papier', unlock: { ach: 'records-10' } },
-  { id: 'heaume', slot: 'hat', name: 'Heaume de chevalier', unlock: { level: 14 } },
+  { id: 'heaume', slot: 'hat', name: 'Heaume de chevalier', unlock: { level: 15 } },
 
   { id: 'plume', slot: 'weapon', name: 'Plume', unlock: { level: 1 } },
   { id: 'crayon', slot: 'weapon', name: 'Crayon-lance', unlock: { level: 4 } },
-  { id: 'regle', slot: 'weapon', name: 'Règle-épée', unlock: { level: 10 } },
+  { id: 'fourchette', slot: 'weapon', name: 'Fourchette géante', unlock: { ach: 'grand-chef' } },
+  { id: 'regle', slot: 'weapon', name: 'Règle-épée', unlock: { level: 11 } },
   { id: 'pinceau', slot: 'weapon', name: 'Pinceau magique', unlock: { ach: 'parties-100' } },
-  { id: 'stylo', slot: 'weapon', name: 'Stylo d’or', unlock: { level: 18 } },
+  { id: 'stylo', slot: 'weapon', name: 'Stylo d’or', unlock: { level: 19 } },
 
-  { id: 'gomme', slot: 'shield', name: 'Bouclier-gomme', unlock: { level: 3 } },
-  { id: 'cahier', slot: 'shield', name: 'Bouclier-cahier', unlock: { level: 8 } },
+  { id: 'gomme', slot: 'shield', name: 'Bouclier-gomme', unlock: { level: 6 } },
+  { id: 'cahier', slot: 'shield', name: 'Bouclier-cahier', unlock: { level: 10 } },
   { id: 'etoile', slot: 'shield', name: 'Bouclier étoilé', unlock: { ach: 'seances-10' } },
-  { id: 'dore', slot: 'shield', name: 'Bouclier doré', unlock: { level: 16 } },
+  { id: 'dore', slot: 'shield', name: 'Bouclier doré', unlock: { level: 17 } },
 
-  { id: 'echarpe', slot: 'acc', name: 'Écharpe', unlock: { fed: 10 } },
+  { id: 'echarpe', slot: 'acc', name: 'Écharpe', unlock: { fed: 40 } },
   { id: 'lunettes', slot: 'acc', name: 'Lunettes', unlock: { ach: 'minutes-60' } },
-  { id: 'cape', slot: 'acc', name: 'Cape', unlock: { level: 11 } },
+  { id: 'cape', slot: 'acc', name: 'Cape', unlock: { level: 12 } },
   { id: 'medaille', slot: 'acc', name: 'Médaille', unlock: { ach: 'records-1' } },
   { id: 'ailes', slot: 'acc', name: 'Ailes de papier', unlock: { level: 22 } },
 ];
@@ -176,6 +189,8 @@ export interface Progress {
   counters: Counters;
   level: number;
   fed: number;
+  /** saveurs différentes déjà goûtées (voir foods.ts) */
+  tasted?: number;
 }
 
 export interface Achievement {
@@ -218,6 +233,9 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: 'niveau-20', name: 'Légende', how: 'Atteins le niveau 20.', goal: (p) => [p.level, 20] },
   { id: 'calin-1', name: 'Premier câlin', how: 'Donne une friandise à ta goutte.', goal: (p) => [p.fed, 1] },
   { id: 'calin-25', name: 'Meilleurs amis', how: 'Donne 25 friandises à ta goutte.', goal: (p) => [p.fed, 25] },
+  { id: 'calin-100', name: 'Inséparables', how: 'Donne 100 friandises à ta goutte.', goal: (p) => [p.fed, 100] },
+  { id: 'gourmet', name: 'Gourmet', how: 'Fais goûter 6 saveurs différentes à ta goutte.', goal: (p) => [p.tasted ?? 0, 6] },
+  { id: 'grand-chef', name: 'Grand chef', how: 'Fais goûter toutes les saveurs à ta goutte.', goal: (p) => [p.tasted ?? 0, TASTE_TOTAL] },
 ];
 
 export const achieved = (a: Achievement, p: Progress): boolean => {
@@ -322,4 +340,31 @@ export function gainBetween(before: Progress, after: Progress): Gain {
   };
 }
 
-export const progressOf = (c: Counters, fed: number): Progress => ({ counters: c, level: levelOf(xpOf(c)), fed });
+export const progressOf = (c: Counters, fed: number, tasted?: number): Progress => ({ counters: c, level: levelOf(xpOf(c)), fed, tasted });
+
+// ───────────────────────── Prochain cadeau (on voit la ligne d'arrivée) ─────────────────────────
+
+/** Où en est-on de chaque objet pas encore débloqué, de 0 à 1. */
+export function unlockFill(item: Item, p: Progress): number {
+  const u = item.unlock;
+  if ('level' in u) return Math.min(1, xpOf(p.counters) / Math.max(1, xpForLevel(u.level)));
+  if ('fed' in u) return Math.min(1, p.fed / u.fed);
+  const a = ACHIEVEMENTS.find((x) => x.id === u.ach);
+  if (!a) return 0;
+  const [v, goal] = a.goal(p);
+  return Math.min(1, v / Math.max(1, goal));
+}
+
+/**
+ * Le prochain cadeau à viser : l'objet verrouillé le plus proche d'être débloqué.
+ * Montrer une ligne d'arrivée proche donne envie d'y aller (« effet de gradient de but ») ; on ne montre qu'un seul objectif.
+ */
+export function nextUnlock(p: Progress): { item: Item; fill: number } | null {
+  let best: { item: Item; fill: number } | null = null;
+  for (const item of ITEMS) {
+    if (unlocked(item, p)) continue;
+    const fill = unlockFill(item, p);
+    if (!best || fill > best.fill) best = { item, fill };
+  }
+  return best;
+}

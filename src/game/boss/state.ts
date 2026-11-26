@@ -140,9 +140,9 @@ export function stepOf(value: number, steps: readonly number[]): number {
   return n;
 }
 
-/** Points de vie de départ de la créature (la petite goutte). */
-export const BASE_HP = 10;
-/** Points de vie affichés : chaque faute des élèves en ajoute un ; une règle retravaillée en retire (voir CALM). */
+/** Points de vie de départ : aucun. Les points de vie sont exactement les fautes de la classe. */
+export const BASE_HP = 0;
+/** Points de vie affichés = nombre de fautes des élèves ; une règle retravaillée en retire (voir CALM). */
 export const bossHp = (s: Pick<BossState, 'ink'>): number => BASE_HP + Math.max(0, Math.round(s.ink));
 
 /** Ce que dit la créature aux enfants : elle veut les faire partir (taquine, jamais effrayante). Plus elle évolue, plus elle se vante. */

@@ -1,5 +1,9 @@
-import { cleanCounters, cleanLook, defaultLook, emptyCounters, gainBetween, mergeCounters, progressOf, treatsEarned, wearable } from './rules';
+import { ITEMS, cleanCounters, cleanLook, defaultLook, emptyCounters, gainBetween, mergeCounters, progressOf, treatsEarned, unlocked, wearable } from './rules';
 import type { Counters, Gain, GameId, Look, Progress } from './rules';
+import { FOODS, foodAt, seedOf, tastedIds } from './foods';
+import type { Food } from './foods';
+import { FULL, JOY_HOURS, PETS_PER_DAY, SAT_HOURS, bump, cleanNeed, liveMood, needNow } from './needs';
+import type { LiveMood, Need } from './needs';
 
 /**
  * La goutte sur cet appareil : compteurs d'effort, records personnels, apparence, friandises données.
@@ -33,6 +37,13 @@ interface Local {
   fed: number;
   /** l'apparence ou les friandises ont changé et n'ont pas encore été envoyées */
   dirty: boolean;
+  /** ventre et bonheur (appareil seulement) */
+  sat: Need;
+  joy: Need;
+  /** câlins du jour : [jour, nombre] */
+  pets: [string, number];
+  /** objets déjà montrés à l'élève (les autres seront « déballés ») ; null = jamais ouvert */
+  seen: string[] | null;
 }
 
 interface ServerCopy {
@@ -41,7 +52,8 @@ interface ServerCopy {
   fed: number;
 }
 
-const blank = (): Local => ({ counters: emptyCounters(), best: {}, lastDay: '', look: null, fed: 0, dirty: false });
+const start = (): Need => ({ v: 60, at: Date.now() });
+const blank = (): Local => ({ counters: emptyCounters(), best: {}, lastDay: '', look: null, fed: 0, dirty: false, sat: start(), joy: start(), pets: ['', 0], seen: null });
 
 function read<T>(key: string): T | null {
   try {
@@ -70,6 +82,10 @@ export function loadLocal(): Local {
     look: v.look ? cleanLook(v.look) : null,
     fed: typeof v.fed === 'number' && v.fed > 0 ? Math.floor(v.fed) : 0,
     dirty: v.dirty === true,
+    sat: cleanNeed(v.sat, start()),
+    joy: cleanNeed(v.joy, start()),
+    pets: Array.isArray(v.pets) && typeof v.pets[0] === 'string' && typeof v.pets[1] === 'number' ? [v.pets[0].slice(0, 10), Math.max(0, Math.floor(v.pets[1]))] : ['', 0],
+    seen: Array.isArray(v.seen) ? v.seen.filter((x): x is string => typeof x === 'string').slice(0, 200) : null,
   };
 }
 
@@ -86,12 +102,20 @@ export interface GoutteView {
   fed: number;
   progress: Progress;
   treatsLeft: number;
+  /** ventre et bonheur (0 à 100) ; null en lecture seule (observation : on ne les connaît pas) */
+  sat: number | null;
+  joy: number | null;
+  mood: LiveMood;
+  /** graine des friandises de cet élève */
+  seed: number;
 }
 
 /** Une vue construite seulement à partir d'une réponse du serveur (observation en lecture seule). */
-export function viewOf(counters: Counters, look: Look | null, fed: number): GoutteView {
-  const progress = progressOf(counters, fed);
-  return { counters, look: wearable(look ?? defaultLook(), progress), fed, progress, treatsLeft: Math.max(0, treatsEarned(counters) - fed) };
+export function viewOf(counters: Counters, look: Look | null, fed: number, ownerId = 'invite'): GoutteView {
+  const seed = seedOf(ownerId);
+  const progress = progressOf(counters, fed, tastedIds(seed, fed).size);
+  const mood = liveMood(60, 60, counters.last);
+  return { counters, look: wearable(look ?? defaultLook(), progress), fed, progress, treatsLeft: Math.max(0, treatsEarned(counters) - fed), sat: null, joy: null, mood, seed };
 }
 
 export function currentView(seed = 0): GoutteView {
@@ -99,9 +123,13 @@ export function currentView(seed = 0): GoutteView {
   const s = loadServer();
   const counters = s ? mergeCounters(l.counters, s.counters) : l.counters;
   const fed = Math.max(l.fed, s?.fed ?? 0);
-  const progress = progressOf(counters, fed);
+  const fs = seedOf(owner);
+  const progress = progressOf(counters, fed, tastedIds(fs, fed).size);
   const look = wearable(l.dirty ? (l.look ?? s?.look ?? defaultLook(seed)) : (s?.look ?? l.look ?? defaultLook(seed)), progress);
-  return { counters, look, fed, progress, treatsLeft: Math.max(0, treatsEarned(counters) - fed) };
+  const now = Date.now();
+  const sat = needNow(l.sat, SAT_HOURS, now);
+  const joy = needNow(l.joy, JOY_HOURS, now);
+  return { counters, look, fed, progress, treatsLeft: Math.max(0, treatsEarned(counters) - fed), sat, joy, mood: liveMood(sat, joy, counters.last, now), seed: fs };
 }
 
 const parisDay = (t: number) => new Date(t).toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
@@ -129,6 +157,8 @@ export function noteGame(game: GameId, board: string, score: number, seconds?: n
     last: now,
   };
   l.lastDay = day;
+  // une partie rend la goutte heureuse (même perdue : c'est l'effort qui compte)
+  l.joy = bump(l.joy, 15, JOY_HOURS, now);
   write(key(), l);
   const after = currentView();
   const gain = gainBetween(before.progress, after.progress);
@@ -140,16 +170,69 @@ export function noteGame(game: GameId, board: string, score: number, seconds?: n
   return gain;
 }
 
-/** Donne une friandise (s'il en reste). */
-export function feed(): GoutteView | null {
+/** La goutte peut-elle manger maintenant ? */
+export type FeedBlock = 'none-left' | 'full' | null;
+export const feedBlock = (v: GoutteView): FeedBlock => (v.treatsLeft <= 0 ? 'none-left' : v.sat !== null && v.sat >= FULL ? 'full' : null);
+
+/** Ce qui vient d'être mangé (pour l'animation). */
+export interface Meal {
+  food: Food;
+  /** première fois qu'elle goûte cette saveur */
+  first: boolean;
+  view: GoutteView;
+}
+
+/** Donne la prochaine friandise de la boîte à goûter (s'il en reste et si elle a faim). */
+export function feedMeal(now: number = Date.now()): Meal | null {
   const v = currentView();
-  if (v.treatsLeft <= 0) return null;
+  if (feedBlock(v)) return null;
+  const food = foodAt(v.seed, v.fed + 1);
+  const first = !tastedIds(v.seed, v.fed).has(food.id);
   const l = loadLocal();
   l.fed = v.fed + 1;
   l.dirty = true;
+  l.sat = bump(l.sat, food.fill, SAT_HOURS, now);
+  l.joy = bump(l.joy, food.joy, JOY_HOURS, now);
   write(key(), l);
-  return currentView();
+  return { food, first, view: currentView() };
 }
+
+/** Donne une friandise (s'il en reste) : raccourci sans animation. */
+export const feed = (): GoutteView | null => feedMeal()?.view ?? null;
+
+/** Une caresse : la goutte rit ; les 3 premières du jour la rendent un peu plus heureuse. */
+export function pet(now: number = Date.now()): { view: GoutteView; counted: boolean } {
+  const l = loadLocal();
+  const day = parisDay(now);
+  const n = l.pets[0] === day ? l.pets[1] : 0;
+  const counted = n < PETS_PER_DAY;
+  l.pets = [day, n + 1];
+  if (counted) l.joy = bump(l.joy, 6, JOY_HOURS, now);
+  write(key(), l);
+  return { view: currentView(), counted };
+}
+
+/** Objets débloqués que l'élève n'a pas encore « déballés » (la première fois, les objets de départ comptent comme vus). */
+export function unseenItems(v: GoutteView): string[] {
+  const open = ITEMS.filter((i) => unlocked(i, v.progress)).map((i) => i.id);
+  const l = loadLocal();
+  if (l.seen === null) {
+    const starters = ITEMS.filter((i) => 'level' in i.unlock && i.unlock.level <= 1).map((i) => i.id);
+    l.seen = starters;
+    write(key(), l);
+  }
+  const seen = new Set(l.seen);
+  return open.filter((id) => !seen.has(id));
+}
+
+export function markSeen(ids: string[]) {
+  const l = loadLocal();
+  l.seen = [...new Set([...(l.seen ?? []), ...ids])];
+  write(key(), l);
+}
+
+/** Pour les tests et l'affichage : toutes les saveurs. */
+export { FOODS };
 
 export function setLook(look: Look): GoutteView {
   const l = loadLocal();

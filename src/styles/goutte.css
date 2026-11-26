@@ -96,7 +96,8 @@
 .mg-xp i {
   display: block;
   height: 100%;
-  background: #2f8f5b;
+  /* 60-30-10 : les jauges sont à l'encre ; le rouge reste réservé à l'action principale */
+  background: var(--color-ink);
   transition: width 0.6s ease-out;
 }
 .pbar-side {
@@ -172,31 +173,12 @@
   align-items: center;
   margin-top: 6px;
 }
-.mg-stage {
-  position: relative;
-  padding: 10px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 60%, #fff8e1 0, rgba(255, 248, 225, 0) 70%);
-}
-.mg-hearts {
-  position: absolute;
-  left: 50%;
-  top: 4%;
-  color: #d9415a;
-  font-size: 26px;
-  letter-spacing: 6px;
-  transform: translateX(-50%);
-  animation: mg-hearts 1.4s ease-out forwards;
-  pointer-events: none;
-}
-@keyframes mg-hearts {
-  to {
-    transform: translate(-50%, -40px);
-    opacity: 0;
-  }
-}
 .mg-say {
   position: relative;
+  z-index: 1;
+  max-width: 26ch;
+  min-height: 2.7em;
+  margin: 0 auto;
   padding: 8px 12px;
   border: 2px solid var(--color-ink);
   border-radius: 12px;
@@ -275,9 +257,10 @@
   cursor: pointer;
 }
 .mg-item[aria-pressed='true'] {
-  outline: 3px solid #2f8f5b;
+  outline: 3px solid var(--color-ink);
   outline-offset: 1px;
-  background: #e6f4ea;
+  background: var(--color-paper-hi);
+  box-shadow: inset 0 -5px 0 var(--color-ribbon);
 }
 .mg-item:disabled {
   cursor: not-allowed;
@@ -303,8 +286,21 @@
   line-height: 1.15;
 }
 .mg-lock {
+  display: grid;
+  gap: 3px;
+  width: 100%;
   font-size: 12px;
   line-height: 1.2;
+}
+.mg-lock-bar {
+  display: block;
+  height: 5px;
+  border: 1px solid var(--color-ink);
+}
+.mg-lock-bar i {
+  display: block;
+  height: 100%;
+  background: var(--color-ink);
 }
 .mg-ach {
   display: grid;
@@ -373,8 +369,8 @@
   font-size: 14px;
 }
 .mg-stages li[data-state='now'] {
-  outline: 3px solid #2f8f5b;
-  background: #e6f4ea;
+  outline: 3px solid var(--color-ink);
+  background: var(--color-paper-hi);
 }
 .mg-stages li[data-state='next'] .mg-stage-art {
   filter: brightness(0) opacity(0.25);
@@ -411,8 +407,15 @@
     justify-items: center;
     text-align: center;
   }
-  .mg-stage {
-    width: min(240px, 70vw);
+  .mg-habitat {
+    width: min(320px, 86vw);
+  }
+  .mg-needs {
+    width: 100%;
+    text-align: left;
+  }
+  .mg-next {
+    text-align: left;
   }
   .mg-actions {
     justify-content: center;
@@ -431,13 +434,564 @@
   .gt-jump .gt-bob,
   .gt-aura,
   .gt-spark,
-  .mg-hearts,
-  .gain {
-    animation: none;
+  .mg-hearts i,
+  .gain,
+  .gt-eyes,
+  .gt-chew,
+  .mg-pet,
+  .mg-pet > *,
+  .mg-fly,
+  .mg-crumbs i,
+  .mg-new-taste,
+  .gift-box,
+  .gift-lid,
+  .gift-rays {
+    animation: none !important;
+  }
+  .mg-fly {
+    display: none;
   }
 }
 @media print {
   .gain-live {
     display: none;
+  }
+}
+
+/* ═════════════ Ma goutte : la petite scène (habitat), les besoins, nourrir, caresser ═════════════
+   60-30-10 : papier (fond) · encre (traits, texte, jauges) · ruban rouge (action « Nourrir », nouveautés).
+   La couleur choisie pour la goutte (--gc) ne fait que teinter doucement le sol de sa scène. */
+.mg-hero {
+  grid-template-columns: minmax(220px, 320px) 1fr;
+  align-items: start;
+}
+.mg-habitat {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 12px 12px 18px;
+  border: 2px solid var(--color-ink);
+  background:
+    radial-gradient(70% 26% at 50% 92%, color-mix(in srgb, var(--gc, #2f3a8f) 22%, transparent), transparent 70%),
+    var(--color-paper-hi);
+  overflow: hidden;
+}
+.mg-pet {
+  display: block;
+  width: 100%;
+  max-width: 250px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transform-origin: 50% 92%;
+}
+.mg-pet:disabled {
+  cursor: default;
+}
+.mg-pet:focus-visible {
+  outline: 3px solid var(--color-ribbon);
+  outline-offset: 4px;
+}
+/* elle cligne des yeux de temps en temps */
+.gt-eyes {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: gt-blink 4.8s ease-in-out infinite;
+}
+@keyframes gt-blink {
+  0%,
+  94%,
+  100% {
+    transform: scaleY(1);
+  }
+  97% {
+    transform: scaleY(0.1);
+  }
+}
+.gt-chew {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: gt-chew 0.3s ease-in-out infinite;
+}
+@keyframes gt-chew {
+  50% {
+    transform: scale(1.1, 0.4);
+  }
+}
+/* gestes spontanés */
+.mg-idle-hop {
+  animation: mg-hop 0.8s ease-out;
+}
+.mg-idle-wiggle {
+  animation: mg-wiggle 0.8s ease-in-out;
+}
+.mg-idle-look {
+  animation: mg-look 0.9s ease-in-out;
+}
+@keyframes mg-hop {
+  30% {
+    transform: translateY(-16px) scale(0.96, 1.05);
+  }
+  60% {
+    transform: translateY(0) scale(1.06, 0.94);
+  }
+}
+@keyframes mg-wiggle {
+  25% {
+    transform: rotate(-6deg);
+  }
+  75% {
+    transform: rotate(6deg);
+  }
+}
+@keyframes mg-look {
+  50% {
+    transform: translateX(8px) rotate(3deg);
+  }
+}
+/* caresse : elle s'écrase et rebondit */
+.mg-squish {
+  animation: mg-squish 0.6s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+@keyframes mg-squish {
+  30% {
+    transform: scale(1.12, 0.86);
+  }
+  60% {
+    transform: scale(0.95, 1.07);
+  }
+}
+/* elle mâche, puis saute de joie */
+.mg-chew {
+  animation: mg-chomp 0.3s ease-in-out 3;
+}
+@keyframes mg-chomp {
+  50% {
+    transform: scale(1.06, 0.93);
+  }
+}
+.mg-joy {
+  animation: mg-hop 0.6s ease-out 2;
+}
+/* la friandise vole jusqu'à sa bouche */
+.mg-fly {
+  position: absolute;
+  left: 50%;
+  top: 70%;
+  width: 48px;
+  height: 48px;
+  margin-left: -24px;
+  pointer-events: none;
+  animation: mg-fly 0.6s cubic-bezier(0.3, 0, 0.6, 1) forwards;
+}
+@keyframes mg-fly {
+  0% {
+    transform: translate(120px, 160px) scale(1.2) rotate(-30deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    transform: translate(0, 0) scale(0.9) rotate(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 4px) scale(0.3);
+    opacity: 0;
+  }
+}
+.mg-crumbs {
+  position: absolute;
+  left: 50%;
+  top: 66%;
+  pointer-events: none;
+}
+.mg-crumbs i {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c9a25a;
+  animation: mg-crumb 0.8s ease-out forwards;
+}
+.mg-crumbs i:nth-child(2) {
+  --dx: -26px;
+  animation-delay: 0.1s;
+}
+.mg-crumbs i:nth-child(3) {
+  --dx: 18px;
+  animation-delay: 0.3s;
+}
+.mg-crumbs i:nth-child(4) {
+  --dx: -10px;
+  animation-delay: 0.5s;
+}
+@keyframes mg-crumb {
+  from {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  to {
+    transform: translate(var(--dx, 24px), 40px);
+    opacity: 0;
+  }
+}
+.mg-hearts {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  display: flex;
+  gap: 12px;
+  transform: translateX(-50%);
+  color: var(--color-ribbon);
+  font-size: 26px;
+  pointer-events: none;
+}
+.mg-hearts i {
+  font-style: normal;
+  animation: mg-heart 1.3s ease-out forwards;
+}
+.mg-hearts i:nth-child(2) {
+  animation-delay: 0.15s;
+  font-size: 32px;
+}
+.mg-hearts i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes mg-heart {
+  from {
+    transform: translateY(10px) scale(0.4);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-48px) scale(1);
+    opacity: 0;
+  }
+}
+.mg-new-taste {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+  max-width: 92%;
+  font-size: 14px;
+  text-align: center;
+  animation: mg-pop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.mg-new-tag {
+  margin-right: 4px;
+  padding: 0 5px;
+  background: var(--color-ribbon);
+  color: var(--color-paper-hi);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+@keyframes mg-pop {
+  from {
+    transform: translateX(-50%) scale(0.6);
+    opacity: 0;
+  }
+}
+
+/* besoins : jauges d'encre (le mot dit l'état, la jauge le montre) */
+.mg-needs {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+.mg-need {
+  display: grid;
+  grid-template-columns: 5.5em 1fr 5.5em;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.mg-need-label {
+  font-family: var(--font-display);
+  letter-spacing: 0.06em;
+}
+.mg-need-bar {
+  display: block;
+  height: 12px;
+  border: 2px solid var(--color-ink);
+}
+.mg-need-bar i {
+  display: block;
+  height: 100%;
+  background: var(--color-ink);
+  transition: width 0.8s ease;
+}
+/* presque vide : bordure en pointillés (l'alerte ne repose pas que sur la couleur) */
+.mg-need[data-low='yes'] .mg-need-bar {
+  border-style: dashed;
+  border-color: var(--color-ribbon);
+}
+.mg-need-word {
+  font-size: 13px;
+}
+.mg-feed {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.mg-feed-art {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  padding: 2px;
+  border-radius: 50%;
+  background: var(--color-paper-hi);
+}
+.food {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.food-hidden {
+  filter: brightness(0) opacity(0.25);
+}
+
+/* prochain cadeau */
+.mg-next {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 8px 10px;
+  border: 2px dashed rgba(27, 25, 21, 0.5);
+}
+.mg-next-art {
+  flex: none;
+  width: 52px;
+}
+.mg-next-txt {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+  font-size: 14px;
+}
+.mg-next-k {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.mg-next-bar {
+  display: block;
+  height: 8px;
+  border: 2px solid var(--color-ink);
+}
+.mg-next-bar i {
+  display: block;
+  height: 100%;
+  background: var(--color-ink);
+}
+.mg-next-how {
+  font-size: 12px;
+}
+
+/* goûters : boîte et collection */
+.mg-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.mg-box li {
+  width: 46px;
+  height: 46px;
+  padding: 5px;
+  border: 2px solid rgba(27, 25, 21, 0.4);
+  background: var(--color-paper-hi);
+}
+.mg-box li[data-next='yes'] {
+  width: 56px;
+  height: 56px;
+  border-color: var(--color-ribbon);
+}
+.mg-box-more {
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: 14px;
+}
+.mg-count {
+  font-family: var(--font-body);
+  letter-spacing: 0;
+}
+.mg-foods {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.mg-foods li {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+  text-align: center;
+}
+.mg-foods li[data-ok='no'] {
+  border-style: dashed;
+  border-color: rgba(27, 25, 21, 0.4);
+  background: transparent;
+}
+.mg-foods .food {
+  width: 44px;
+  height: 44px;
+}
+.mg-food-name {
+  font-size: 13px;
+  line-height: 1.15;
+}
+.mg-food-stars {
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+.mg-empty {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+/* déballage d'un cadeau */
+.gift-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(27, 25, 21, 0.55);
+}
+.gift-card {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: min(360px, 100%);
+  padding: 18px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper);
+  box-shadow: 0 6px 0 var(--color-ink);
+  text-align: center;
+}
+.gift-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+}
+.gift-box {
+  width: 150px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  animation: gift-shake 1.6s ease-in-out infinite;
+}
+.gift-box:focus-visible {
+  outline: 3px solid var(--color-ribbon);
+  outline-offset: 4px;
+}
+.gift-box svg {
+  display: block;
+  width: 100%;
+}
+.gift-lid {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: gift-lid 1.6s ease-in-out infinite;
+}
+@keyframes gift-shake {
+  0%,
+  60%,
+  100% {
+    transform: rotate(0);
+  }
+  70% {
+    transform: rotate(-5deg);
+  }
+  80% {
+    transform: rotate(5deg);
+  }
+  90% {
+    transform: rotate(-3deg);
+  }
+}
+@keyframes gift-lid {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  80% {
+    transform: translateY(-6px);
+  }
+}
+.gift-show {
+  position: relative;
+  isolation: isolate;
+  width: 180px;
+  animation: mg-pop-c 0.5s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+@keyframes mg-pop-c {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+}
+.gift-rays {
+  position: absolute;
+  inset: -20%;
+  z-index: -1;
+  background: repeating-conic-gradient(rgba(242, 193, 78, 0.35) 0 12deg, transparent 12deg 30deg);
+  border-radius: 50%;
+  mask-image: radial-gradient(closest-side, #000 40%, transparent);
+  animation: gift-spin 12s linear infinite;
+}
+@keyframes gift-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+.gift-sub {
+  font-size: 15px;
+}
+.gift-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.pbar-hungry {
+  color: var(--color-ribbon);
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .mg-hero {
+    grid-template-columns: 1fr;
+  }
+  .mg-habitat {
+    width: 100%;
   }
 }

@@ -332,3 +332,47 @@ button.gcard:active {
   }
 }
 
+
+/* Niveau des jeux : volet repliable de l'accueil */
+.grade-fold > summary {
+  gap: 10px;
+}
+.grade-now {
+  font-size: 16px;
+  letter-spacing: 0.06em;
+}
+.grade-note {
+  padding: 1px 8px;
+  border: 2px solid var(--color-ink);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: none;
+}
+/* l'écart à la classe est dit par le mot ET par le trait (pas seulement la couleur) */
+.grade-note[data-shift='down'] {
+  border-style: dashed;
+}
+.grade-note[data-shift='up'] {
+  border-color: var(--color-ribbon);
+  color: var(--color-ribbon);
+}
+.grade-in {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin-top: 8px;
+}
+.grade-b {
+  position: relative;
+}
+.grade-dot {
+  position: absolute;
+  top: -2px;
+  right: 3px;
+  color: var(--color-ribbon);
+  font-size: 16px;
+  line-height: 1;
+}
+.grade-b[aria-checked='true'] .grade-dot {
+  color: var(--color-paper);
+}

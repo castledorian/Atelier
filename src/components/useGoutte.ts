@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { GAIN_EVENT, currentView, feed as feedLocal, needsSend, setLook as setLookLocal, storeServer, viewOf } from '../game/goutte/store';
+import { GAIN_EVENT, currentView, feedMeal, needsSend, pet as petLocal, setLook as setLookLocal, storeServer, viewOf } from '../game/goutte/store';
+import type { Meal } from '../game/goutte/store';
 import { emptyCounters } from '../game/goutte/rules';
 import type { GoutteView } from '../game/goutte/store';
 import type { Look } from '../game/goutte/rules';
@@ -56,14 +57,30 @@ export function useGoutte(token: string | null, readOnly = false) {
     if (timer.current) window.clearTimeout(timer.current);
   }, []);
 
-  const feed = useCallback((): boolean => {
-    if (readOnly) return false;
-    const v = feedLocal();
-    if (!v) return false;
-    setView(v);
+  /** Donne la prochaine friandise : renvoie ce qui a été mangé (pour l'animation), ou null. */
+  const feed = useCallback((): Meal | null => {
+    if (readOnly) return null;
+    const meal = feedMeal();
+    if (!meal) return null;
+    setView(meal.view);
     push();
-    return true;
+    return meal;
   }, [push, readOnly]);
+
+  /** Une caresse (rien n'est envoyé au serveur : c'est un moment entre l'élève et sa goutte). */
+  const pet = useCallback((): boolean => {
+    if (readOnly) return false;
+    const r = petLocal();
+    setView(r.view);
+    return r.counted;
+  }, [readOnly]);
+
+  /** Les besoins baissent avec le temps : on rafraîchit l'affichage chaque minute. */
+  useEffect(() => {
+    if (readOnly) return;
+    const id = window.setInterval(() => setView(currentView()), 60_000);
+    return () => window.clearInterval(id);
+  }, [readOnly]);
 
   const setLook = useCallback(
     (look: Look) => {
@@ -74,5 +91,5 @@ export function useGoutte(token: string | null, readOnly = false) {
     [push, readOnly],
   );
 
-  return { view, synced, feed, setLook, refresh: sync };
+  return { view, synced, feed, pet, setLook, refresh: sync };
 }
