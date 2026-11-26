@@ -5,11 +5,11 @@
 
 alter table public.class_sessions drop constraint if exists class_sessions_game_check;
 alter table public.class_sessions add constraint class_sessions_game_check
-  check (game in ('typing', 'math', 'memory', 'spelling'));
+  check (game in ('typing', 'math', 'memory', 'spelling', 'lexique', 'facteur'));
 
 alter table public.balance_runs drop constraint if exists balance_runs_game_check;
 alter table public.balance_runs add constraint balance_runs_game_check
-  check (game in ('typing', 'math', 'memory', 'spelling'));
+  check (game in ('typing', 'math', 'memory', 'spelling', 'lexique', 'facteur'));
 
 create or replace function public.save_class_session(
   p_class uuid, p_id uuid, p_title text, p_game text, p_config jsonb, p_max integer, p_active boolean

@@ -8,11 +8,11 @@
 
 alter table public.class_sessions drop constraint if exists class_sessions_game_check;
 alter table public.class_sessions add constraint class_sessions_game_check
-  check (game in ('typing', 'math', 'memory', 'spelling', 'lexique'));
+  check (game in ('typing', 'math', 'memory', 'spelling', 'lexique', 'facteur'));
 
 alter table public.balance_runs drop constraint if exists balance_runs_game_check;
 alter table public.balance_runs add constraint balance_runs_game_check
-  check (game in ('typing', 'math', 'memory', 'spelling', 'lexique'));
+  check (game in ('typing', 'math', 'memory', 'spelling', 'lexique', 'facteur'));
 
 -- ───────────── Contrôle des parties ─────────────
 
