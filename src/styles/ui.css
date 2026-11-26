@@ -709,3 +709,47 @@
     grid-template-columns: repeat(4, 1fr);
   }
 }
+
+/* bandeau « nouvelle version du site » (src/pwa.ts) */
+.update-banner {
+  position: fixed;
+  z-index: 300;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100vw - 24px);
+  padding: 8px 8px 8px 14px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+  box-shadow: 0 4px 0 var(--color-ink);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+}
+.update-banner button {
+  min-height: 40px;
+  padding: 3px 14px 0;
+  border: 2px solid var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-paper-hi);
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.update-banner .update-later {
+  min-width: 40px;
+  padding: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 20px;
+}
+@media print {
+  .update-banner {
+    display: none;
+  }
+}

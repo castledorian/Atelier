@@ -1,6 +1,7 @@
 /* Atelier — service worker : le site fonctionne sans réseau après la première visite.
  *
- * - La page (index.html) : RÉSEAU D'ABORD. Une nouvelle version publiée s'affiche dès l'ouverture suivante ;
+ * - La page (index.html) : RÉSEAU D'ABORD, sans le cache du navigateur (GitHub le garde jusqu'à 10 min) : une nouvelle
+ *   version publiée s'affiche dès l'ouverture suivante ;
  *   sans réseau (ou réseau trop lent, plus de 4 s), on sert la dernière version enregistrée.
  * - Les autres fichiers (icônes, manifeste) : cache d'abord, mis à jour en arrière-plan.
  * - Les données des comptes (serveur) ne passent jamais par ce cache.
@@ -56,7 +57,14 @@ self.addEventListener('fetch', (event) => {
           });
         };
         const timer = setTimeout(fallback, 4000);
-        fetch(req)
+        // « no-cache » : le navigateur redemande la page au serveur (une simple vérification si elle n'a pas changé)
+        let fresh = req;
+        try {
+          fresh = new Request(req, { cache: 'no-cache' });
+        } catch {
+          /* très vieux navigateur : requête d'origine */
+        }
+        fetch(fresh)
           .then((res) => {
             clearTimeout(timer);
             if (res.ok) {
