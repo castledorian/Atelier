@@ -56,8 +56,9 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
 
       <Section id="p-qui" title="Qui est responsable ?">
         <p>
-          L’école, par l’enseignant qui crée la classe. Le site est édité par <Todo value={LEGAL.editor} what="nom de l’éditeur" />, qui héberge les données pour le compte de l’école et ne
-          s’en sert pour rien d’autre.
+          Pour une école publique, le <strong>responsable du traitement</strong> est le directeur académique des services de l’Éducation nationale (DASEN) du département, au nom de
+          l’État ; l’enseignant et le directeur d’école mettent l’outil en œuvre. Le site est édité par <Todo value={LEGAL.editor} what="nom de l’éditeur" />, qui héberge les données
+          pour le compte de l’école (sous-traitant) et ne s’en sert pour rien d’autre.
         </p>
         <p>
           Une question ou une demande&nbsp;: <Todo value={LEGAL.contact} what="adresse e-mail de contact" />. Pour un élève, le plus simple est d’en parler à son enseignant.
@@ -162,8 +163,8 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
 
       <Section id="p-droits" title="Vos droits">
         <p>
-          Élèves et parents peuvent demander à l’enseignant, ou à <Todo value={LEGAL.contact} what="adresse e-mail de contact" />, de voir, corriger ou supprimer les données, et s’opposer à
-          leur utilisation. En cas de difficulté, on peut saisir la CNIL (<span className="font-bold">cnil.fr</span>).
+          Élèves et parents peuvent demander à l’enseignant, au délégué à la protection des données de l’académie, ou à <Todo value={LEGAL.contact} what="adresse e-mail de contact" />,
+          de voir, corriger ou supprimer les données, et s’opposer à leur utilisation (l’élève joue alors sans code : rien n’est envoyé). En cas de difficulté, on peut saisir la CNIL (<span className="font-bold">cnil.fr</span>).
         </p>
       </Section>
 
@@ -176,7 +177,7 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
       <Section id="p-familles" title="Note pour les familles">
         <p>
           Votre enfant joue pour s’entraîner (clavier, calcul, lecture, mémoire). Pour que l’enseignant suive la classe, il se connecte avec un code : le site enregistre son prénom (ou
-          pseudo) et ses résultats. Pas de publicité, pas de cookie, pas de suivi, rien n’est vendu. Vous pouvez demander à l’enseignant de voir ou supprimer ces données.
+          pseudo), ses résultats et ses erreurs aux exercices, pour aider l’enseignant à voir ce qu’il faut retravailler. Pas de publicité, pas de cookie, pas de suivi, rien n’est vendu. Vous pouvez demander à l’enseignant de voir ou supprimer ces données.
         </p>
         <p className="no-print">
           <button type="button" className="btn btn-ghost" onClick={() => window.print()}>

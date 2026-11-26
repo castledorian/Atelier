@@ -10,5 +10,5 @@ export const LEGAL = {
   /** Lieu d'hébergement de la base de données, tel que choisi chez Supabase. */
   region: 'Paris, France',
   /** Date de dernière mise à jour du texte. */
-  updated: '16 novembre 2026',
+  updated: '26 novembre 2026',
 };
