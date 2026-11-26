@@ -774,7 +774,7 @@ function ClassPanel({
                 </Card>
               )}
               <div className="tbl-wrap">
-                <table className="scores tbl u-tbl">
+                <table className="scores tbl">
                   <caption className="sr-only">Élèves de la classe : repère, parties, réussite récente, point à revoir, dernière partie. Cliquez sur un prénom pour ouvrir sa fiche.</caption>
                   <thead>
                     <tr>
