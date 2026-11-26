@@ -1,5 +1,6 @@
 import { ApiError, patch, remove, request, rpc, select } from './api';
 import type { ClassRow, ClassSession, NewStudent, Overview, School, SessionResultRow } from './types';
+import type { StudentDetail } from '../game/studentView';
 
 // ───────────────────────── Compte enseignant (Supabase Auth) ─────────────────────────
 
@@ -192,6 +193,28 @@ export const addStudents = (cls: string, names: string[]) =>
   authed((t) => rpc<NewStudent[]>('add_students', { p_class: cls, p_names: names }, t));
 
 export const classOverview = (cls: string) => authed((t) => rpc<Overview[]>('class_overview', { p_class: cls }, t));
+
+/** Aperçu de chaque élève (dernier jeu, réussite récente, point faible). Absent tant que la mise à jour SQL « fiche élève » n'est pas faite. */
+export interface Insight {
+  id: string;
+  name: string;
+  last_played: number | null;
+  runs_30d: number;
+  acc_recent: number | null;
+  acc_prev: number | null;
+  weak: { game: string; label: string; err: number } | null;
+}
+export async function classInsights(cls: string): Promise<Insight[] | null> {
+  try {
+    return await authed((t) => rpc<Insight[]>('class_insights', { p_class: cls }, t));
+  } catch (e) {
+    if (e instanceof ApiError && (e.status === 404 || e.status === 400)) return null;
+    throw e;
+  }
+}
+
+/** Fiche d'un élève : ses parties et ses compteurs d'exercices. */
+export const studentDetail = (id: string) => authed((t) => rpc<StudentDetail>('student_detail', { p_student: id, p_days: 365 }, t));
 
 export const resetClassCodes = (cls: string) => authed((t) => rpc<NewStudent[]>('reset_class_codes', { p_class: cls }, t));
 export const resetCode = (student: string) => authed((t) => rpc<string>('reset_student_code', { p_student: student }, t));

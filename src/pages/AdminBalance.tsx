@@ -5,6 +5,11 @@ import { downloadText, toCsv } from '../game/history';
 import { SortTh, sortRows, useSort } from '../components/SortTable';
 import type { SortValue } from '../components/SortTable';
 import type { AdminItems, BalanceLevel, ClassStat, GameStats, GradeStat } from '../server/admin';
+import { ACTION_LABEL, adviceText, countByAction, exerciseAdvice } from '../game/exerciseAdvice';
+import type { Action, ExerciseAdvice } from '../game/exerciseAdvice';
+import { CONFIDENCE_LABEL, confidenceOf } from '../game/reliability';
+import { Card, Pill, RangeBar } from '../components/ui';
+import type { Tone } from '../components/ui';
 
 const ORDER = ['cp', 'ce1', 'ce2', 'cm1', 'cm2'];
 const GAMES = ['math', 'spelling', 'facteur'];
@@ -44,7 +49,7 @@ export default function AdminBalance({ levels: allTime, stats, detail, days, onD
   const itemRows = useMemo(() => sortRows(items, it.sort, itemValue), [items, it.sort]);
 
   const copy = async () => {
-    const text = detail ? statsText(detail, stats, today()) : summaryText(levels, stats.rules, stats.items, today());
+    const text = (detail ? statsText(detail, stats, today()) : summaryText(levels, stats.rules, stats.items, today())) + '\n' + adviceText(exerciseAdvice(stats.rules, stats.items));
     try {
       await navigator.clipboard.writeText(text);
       setCopied('Résumé copié : collez-le dans la conversation.');
@@ -91,6 +96,8 @@ export default function AdminBalance({ levels: allTime, stats, detail, days, onD
           )}
         </>
       )}
+
+      <ExercisePanel rules={stats.rules} items={stats.items} />
 
       <h2 className="subhead mt-4">Réussite par niveau</h2>
       <p className="adm-note">
@@ -689,5 +696,101 @@ function ByGrade({ g }: { g: GameStats }) {
         </div>
       )}
     </>
+  );
+}
+
+
+// ───────────────────────── Exercice par exercice ─────────────────────────
+
+const ACTION_TONE: Record<Action, Tone> = { diminuer: 'bad', equilibrer: 'warn', ameliorer: 'info', garder: 'good', attendre: 'mute' };
+const FILTERS: Array<[Action | 'todo', string]> = [
+  ['todo', 'À traiter'],
+  ['diminuer', 'À diminuer'],
+  ['equilibrer', 'À équilibrer'],
+  ['ameliorer', 'À améliorer'],
+  ['garder', 'Bien réglés'],
+  ['attendre', 'Trop tôt'],
+];
+
+/**
+ * Chaque famille d'exercices et chaque exercice précis reçoit une action : diminuer (trop difficile), équilibrer (trop facile),
+ * améliorer (le contenu est en cause) ou garder. Les chiffres sont toujours donnés avec leur marge d'incertitude à 95 % :
+ * sur peu de manches, on préfère « trop tôt pour juger » à une fausse certitude.
+ */
+export function ExercisePanel({ rules, items }: { rules: AdminItems['rules']; items: AdminItems['items'] }) {
+  const all = useMemo(() => exerciseAdvice(rules, items), [rules, items]);
+  const counts = useMemo(() => countByAction(all), [all]);
+  const [filter, setFilter] = useState<Action | 'todo'>('todo');
+  const [gameF, setGameF] = useState('all');
+  const [more, setMore] = useState(false);
+  const shown = all.filter((a) => (filter === 'todo' ? a.action === 'diminuer' || a.action === 'equilibrer' || a.action === 'ameliorer' : a.action === filter) && (gameF === 'all' || a.game === gameF));
+  const list = more ? shown : shown.slice(0, 10);
+  const games: string[] = [...new Set<string>(all.map((a) => a.game))];
+  return (
+    <Card
+      className="mt-4"
+      title="Exercice par exercice"
+      note="Chaque famille de calculs, règle ou mot est comparé à l’objectif de son niveau, avec sa marge d’incertitude. Ce sont des règles de calcul : rien n’est deviné."
+    >
+      {all.length === 0 ? (
+        <p className="u-empty">Pas encore de données : elles viennent des parties libres d’élèves connectés.</p>
+      ) : (
+        <>
+          <div className="u-chips" role="radiogroup" aria-label="Filtrer les conseils">
+            {FILTERS.map(([k, label]) => {
+              const n = k === 'todo' ? counts.diminuer + counts.equilibrer + counts.ameliorer : counts[k];
+              return (
+                <button key={k} type="button" role="radio" aria-checked={filter === k} className="u-chip" onClick={() => { setFilter(k); setMore(false); }}>
+                  {label} <span className="u-chip-n">{n}</span>
+                </button>
+              );
+            })}
+            <select className="field u-chip-select" aria-label="Jeu" value={gameF} onChange={(e) => { setGameF(e.target.value); setMore(false); }}>
+              <option value="all">Tous les jeux</option>
+              {games.map((g) => (
+                <option key={g} value={g}>
+                  {gameName(g)}
+                </option>
+              ))}
+            </select>
+          </div>
+          {list.length === 0 ? (
+            <p className="u-empty">Rien dans cette catégorie.</p>
+          ) : (
+            <ul className="u-advice">
+              {list.map((a) => (
+                <AdviceCard key={`${a.game}-${a.level}-${a.difficulty}-${a.kind}-${a.id}`} a={a} />
+              ))}
+            </ul>
+          )}
+          {shown.length > 10 && (
+            <button type="button" className="link" onClick={() => setMore((m) => !m)}>
+              {more ? 'Voir moins' : `Voir les ${shown.length - 10} autres`}
+            </button>
+          )}
+        </>
+      )}
+    </Card>
+  );
+}
+
+function AdviceCard({ a }: { a: ExerciseAdvice }) {
+  const conf = confidenceOf(a.shown);
+  return (
+    <li className="u-advice-item">
+      <div className="u-advice-top">
+        <Pill tone={ACTION_TONE[a.action]}>{ACTION_LABEL[a.action]}</Pill>
+        <span className="u-dim">
+          {a.kind === 'famille' ? 'Famille' : 'Exercice'} · {gameName(a.game)} · {levelName(a.level)} · {diffName(a.difficulty)}
+        </span>
+      </div>
+      <p className="u-advice-reason">{a.reason}</p>
+      {a.kind === 'famille' && a.interval && a.target !== null && (
+        <RangeBar p={a.interval.p} lo={a.interval.lo} hi={a.interval.hi} target={a.target} tolerance={TOLERANCE} label={a.label} />
+      )}
+      <p className="u-advice-todo">
+        <strong>À faire :</strong> {a.todo} <span className="u-dim">· {CONFIDENCE_LABEL[conf]} ({a.shown} manches)</span>
+      </p>
+    </li>
   );
 }

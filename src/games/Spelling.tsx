@@ -26,7 +26,7 @@ import { BOSS_AT, HINT, RETRY_MAX, ROUNDS, choicesFor, duelItems, hpFor, isFault
 import type { EnemyRole, Item, RoundOutcome } from '../game/spelling/engine';
 import { addSpellingScore, loadSpellingPrefs, loadSpellingScores, saveSpellingPrefs } from '../game/spelling/scores';
 import { enqueue, flush } from '../server/outbox';
-import { dropCave, sendItemStats, sendRun } from '../server/student';
+import { dropCave, sendItemStats, sendRun, sendStudentItems } from '../server/student';
 import type { RunPayload, SessionInfo, StudentAccount } from '../server/types';
 import { Frame } from '../pages/Frame';
 import { MenuScene, SpellingMenu } from './SpellingMenu';
@@ -314,9 +314,13 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
       let record = false;
       if (sesRef.current.sess) {
         // séance de classe : l'essai compte pour l'évaluation, pas pour les scores de l'appareil
-        sesRef.current.submit(payload, () => {
-          lost.current = true;
-        });
+        sesRef.current.submit(
+          payload,
+          () => {
+            lost.current = true;
+          },
+          { game: 'spelling', level: s.level, items: summarize(s.outcomes) },
+        );
       } else {
         const board = boardKey(s.level, s.diff);
         const before = loadSpellingScores(board);
@@ -353,6 +357,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
                 lost.current = true;
               }
               if (r === 'ok' && payload.balance) void sendItemStats(acct.token, 'spelling', s.level, s.diff, summarize(s.outcomes));
+              if (r === 'ok') void sendStudentItems(acct.token, 'spelling', s.level, summarize(s.outcomes));
               setCloud(r === 'ok' ? 'sent' : 'queued');
             })
             .catch(() => {

@@ -8,7 +8,7 @@ import { Sfx } from '../game/audio';
 import { newRunId } from '../game/history';
 import { parseFacteur } from '../game/sessionConfig';
 import { enqueue, flush } from '../server/outbox';
-import { dropCave, sendItemStats, sendRun } from '../server/student';
+import { dropCave, sendItemStats, sendRun, sendStudentItems } from '../server/student';
 import { feedBoss } from '../game/boss/state';
 import type { RunPayload } from '../server/types';
 import { effectiveGrade, gradeLabel } from '../game/grade';
@@ -187,9 +187,13 @@ export default function Facteur({ account, onHome, onSessionLost, session, onSes
     }
     const items = summarizeItems(r.outcomes.map((o) => facteurOutcome(plain(o.word.mark), o.word.level, o.ok, o.picks)));
     if (sesRef.current.sess) {
-      sesRef.current.submit(payload, () => {
-        lost.current = true;
-      });
+      sesRef.current.submit(
+        payload,
+        () => {
+          lost.current = true;
+        },
+        { game: 'facteur', level: 'cp', items },
+      );
     } else if (acct && r.delivered > 0) {
       setCloud('sending');
       sendRun(acct.token, payload)
@@ -200,6 +204,7 @@ export default function Facteur({ account, onHome, onSessionLost, session, onSes
           }
           setCloud(s === 'ok' ? 'sent' : 'queued');
           if (s === 'ok' && payload.balance) void sendItemStats(acct.token, 'facteur', 'cp', `n${r.level}`, items);
+          if (s === 'ok') void sendStudentItems(acct.token, 'facteur', 'cp', items);
         })
         .catch(() => {
           enqueue(acct.student.id, payload);

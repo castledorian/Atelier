@@ -57,6 +57,20 @@ export async function sendItemStats(token: string, game: 'math' | 'spelling' | '
   }
 }
 
+/**
+ * Envoie à l'enseignant de l'élève ce qu'il a réussi et raté dans la partie (familles de calculs, mots, règles), pour sa fiche.
+ * Contrairement au suivi anonyme ci-dessus, ces compteurs sont rattachés à l'élève et se remplissent aussi en séance de classe.
+ * Facultatif : toute erreur est ignorée (réseau coupé, mise à jour SQL « fiche élève » pas encore faite…).
+ */
+export async function sendStudentItems(token: string, game: 'math' | 'spelling' | 'facteur', level: string, items: ItemEntry[]): Promise<void> {
+  if (items.length === 0) return;
+  try {
+    await rpc('submit_student_items', { p_token: token, p_game: game, p_level: level, p_items: items });
+  } catch {
+    /* un bonus : il ne doit jamais gêner la partie */
+  }
+}
+
 // ───────────────────────── Grotte : compteurs de la classe ─────────────────────────
 
 /** Compteurs qui n'ont pas pu partir (réseau coupé) : gardés sur l'appareil, renvoyés dès que possible, sans doublon (même identifiant). */

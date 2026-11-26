@@ -38,7 +38,7 @@ import { loadSettings, saveSettings } from '../game/storage';
 import type { Settings, TextSize } from '../game/storage';
 import { explain } from '../server/api';
 import { enqueue, flush } from '../server/outbox';
-import { dropCave, fetchBoard, sendItemStats, sendRun } from '../server/student';
+import { dropCave, fetchBoard, sendItemStats, sendRun, sendStudentItems } from '../server/student';
 import type { BoardRow, RunPayload, Scope, SessionInfo, StudentAccount } from '../server/types';
 
 /**
@@ -161,9 +161,13 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
     }
     if (sesRef.current.sess) {
       // séance de classe : l'essai compte pour l'évaluation, il ne va ni dans les scores de l'appareil ni dans les classements libres
-      sesRef.current.submit(payload, () => {
-        lost.current = true;
-      });
+      sesRef.current.submit(
+        payload,
+        () => {
+          lost.current = true;
+        },
+        { game: 'math', level: result.level, items: summarize(result.outcomes) },
+      );
       live.current.drill = false;
       live.current.overAt = performance.now();
       setRun({ result, rank: -1, id, record: false });
@@ -204,6 +208,8 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
           }
           // suivi anonyme des calculs ratés (parties libres seulement : payload.balance n'existe ni en séance ni en entraînement)
           if (r === 'ok' && payload.balance) void sendItemStats(acct.token, 'math', result.level, result.diff, summarize(result.outcomes));
+          // fiche de l'élève (rattachée à lui, contrairement au suivi anonyme) : toute partie sauf l'entraînement ciblé
+          if (r === 'ok' && !result.drill) void sendStudentItems(acct.token, 'math', result.level, summarize(result.outcomes));
           if (id === live.current.recId) setCloud(r === 'ok' ? 'sent' : 'queued');
         })
         .catch(() => {

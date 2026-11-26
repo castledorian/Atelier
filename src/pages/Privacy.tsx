@@ -75,6 +75,10 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
           <li>Un code de 8 caractères tirés au hasard. Le serveur n’en garde qu’une empreinte : même l’éditeur ne peut pas le relire.</li>
           <li>Pour chaque partie : jeu, mode, score, niveau, vitesse et précision, durée, date.</li>
           <li>Pour une séance de classe : le nombre d’essais et le résultat de chacun. Seul le meilleur compte ; l’enseignant les voit tous.</li>
+          <li>
+            Pour les jeux de calcul, d’orthographe et de lecture : combien de fois chaque famille de calculs, règle ou mot a été posé et raté, et quelles mauvaises réponses proposées par le jeu ont été choisies (jamais de texte écrit par l’élève). Seuls les
+            enseignants de l’école de l’élève les voient, pour l’aider ; ils sont effacés avec l’élève, et au plus tard après 400 jours.
+          </li>
           <li>Un jeton de connexion, gardé sur l’appareil (empreinte seule sur le serveur), valable 30 jours et prolongé tant que l’élève joue.</li>
         </ul>
         <h3 className="font-bold">Statistiques anonymes</h3>

@@ -24,6 +24,18 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.30',
+    date: '26 novembre 2026',
+    iso: '2026-11-26',
+    title: 'Fiche élève et pages plus claires',
+    changes: [
+      { kind: 'new', text: 'Espace enseignant : cliquez sur un élève pour ouvrir sa fiche (courbe de réussite, points à retravailler, points maîtrisés, exercices les plus ratés, régularité).' },
+      { kind: 'new', text: 'Espace enseignant : un repère par élève (« En progrès », « Réussite basse », « N’a pas joué depuis 2 semaines ») et une liste « À suivre ».' },
+      { kind: 'new', text: 'Administration : conseils exercice par exercice (à diminuer, à équilibrer, à améliorer) avec la marge d’incertitude de chaque chiffre.' },
+      { kind: 'better', text: 'Pages enseignant, administration et informations : présentation plus aérée et plus lisible, même sur petit écran.' },
+    ],
+  },
+  {
     version: '1.29',
     date: '23 novembre 2026',
     iso: '2026-11-23',

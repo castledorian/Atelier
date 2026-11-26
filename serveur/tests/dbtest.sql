@@ -664,4 +664,46 @@ select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 select pg_temp.eq('équipe côté enseignant', jsonb_array_length(public.teacher_goutte_team(array[(select v::uuid from ctx where k='classX')])->'team') > 0, true);
 select pg_temp.as_admin();
 
+
+-- ───────────────────────── Fiche élève (version 1.29) ─────────────────────────
+select pg_temp.as_admin();
+insert into ctx select 'stuZ', public.add_students((select v::uuid from ctx where k='classX'), array['Zoé'])::text;
+insert into ctx select 'zid', (select (v::jsonb->0->>'id') from ctx where k='stuZ');
+insert into ctx select 'tok_z', public.student_login((select v::jsonb->0->>'access_code' from ctx where k='stuZ'))->>'token';
+select pg_temp.as_anon();
+select pg_temp.eq('fiche : sans partie récente, les compteurs sont refusés', public.submit_student_items((select v from ctx where k='tok_z'), 'math', 'cm1', '[{"k":"rule","i":"tables","l":"Tables","n":10,"e":3}]'::jsonb)->>'error', 'invalid_data');
+reset role;
+insert into public.runs (client_id, student_id, class_id, school_id, game, mode, kind, score, wave, wpm, acc, correct, duration, played_at)
+select 'zz00000001', s.id, s.class_id, s.school_id, 'math', 'cm1-standard', 'game', 200, 2, 0, 70, 14, 90, now() - interval '5 minutes' from public.students s where s.id = (select v::uuid from ctx where k='zid');
+select pg_temp.as_anon();
+select pg_temp.eq('fiche : jeton invalide', public.submit_student_items('nope', 'math', 'cm1', '[]'::jsonb)->>'error', 'invalid_session');
+select pg_temp.eq('fiche : jeu inconnu refusé', public.submit_student_items((select v from ctx where k='tok_z'), 'typing', 'cm1', '[]'::jsonb)->>'error', 'invalid_data');
+select pg_temp.eq('fiche : compteurs acceptés après une partie', (public.submit_student_items((select v from ctx where k='tok_z'), 'math', 'cm1',
+  '[{"k":"rule","i":"tables","l":"Tables de multiplication","n":10,"e":4},{"k":"item","i":"7 × 8","l":"7 × 8","n":2,"e":2,"p":{"54":2}},{"k":"rule","i":"","l":"vide","n":1,"e":0},{"k":"item","i":"x","l":"x","n":9,"e":1}]'::jsonb)->>'stored')::int, 2);
+select pg_temp.eq('fiche : deuxième envoi additionné', (public.submit_student_items((select v from ctx where k='tok_z'), 'math', 'cm1',
+  '[{"k":"rule","i":"tables","l":"Tables de multiplication","n":10,"e":2}]'::jsonb)->>'stored')::int, 1);
+select pg_temp.fails($$select count(*) from public.student_items$$, 'permission denied');
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select pg_temp.eq('fiche : l''enseignant voit les compteurs cumulés', (select (e->>'shown')::int from jsonb_array_elements(public.student_detail((select v::uuid from ctx where k='zid'))->'items') e where e->>'k' = 'rule'), 20);
+select pg_temp.eq('fiche : erreurs cumulées', (select (e->>'wrong')::int from jsonb_array_elements(public.student_detail((select v::uuid from ctx where k='zid'))->'items') e where e->>'k' = 'rule'), 6);
+select pg_temp.eq('fiche : mauvaise réponse gardée', (select e->'picks'->>'54' from jsonb_array_elements(public.student_detail((select v::uuid from ctx where k='zid'))->'items') e where e->>'k' = 'item'), '2');
+select pg_temp.eq('fiche : parties de l''élève', jsonb_array_length(public.student_detail((select v::uuid from ctx where k='zid'))->'runs'), 1);
+select pg_temp.eq('fiche : nom et classe', public.student_detail((select v::uuid from ctx where k='zid'))->'student'->>'class_name', 'CE2 X');
+select pg_temp.eq('aperçu de classe : un élève par ligne', jsonb_array_length(public.class_insights((select v::uuid from ctx where k='classX'))) >= 5, true);
+select pg_temp.eq('aperçu de classe : réussite récente de Zoé', (select (e->>'acc_recent')::numeric from jsonb_array_elements(public.class_insights((select v::uuid from ctx where k='classX'))) e where e->>'name' = 'Zoé'), 70.0);
+select pg_temp.eq('aperçu de classe : point faible repéré', (select e->'weak'->>'label' from jsonb_array_elements(public.class_insights((select v::uuid from ctx where k='classX'))) e where e->>'name' = 'Zoé'), 'Tables de multiplication');
+select pg_temp.as_user('bbbbbbbb-0000-0000-0000-000000000002');
+select pg_temp.fails($$select public.student_detail('$$||(select v from ctx where k='zid')||$$'::uuid)$$, 'forbidden');
+select pg_temp.fails($$select public.class_insights('$$||(select v from ctx where k='classX')||$$'::uuid)$$, 'forbidden');
+select pg_temp.as_anon();
+select pg_temp.fails($$select public.student_detail(gen_random_uuid())$$, 'permission denied');
+select pg_temp.as_user('cccccccc-0000-0000-0000-000000000003');
+select pg_temp.eq('fiche : l''administrateur peut observer', public.student_detail((select v::uuid from ctx where k='zid'))->'student'->>'name', 'Zoé');
+select pg_temp.as_admin();
+select pg_temp.eq('fiche : observation notée dans le journal', (select count(*)::int from private.admin_audit where action = 'student_detail'), 1);
+select pg_temp.as_anon();
+select pg_temp.eq('fiche : un jeton d''observation n''écrit rien', public.submit_student_items('obs:' || (select v from ctx where k='zid'), 'math', 'cm1', '[]'::jsonb)->>'error', 'invalid_session');
+select pg_temp.as_admin();
+select pg_temp.eq('fiche : serveur en version 19', (select public.server_version()->>'version' from (select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001')) z), '19');
+
 \echo TOUS LES TESTS SQL PASSENT

@@ -3,7 +3,8 @@ import { Dialog } from './Dialog';
 import type { ReactNode } from 'react';
 import { GAME_NAMES, describeConfig } from '../game/sessionConfig';
 import { enqueue } from '../server/outbox';
-import { submitRun } from '../server/student';
+import { sendStudentItems, submitRun } from '../server/student';
+import type { ItemEntry } from '../game/itemstats';
 import type { RunPayload, SessionInfo, StudentAccount } from '../server/types';
 import { BackButton } from './BackButton';
 
@@ -14,6 +15,13 @@ export type SessionState = 'idle' | 'sending' | 'saved' | 'queued' | 'refused';
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
 /** Suit les essais de l'élève dans une séance et envoie chaque partie terminée. */
+/** Ce que l'élève a réussi et raté pendant l'essai : envoyé à son enseignant pour sa fiche, une fois l'essai enregistré. */
+export interface StudentDetailItems {
+  game: 'math' | 'spelling' | 'facteur';
+  level: string;
+  items: ItemEntry[];
+}
+
 export function useSessionRun(account: StudentAccount | null, initial: SessionInfo | null | undefined) {
   const [sess, setSess] = useState<SessionInfo | null>(initial ?? null);
   const [state, setState] = useState<SessionState>('idle');
@@ -23,7 +31,7 @@ export function useSessionRun(account: StudentAccount | null, initial: SessionIn
   const accRef = useRef(account);
   accRef.current = account;
 
-  const submit = useCallback((payload: Omit<RunPayload, 'sessionId' | 'balance'>, onLost: () => void) => {
+  const submit = useCallback((payload: Omit<RunPayload, 'sessionId' | 'balance'>, onLost: () => void, detail?: StudentDetailItems) => {
     const s = ref.current;
     const acct = accRef.current;
     if (!s || !acct) return;
@@ -37,6 +45,7 @@ export function useSessionRun(account: StudentAccount | null, initial: SessionIn
       .then((r) => {
         if (r.status === 'ok') {
           setState('saved');
+          if (detail) void sendStudentItems(acct.token, detail.game, detail.level, detail.items);
           if (r.attemptsUsed) setSess((x) => (x ? { ...x, attempts_used: r.attemptsUsed as number } : x));
         } else if (r.status === 'invalid_session') {
           enqueue(acct.student.id, run);

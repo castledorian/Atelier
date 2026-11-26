@@ -1,6 +1,6 @@
 import { GAME_NAMES } from '../game/sessionConfig';
 import { BackButton } from '../components/BackButton';
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Frame, Notice } from './Frame';
 import { SessionsPanel } from './SessionsTeacher';
@@ -9,6 +9,11 @@ import { ApiError, explain } from '../server/api';
 import { GRADES } from '../game/grade';
 import * as T from '../server/teacher';
 import { Check } from '../components/Screens';
+import StudentProfile from './StudentProfile';
+import { Card, Pill, Stat } from '../components/ui';
+import type { Tone } from '../components/ui';
+import { flagOf } from '../game/studentView';
+import type { Flag } from '../game/studentView';
 import { ObserveBar, ReadOnlyZone } from '../components/ObserveBar';
 import { ServerNotice } from '../components/ServerNotice';
 import { endOfYearReminder, RETENTION_MONTHS } from '../server/retention';
@@ -16,9 +21,7 @@ import { SortTh, useSort, useSorted } from '../components/SortTable';
 import type { SortValue } from '../components/SortTable';
 import type { ClassRow, NewStudent, Overview, School } from '../server/types';
 
-const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 const nice = (code: string) => `${code.slice(0, 4)} ${code.slice(4)}`;
-const dur = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)} h ${Math.round((s % 3600) / 60)} min` : `${Math.round(s / 60)} min`);
 
 interface Props {
   email: string;
@@ -225,30 +228,29 @@ export default function Dashboard({ email, onHome, onSignOut, onAccountDeleted, 
 }
 
 /** Colonnes triables du tableau des élèves. */
-type OverKey = 'name' | 'games' | 'typing' | 'math' | 'memory' | 'lexique' | 'facteur' | 'wpm' | 'acc' | 'time' | 'last';
+type OverKey = 'name' | 'flag' | 'games' | 'acc' | 'weak' | 'last';
+type Row = Overview & { ins: T.Insight | null };
 
-function overValue(r: Overview, key: OverKey): SortValue {
+const FLAG_ORDER: Record<Flag, number> = { struggling: 0, inactive: 1, never: 2, steady: 3, rising: 4 };
+const FLAG_TONE: Record<Flag, Tone> = { struggling: 'bad', inactive: 'warn', never: 'mute', steady: 'good', rising: 'good' };
+const NOW = () => Date.now();
+
+function rowFlag(r: Row) {
+  return flagOf(r.ins ?? { last_played: r.last_played, runs_30d: 0, acc_recent: null, acc_prev: null }, NOW());
+}
+
+function overValue(r: Row, key: OverKey): SortValue {
   switch (key) {
     case 'name':
       return r.name;
+    case 'flag':
+      return FLAG_ORDER[rowFlag(r).flag];
     case 'games':
       return r.games;
-    case 'typing':
-      return r.best_typing;
-    case 'math':
-      return r.best_math;
-    case 'memory':
-      return r.best_memory ?? null;
-    case 'lexique':
-      return r.best_lexique ?? null;
-    case 'facteur':
-      return r.best_facteur ?? null;
-    case 'wpm':
-      return r.avg_wpm;
     case 'acc':
-      return r.avg_acc;
-    case 'time':
-      return r.seconds || null;
+      return r.ins?.acc_recent ?? null;
+    case 'weak':
+      return r.ins?.weak?.err ?? null;
     case 'last':
       return r.last_played;
   }
@@ -497,14 +499,21 @@ function ClassPanel({
   act: Act;
   onDeleted: () => void;
 }) {
-  const [rows, setRows] = useState<Overview[] | null>(null);
+  const [rawRows, setRows] = useState<Overview[] | null>(null);
+  const [insights, setInsights] = useState<T.Insight[] | null>(null);
+  const [openStudent, setOpenStudent] = useState<{ id: string; name: string } | null>(null);
+  const rows = useMemo<Row[] | null>(() => {
+    if (!rawRows) return null;
+    const byId = new Map((insights ?? []).map((i) => [i.id, i]));
+    return rawRows.map((r) => ({ ...r, ins: byId.get(r.id) ?? null }));
+  }, [rawRows, insights]);
   const { sort, toggle } = useSort<OverKey>('name', 'asc');
   const shown = useSorted(rows, sort, overValue);
   const [names, setNames] = useState('');
   const [fresh, setFresh] = useState<NewStudent[] | null>(null);
   /** Codes connus uniquement dans cette page (jamais conservés ailleurs) : le serveur ne garde que leur empreinte. */
   const [cards, setCards] = useState<Record<string, string>>({});
-  const codeOf = (r: Overview): string | null => cards[r.id] ?? r.access_code ?? null;
+  const codeOf = (r: Row): string | null => cards[r.id] ?? r.access_code ?? null;
   const remember = (list: NewStudent[]) => setCards((c) => ({ ...c, ...Object.fromEntries(list.map((s) => [s.id, s.access_code])) }));
   const [msg, setMsg] = useState('');
   const [confirm, setConfirm] = useState<string | null>(null);
@@ -514,7 +523,8 @@ function ClassPanel({
   const [grade, setGrade] = useState<string | null>(cls.grade ?? null);
 
   const reload = useCallback(async () => {
-    const r = await act(() => T.classOverview(cls.id));
+    const [r, ins] = await Promise.all([act(() => T.classOverview(cls.id)), act(() => T.classInsights(cls.id))]);
+    if (ins !== undefined) setInsights(ins);
     if (r) {
       setRows(r);
       if (r.length === 0) setPart('add');
@@ -593,6 +603,20 @@ function ClassPanel({
     ['session', 'Séances'],
     ['danger', 'Supprimer'],
   ];
+
+  if (openStudent) return <StudentProfile id={openStudent.id} name={openStudent.name} act={act} onBack={() => setOpenStudent(null)} />;
+
+  const now = NOW();
+  const weekAgo = now - 7 * 86_400_000;
+  const active7 = (rows ?? []).filter((r) => r.last_played !== null && r.last_played >= weekAgo).length;
+  const runs30 = (insights ?? []).reduce((n, i) => n + i.runs_30d, 0);
+  const accs = (insights ?? []).flatMap((i) => (i.acc_recent === null ? [] : [i.acc_recent]));
+  const accAvg = accs.length ? Math.round(accs.reduce((a, b) => a + b, 0) / accs.length) : null;
+  const toWatch = (rows ?? [])
+    .map((r) => ({ r, f: rowFlag(r) }))
+    .filter((x) => x.f.flag === 'struggling' || x.f.flag === 'inactive')
+    .sort((a, b) => FLAG_ORDER[a.f.flag] - FLAG_ORDER[b.f.flag])
+    .slice(0, 6);
 
   return (
     <>
@@ -725,113 +749,137 @@ function ClassPanel({
               </button>
             </p>
           ) : (
-            <div className="tbl-wrap">
-              <table className="scores tbl">
-                <caption className="sr-only">Résultats des élèves de la classe : meilleur score par jeu, moyennes et dernière partie</caption>
-                <thead>
-                  <tr>
-                    <SortTh col="name" sort={sort} onSort={toggle}>
-                      Élève
-                    </SortTh>
-                    <th scope="col">Code</th>
-                    <SortTh col="games" sort={sort} onSort={toggle} numeric className="num c-mid">
-                      Parties
-                    </SortTh>
-                    <SortTh col="typing" sort={sort} onSort={toggle} numeric className="num">
-                      <span className="sr-only">Record </span>Frappe
-                    </SortTh>
-                    <SortTh col="math" sort={sort} onSort={toggle} numeric className="num c-mid">
-                      <span className="sr-only">Record </span>Calcul
-                    </SortTh>
-                    <SortTh col="memory" sort={sort} onSort={toggle} numeric className="num c-mid">
-                      <span className="sr-only">Record </span>Mémoire
-                    </SortTh>
-                    <SortTh col="lexique" sort={sort} onSort={toggle} numeric className="num c-mid">
-                      <span className="sr-only">Record </span>Mots
-                    </SortTh>
-                    <SortTh col="facteur" sort={sort} onSort={toggle} numeric className="num c-mid">
-                      <span className="sr-only">Record </span>Lecture
-                    </SortTh>
-                    <SortTh col="wpm" sort={sort} onSort={toggle} numeric className="num c-sm">
-                      Mots/min
-                    </SortTh>
-                    <SortTh col="acc" sort={sort} onSort={toggle} numeric className="num c-lo">
-                      Précision
-                    </SortTh>
-                    <SortTh col="time" sort={sort} onSort={toggle} numeric className="num c-lo">
-                      Temps
-                    </SortTh>
-                    <SortTh col="last" sort={sort} onSort={toggle} numeric className="c-lo">
-                      Dernière<span className="sr-only"> partie</span>
-                    </SortTh>
-                    <th scope="col">
-                      <span className="sr-only">Actions</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(shown ?? []).map((r) => (
-                    <tr key={r.id}>
-                      <td>{r.name}</td>
-                      <td className="mono">{codeOf(r) ? nice(codeOf(r) as string) : <span className="text-ink/60">Masqué</span>}</td>
-                      <td className="num c-mid">{r.games}</td>
-                      <td className="num">{r.best_typing != null ? fmt(r.best_typing) : '–'}</td>
-                      <td className="num c-mid">{r.best_math != null ? fmt(r.best_math) : '–'}</td>
-                      <td className="num c-mid">{r.best_memory != null ? fmt(r.best_memory) : '–'}</td>
-                      <td className="num c-mid">{r.best_lexique != null ? fmt(r.best_lexique) : '–'}</td>
-                      <td className="num c-mid">{r.best_facteur != null ? fmt(r.best_facteur) : '–'}</td>
-                      <td className="num c-sm">{r.avg_wpm != null ? Math.round(r.avg_wpm) : '–'}</td>
-                      <td className="num c-lo">{r.avg_acc != null ? `${Math.round(r.avg_acc)} %` : '–'}</td>
-                      <td className="num c-lo">{r.seconds ? dur(r.seconds) : '–'}</td>
-                      <td className="c-lo">{r.last_played ? fmtDate(r.last_played) : '–'}</td>
-                      <td className="row-actions">
-                        <button
-                          type="button"
-                          className="link"
-                          onClick={async () => {
-                            const code = await act(() => T.resetCode(r.id));
-                            if (code) {
-                              remember([{ id: r.id, name: r.name, access_code: String(code) }]);
-                              setMsg(`Nouveau code de ${r.name} : ${nice(String(code))} (l’ancien ne fonctionne plus). Note-le : il ne sera plus affiché.`);
-                              await reload();
-                            }
-                          }}
-                        >
-                          <span aria-hidden="true">Nouveau</span>
-                          <span className="sr-only">Nouveau code pour {r.name}</span>
+            <>
+              <div className="u-grid-stats">
+                <Stat label="Élèves" value={rows.length} />
+                <Stat label="Ont joué cette semaine" value={`${active7} / ${rows.length}`} />
+                <Stat label="Parties ce mois-ci" value={insights ? runs30 : '—'} />
+                <Stat label="Réussite récente" value={accAvg === null ? '—' : `${accAvg} %`} hint="moyenne des 5 dernières parties" />
+              </div>
+              {insights === null && (
+                <p className="u-info">Les repères d’aide et les fiches élèves demandent la mise à jour <code>serveur/mise-a-jour-eleves.sql</code> (à lancer une fois dans Supabase).</p>
+              )}
+              {toWatch.length > 0 && (
+                <Card title="À suivre" note="Élèves qui ont peut-être besoin d’un coup de pouce. Cliquez pour ouvrir la fiche.">
+                  <ul className="u-watch">
+                    {toWatch.map(({ r, f }) => (
+                      <li key={r.id}>
+                        <button type="button" className="u-name" onClick={() => setOpenStudent({ id: r.id, name: r.name })}>
+                          {r.name}
                         </button>
-                        <button
-                          type="button"
-                          className="link"
-                          onClick={async () => {
-                            if (confirm !== r.id) {
-                              setConfirm(r.id);
-                              return;
-                            }
-                            setConfirm(null);
-                            const ok = await act(async () => {
-                              await T.deleteStudent(r.id);
-                              return true;
-                            });
-                            if (ok) {
-                              setMsg(`${r.name} et ses scores ont été supprimés.`);
-                              await reload();
-                            }
-                          }}
-                          onBlur={() => setConfirm(null)}
-                        >
-                          <span aria-hidden="true">{confirm === r.id ? 'Confirmer' : 'Retirer'}</span>
-                          <span className="sr-only">{confirm === r.id ? `Confirmer la suppression de ${r.name}` : `Supprimer ${r.name}`}</span>
-                        </button>
-                      </td>
+                        <Pill tone={FLAG_TONE[f.flag]}>{f.label}</Pill>
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
+              <div className="tbl-wrap">
+                <table className="scores tbl u-tbl">
+                  <caption className="sr-only">Élèves de la classe : repère, parties, réussite récente, point à revoir, dernière partie. Cliquez sur un prénom pour ouvrir sa fiche.</caption>
+                  <thead>
+                    <tr>
+                      <SortTh col="name" sort={sort} onSort={toggle}>
+                        Élève
+                      </SortTh>
+                      <SortTh col="flag" sort={sort} onSort={toggle}>
+                        Repère
+                      </SortTh>
+                      <SortTh col="games" sort={sort} onSort={toggle} numeric className="num c-mid">
+                        Parties
+                      </SortTh>
+                      <SortTh col="acc" sort={sort} onSort={toggle} numeric className="num c-sm">
+                        Réussite récente
+                      </SortTh>
+                      <SortTh col="weak" sort={sort} onSort={toggle} className="c-mid">
+                        À revoir
+                      </SortTh>
+                      <SortTh col="last" sort={sort} onSort={toggle} numeric className="c-lo">
+                        Dernière<span className="sr-only"> partie</span>
+                      </SortTh>
+                      <th scope="col" className="c-lo">
+                        Code
+                      </th>
+                      <th scope="col">
+                        <span className="sr-only">Actions</span>
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {(shown ?? []).map((r) => {
+                      const f = rowFlag(r);
+                      const trend = r.ins && r.ins.acc_recent !== null && r.ins.acc_prev !== null ? r.ins.acc_recent - r.ins.acc_prev : null;
+                      return (
+                        <tr key={r.id}>
+                          <td>
+                            <button type="button" className="u-name" onClick={() => setOpenStudent({ id: r.id, name: r.name })}>
+                              {r.name}
+                            </button>
+                          </td>
+                          <td>
+                            <Pill tone={FLAG_TONE[f.flag]}>{f.label}</Pill>
+                          </td>
+                          <td className="num c-mid">{r.games}</td>
+                          <td className="num c-sm">
+                            {r.ins?.acc_recent != null ? `${Math.round(r.ins.acc_recent)} %` : '–'}
+                            {trend !== null && Math.abs(trend) >= 5 && (
+                              <span className={trend > 0 ? 'u-up' : 'u-down'} aria-label={trend > 0 ? 'en hausse' : 'en baisse'}>
+                                {trend > 0 ? ' ↑' : ' ↓'}
+                              </span>
+                            )}
+                          </td>
+                          <td className="c-mid">{r.ins?.weak ? `${r.ins.weak.label} (${r.ins.weak.err} %)` : '–'}</td>
+                          <td className="c-lo">{r.last_played ? fmtDate(r.last_played) : '–'}</td>
+                          <td className="mono c-lo">{codeOf(r) ? nice(codeOf(r) as string) : <span className="text-ink/60">Masqué</span>}</td>
+                          <td className="row-actions">
+                            <button
+                              type="button"
+                              className="link"
+                              onClick={async () => {
+                                const code = await act(() => T.resetCode(r.id));
+                                if (code) {
+                                  remember([{ id: r.id, name: r.name, access_code: String(code) }]);
+                                  setMsg(`Nouveau code de ${r.name} : ${nice(String(code))} (l’ancien ne fonctionne plus). Note-le : il ne sera plus affiché.`);
+                                  await reload();
+                                }
+                              }}
+                            >
+                              <span aria-hidden="true">Nouveau code</span>
+                              <span className="sr-only">Nouveau code pour {r.name}</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="link"
+                              onClick={async () => {
+                                if (confirm !== r.id) {
+                                  setConfirm(r.id);
+                                  return;
+                                }
+                                setConfirm(null);
+                                const ok = await act(async () => {
+                                  await T.deleteStudent(r.id);
+                                  return true;
+                                });
+                                if (ok) {
+                                  setMsg(`${r.name} et ses scores ont été supprimés.`);
+                                  await reload();
+                                }
+                              }}
+                              onBlur={() => setConfirm(null)}
+                            >
+                              <span aria-hidden="true">{confirm === r.id ? 'Confirmer' : 'Retirer'}</span>
+                              <span className="sr-only">{confirm === r.id ? `Confirmer la suppression de ${r.name}` : `Supprimer ${r.name}`}</span>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
           <p className="sec-note">
-            Colonnes de jeux : meilleur score de l’élève. Clique sur un titre pour trier. Parties « Perso » et entraînements exclus ; l’export CSV contient tout.
+            Clique sur un prénom pour ouvrir sa fiche (courbes, erreurs, réussites), sur un titre pour trier. « Réussite récente » : moyenne de ses 5 dernières parties. L’export CSV contient tout.
           </p>
         </section>
       )}
