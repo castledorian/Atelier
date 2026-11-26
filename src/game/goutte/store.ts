@@ -22,7 +22,7 @@ const serverKey = () => `atelier.goutte.server.v1:${owner}`;
  * Interrupteur : false masque « Ma goutte » pour tout le monde (barre de l'accueil, page, annonce après partie, onglet d'observation).
  * Les parties continuent d'être comptées (sur l'appareil et sur le serveur) : rien n'est perdu quand on la rallume.
  */
-export const GOUTTE_ON = false;
+export const GOUTTE_ON = true;
 
 /** Annonce envoyée à la page après une partie (le bandeau « +10 XP » l'écoute). */
 export const GAIN_EVENT = 'atelier:goutte';
