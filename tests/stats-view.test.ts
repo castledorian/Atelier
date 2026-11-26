@@ -2,12 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { adviceOf, gradeOfMode, gradeRows, hourly, statsText, weeklyTotals } from '../src/game/statsView';
 import { diffName, diffOf, targetOf, verdictOf } from '../src/game/balanceView';
-import type { GameStats, GradeStat, ItemStatRow, PeriodBalance } from '../src/server/admin';
+import type { GameStats, GradeStat, PeriodBalance } from '../src/server/admin';
 
 const grade = (o: Partial<GradeStat>): GradeStat => ({ game: 'math', mode: 'cm1', grade: 'cm1', runs: 40, players: 12, classes: 2, acc: 82, acc_med: 84, score_p25: 200, score_med: 300, score_p75: 420, dur_med: 110, correct: 20, wave: 5, low_pct: 10, high_pct: 20, short_pct: 5, ...o });
 const bal = (o: Partial<PeriodBalance>): PeriodBalance => ({ game: 'math', level: 'cm1', difficulty: 'standard', runs: 40, ok: 850, err: 150, success_pct: 85, finished_pct: 50, early_loss_pct: 0, dur_med: 100, wave_med: 6, ...o });
 const stats = (o: Partial<GameStats>): GameStats => ({ days: 90, totals: { runs: 100, players: 30, classes: 3, schools: 1, session_runs: 10, drills: 2, minutes: 300 }, by_grade: [], by_class: [], weekly: [], hours: [], loyalty: [], cheats: [], balance: [], ...o });
-const item = (o: Partial<ItemStatRow>): ItemStatRow => ({ game: 'facteur', level: 'cp', difficulty: 'n1', version: 1, item: 'fumée', label: 'fumée', shown: 20, wrong: 14, err_pct: 70, picks: { fil: 6 }, ...o });
 
 test('difficulté et objectif : tous les jeux par manche, Le facteur à 85 %', () => {
   assert.equal(diffOf('cm1-expert'), 'expert');
@@ -29,7 +28,7 @@ test('conseils : trop dur en premier, puis signaux, jamais sur trop peu de parti
     cheats: [{ game: 'facteur', reason: 'colis rangés trop vite', n: 7, players: 4 }],
     loyalty: [{ game: 'memory', players: 20, runs_per_player: 1.4, back_pct: 10, ten_pct: 0, once_pct: 70 }],
   });
-  const a = adviceOf(g, { rules: [], items: [item({})] });
+  const a = adviceOf(g);
   assert.equal(a[0].priority, 1);
   assert.match(a[0].fact, /60 % de réussite pour 85 %/);
   assert.ok(a.some((x) => /moins de 45 s/.test(x.fact)));
@@ -37,14 +36,15 @@ test('conseils : trop dur en premier, puis signaux, jamais sur trop peu de parti
   assert.ok(!a.some((x) => /90 %/.test(x.fact)), 'groupe de 5 parties : ignoré');
   assert.ok(a.some((x) => /Anti-triche/.test(x.topic)));
   assert.ok(a.some((x) => /qu’une fois/.test(x.fact)));
-  assert.ok(a.some((x) => /« fumée » raté 70 %/.test(x.fact) && /image/.test(x.hint)));
+  // les exercices précis ne sont plus répétés ici : ils sont jugés dans exerciseAdvice (nombre d'élèves, marge d'incertitude)
+  assert.ok(!a.some((x) => /fumée/.test(x.fact)));
   assert.ok(!a.some((x) => /Expert/.test(x.topic)), 'Expert à 66 % pour 65 % : bien réglé');
   for (let i = 1; i < a.length; i++) assert.ok(a[i - 1].priority <= a[i].priority);
 });
 
 test('conseils : niveau joué plus bas que celui de la classe', () => {
   const g = stats({ by_grade: [grade({ mode: 'ce2', grade: 'cm1', runs: 30 }), grade({ mode: 'cm1', grade: 'cm1', runs: 20 })] });
-  assert.ok(adviceOf(g, null).some((x) => /niveau inférieur/.test(x.fact)));
+  assert.ok(adviceOf(g).some((x) => /niveau inférieur/.test(x.fact)));
   assert.equal(gradeOfMode('ce2-expert'), 'ce2');
   assert.equal(gradeOfMode('suite'), null);
 });

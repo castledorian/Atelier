@@ -213,6 +213,30 @@ export async function classInsights(cls: string): Promise<Insight[] | null> {
   }
 }
 
+/** Ce que la classe rate le plus : une famille (rule) ou un exercice précis (item), au moins 2 élèves concernés. */
+export interface ClassItem {
+  game: string;
+  kind: 'rule' | 'item';
+  item: string;
+  label: string;
+  players: number;
+  shown: number;
+  wrong: number;
+  /** % d'erreurs */
+  err: number;
+  picks: Record<string, number>;
+}
+/** null tant que la mise à jour SQL « fiche élève » n'a pas été relancée. */
+export async function classItems(cls: string): Promise<ClassItem[] | null> {
+  try {
+    const rows = await authed((t) => rpc<ClassItem[]>('class_items', { p_class: cls }, t));
+    return rows.map((r) => ({ ...r, err: Number(r.err) }));
+  } catch (e) {
+    if (e instanceof ApiError && (e.status === 404 || e.status === 400)) return null;
+    throw e;
+  }
+}
+
 /** Fiche d'un élève : ses parties et ses compteurs d'exercices. */
 export const studentDetail = (id: string) => authed((t) => rpc<StudentDetail>('student_detail', { p_student: id, p_days: 365 }, t));
 

@@ -13,7 +13,9 @@ import StudentProfile from './StudentProfile';
 import { Tip } from '../components/Tip';
 import { Card, Pill, Stat } from '../components/ui';
 import type { Tone } from '../components/ui';
-import { deltaOf, flagOf, focusGame } from '../game/studentView';
+import { classIsActive, classWeakPoints, deltaOf, flagOf, focusGame } from '../game/studentView';
+import { picksText } from '../game/balanceView';
+import { Bar } from '../components/ui';
 import { GAME_NAMES as GAME_LABELS } from '../game/sessionConfig';
 import type { Flag } from '../game/studentView';
 import { ObserveBar, ReadOnlyZone } from '../components/ObserveBar';
@@ -240,16 +242,16 @@ const NOW = () => Date.now();
 
 const gameLabel = (g: string) => (GAME_LABELS as Record<string, string>)[g] ?? g;
 
-function rowFlag(r: Row) {
-  return flagOf(r.ins ?? { last_played: r.last_played }, NOW(), gameLabel);
+function rowFlag(r: Row, classActive: boolean) {
+  return flagOf(r.ins ?? { last_played: r.last_played }, NOW(), gameLabel, classActive);
 }
 
-function overValue(r: Row, key: OverKey): SortValue {
+function overValue(r: Row, key: OverKey, classActive: boolean): SortValue {
   switch (key) {
     case 'name':
       return r.name;
     case 'flag':
-      return FLAG_ORDER[rowFlag(r).flag];
+      return FLAG_ORDER[rowFlag(r, classActive).flag];
     case 'games':
       return r.games;
     case 'acc':
@@ -510,6 +512,7 @@ function ClassPanel({
 }) {
   const [rawRows, setRows] = useState<Overview[] | null>(null);
   const [insights, setInsights] = useState<T.Insight[] | null>(null);
+  const [classErr, setClassErr] = useState<T.ClassItem[] | null>(null);
   const [openStudent, setOpenStudent] = useState<{ id: string; name: string } | null>(null);
   const rows = useMemo<Row[] | null>(() => {
     if (!rawRows) return null;
@@ -517,7 +520,9 @@ function ClassPanel({
     return rawRows.map((r) => ({ ...r, ins: byId.get(r.id) ?? null }));
   }, [rawRows, insights]);
   const { sort, toggle } = useSort<OverKey>('name', 'asc');
-  const shown = useSorted(rows, sort, overValue);
+  const classActive = useMemo(() => classIsActive((rows ?? []).map((r) => r.last_played), NOW()), [rows]);
+  const sortValue = useCallback((r: Row, k: OverKey) => overValue(r, k, classActive), [classActive]);
+  const shown = useSorted<Row, OverKey>(rows, sort, sortValue);
   const [names, setNames] = useState('');
   const [fresh, setFresh] = useState<NewStudent[] | null>(null);
   /** Codes connus uniquement dans cette page (jamais conservés ailleurs) : le serveur ne garde que leur empreinte. */
@@ -532,8 +537,9 @@ function ClassPanel({
   const [grade, setGrade] = useState<string | null>(cls.grade ?? null);
 
   const reload = useCallback(async () => {
-    const [r, ins] = await Promise.all([act(() => T.classOverview(cls.id)), act(() => T.classInsights(cls.id))]);
+    const [r, ins, ci] = await Promise.all([act(() => T.classOverview(cls.id)), act(() => T.classInsights(cls.id)), act(() => T.classItems(cls.id))]);
     if (ins !== undefined) setInsights(ins);
+    if (ci !== undefined) setClassErr(ci);
     if (r) {
       setRows(r);
       if (r.length === 0) setPart('add');
@@ -629,7 +635,7 @@ function ClassPanel({
   const active7 = (rows ?? []).filter((r) => r.last_played !== null && r.last_played >= weekAgo).length;
   const runs30 = (insights ?? []).reduce((n, i) => n + i.runs_30d, 0);
   const watchAll = (rows ?? [])
-    .map((r) => ({ r, f: rowFlag(r) }))
+    .map((r) => ({ r, f: rowFlag(r, classActive) }))
     .filter((x) => x.f.flag === 'struggling' || x.f.flag === 'inactive')
     .sort((a, b) => FLAG_ORDER[a.f.flag] - FLAG_ORDER[b.f.flag]);
   const toWatch = watchAll.slice(0, 6);
@@ -789,6 +795,7 @@ function ClassPanel({
                   </ul>
                 </Card>
               )}
+              {classErr && <ClassWeak rows={classErr} />}
               <p className="text-[15px]">
                 Clique sur un prénom pour ouvrir sa fiche.
                 <Tip label="Lire le tableau">« Réussite » : le jeu où l’élève réussit le moins en ce moment (moyenne de ses 5 dernières parties à ce jeu, 3 au minimum ; Frappe ! n’est pas compté, sa précision de frappe n’est pas une réussite). Flèche : hausse ou baisse par rapport aux 5 parties d’avant. L’export CSV contient tout.</Tip>
@@ -826,7 +833,7 @@ function ClassPanel({
                   </thead>
                   <tbody>
                     {(shown ?? []).map((r) => {
-                      const f = rowFlag(r);
+                      const f = rowFlag(r, classActive);
                       const focus = focusGame(r.ins?.games);
                       const trend = deltaOf(focus);
                       return (
@@ -1009,6 +1016,54 @@ function ClassPanel({
         </div>
       </section>
     </>
+  );
+}
+
+// ───────────────────────── Ce que la classe rate le plus ─────────────────────────
+
+/** Familles et exercices les plus ratés par la classe (au moins 2 élèves concernés) : de quoi préparer une leçon de remédiation. */
+function ClassWeak({ rows }: { rows: T.ClassItem[] }) {
+  const { rules, items } = useMemo(() => classWeakPoints(rows), [rows]);
+  if (rules.length === 0 && items.length === 0) return null;
+  const list = (l: T.ClassItem[]) => (
+    <ul className="u-rows">
+      {l.map((r) => (
+        <li key={`${r.game}-${r.kind}-${r.item}`}>
+          <div className="u-row-top">
+            <span>
+              {r.label} <span className="u-dim">· {gameLabel(r.game)}</span>
+            </span>
+            <strong>{Math.round(r.err)} % d’erreurs</strong>
+          </div>
+          <Bar pct={r.err} tone="bad" label={`Erreurs de la classe en ${r.label}`} />
+          <span className="u-dim">
+            {r.players} élèves · {r.wrong} ratés sur {r.shown}
+            {Object.keys(r.picks).length ? ` · souvent répondu : ${picksText(r.picks, 2)}` : ''}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+  return (
+    <Card
+      title="Ce que la classe rate le plus"
+      note="Familles de calculs, règles et mots ratés au moins une fois sur quatre, par au moins 2 élèves. Les mauvaises réponses les plus choisies aident à repérer la confusion à travailler."
+    >
+      <div className="u-cols">
+        {rules.length > 0 && (
+          <div>
+            <h3 className="subhead mb-2">Familles et règles</h3>
+            {list(rules)}
+          </div>
+        )}
+        {items.length > 0 && (
+          <div>
+            <h3 className="subhead mb-2">Calculs, mots, phrases</h3>
+            {list(items)}
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
 

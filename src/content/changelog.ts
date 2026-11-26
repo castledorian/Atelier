@@ -36,6 +36,9 @@ export const RELEASES: Release[] = [
       { kind: 'fix', text: 'Repères des élèves calculés jeu par jeu (un élève n’est plus jugé sur une moyenne de jeux différents).' },
       { kind: 'fix', text: 'Erreurs d’une partie jouée sans réseau : gardées sur l’appareil et envoyées au retour de la connexion.' },
       { kind: 'fix', text: 'Administration : aucun conseil tiré de moins de 10 élèves, et marge d’incertitude plus juste.' },
+      { kind: 'new', text: 'Espace enseignant : « Ce que la classe rate le plus », avec les mauvaises réponses les plus choisies.' },
+      { kind: 'new', text: 'Fiche élève imprimable (deux pages A4), pour une réunion avec la famille.' },
+      { kind: 'fix', text: 'Pendant les vacances de la classe, plus d’alerte « n’a pas joué depuis 2 semaines ».' },
     ],
   },
   {

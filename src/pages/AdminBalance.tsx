@@ -28,7 +28,7 @@ const stamp = () => new Date().toISOString().slice(0, 10);
 /** Onglet « Équilibrage » : où les élèves réussissent trop ou pas assez, et ce qui les fait échouer. */
 export default function AdminBalance({ levels: allTime, stats, detail, spread = null, days, onDays }: { levels: BalanceLevel[]; stats: AdminItems; detail: GameStats | null; spread?: ItemSpreadRow[] | null; days: number; onDays: (d: number) => void }) {
   const levels = useMemo(() => (detail ? asLevels(detail.balance) : allTime), [detail, allTime]);
-  const advice = useMemo(() => (detail ? adviceOf(detail, stats) : []), [detail, stats]);
+  const advice = useMemo(() => (detail ? adviceOf(detail) : []), [detail]);
   const [game, setGame] = useState('math');
   const [level, setLevel] = useState('all');
   const [diff, setDiff] = useState('all');
@@ -80,7 +80,10 @@ export default function AdminBalance({ levels: allTime, stats, detail, spread = 
       {detail && <Kpis g={detail} />}
       {detail && (
         <>
-          <h2 className="subhead mt-4">À régler en priorité</h2>
+          <h2 className="subhead mt-4">
+            À régler : jeux et niveaux
+            <Tip label="Ce que couvre cette liste">Réussite de chaque jeu, niveau et difficulté, parties perdues tout de suite, jeux délaissés, anti-triche. Les familles de calculs, règles et mots sont jugées juste en dessous.</Tip>
+          </h2>
           {advice.length === 0 ? (
             <p className="adm-note">Rien de net pour l’instant : pas assez de parties, ou tout est bien réglé.</p>
           ) : (
@@ -736,7 +739,7 @@ export function ExercisePanel({ rules, items, spread = null }: { rules: AdminIte
   return (
     <Card
       className="mt-4"
-      title="Exercice par exercice"
+      title="À régler : exercice par exercice"
       note={`Chaque famille de calculs, règle ou mot est comparée à l’objectif de son niveau. Une conclusion n’est tirée que si toute la marge d’incertitude (95 %) est du même côté de l’objectif, et jamais avec moins de ${MIN_PLAYERS} élèves différents. La marge est élargie quand les résultats varient beaucoup d’un élève à l’autre. Barre : zone hachurée = objectif, trait noir = marge, trait rouge = valeur mesurée.`}
     >
       {all.length === 0 ? (

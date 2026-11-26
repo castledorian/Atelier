@@ -2465,6 +2465,45 @@ begin
     ) t), '[]'::jsonb);
 end $$;
 
+-- Enseignant : ce que la classe rate le plus. Familles (kind = rule) et exercices précis (kind = item), toutes difficultés confondues ;
+-- seulement ce qui a été posé au moins 10 fois à au moins 2 élèves (jamais le détail d'un seul élève : sa fiche est faite pour ça).
+create or replace function public.class_items(p_class uuid) returns jsonb
+language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare v_c public.classes%rowtype;
+begin
+  select * into v_c from public.classes where id = p_class;
+  if not found then raise exception 'forbidden' using errcode = '42501'; end if;
+  perform private.assert_reader(v_c.school_id);
+  return coalesce((
+    select jsonb_agg(to_jsonb(t) order by t.err desc, t.shown desc)
+    from (
+      select i.game, i.kind, i.item, max(i.label) as label,
+             count(distinct i.student_id)::integer as players,
+             sum(i.shown)::integer as shown,
+             sum(i.wrong)::integer as wrong,
+             round(100.0 * sum(i.wrong) / sum(i.shown), 1) as err,
+             coalesce((
+               select jsonb_object_agg(p.k, p.n)
+               from (
+                 select x.key as k, sum(x.value::integer)::integer as n
+                 from public.student_items i2
+                 join public.students s2 on s2.id = i2.student_id
+                 cross join lateral jsonb_each_text(i2.picks) x
+                 where s2.class_id = p_class and i2.game = i.game and i2.kind = i.kind and i2.item = i.item
+                 group by x.key
+                 order by sum(x.value::integer) desc, x.key
+                 limit 3
+               ) p), '{}'::jsonb) as picks
+      from public.student_items i
+      join public.students s on s.id = i.student_id
+      where s.class_id = p_class
+      group by i.game, i.kind, i.item
+      having sum(i.shown) >= 10 and count(distinct i.student_id) >= 2
+      order by 100.0 * sum(i.wrong) / sum(i.shown) desc
+      limit 60
+    ) t), '[]'::jsonb);
+end $$;
+
 revoke all on function private.store_student_items(uuid, text, text, text, jsonb) from public, anon, authenticated;
 revoke all on function private.student_items_check(uuid, text, text, text, jsonb) from public, anon, authenticated;
 revoke all on function public.submit_student_items(text, text, text, text, text, jsonb) from public;
@@ -2472,6 +2511,8 @@ revoke all on function public.submit_student_items(text, text, text, jsonb) from
 revoke all on function public.student_detail(uuid, integer) from public, anon;
 revoke all on function public.class_insights(uuid) from public, anon;
 revoke all on function public.admin_item_spread() from public, anon;
+revoke all on function public.class_items(uuid) from public, anon;
+grant execute on function public.class_items(uuid) to authenticated;
 grant execute on function public.submit_student_items(text, text, text, text, text, jsonb) to anon, authenticated;
 grant execute on function public.submit_student_items(text, text, text, jsonb) to anon, authenticated;
 grant execute on function public.student_detail(uuid, integer) to authenticated;
@@ -2502,7 +2543,7 @@ begin
   return jsonb_build_object('runs', v_runs, 'students', v_students);
 end $$;
 
--- Version du serveur : 20 (fonctionnalités « eleves » et « eleves_fiable »).
+-- Version du serveur : 21 (fonctionnalités « eleves », « eleves_fiable », « eleves_classe »).
 create or replace function public.server_version() returns jsonb
 language plpgsql stable security definer set search_path = public, pg_temp as $$
 declare
@@ -2554,10 +2595,11 @@ begin
     'eleves',      to_regprocedure('public.student_detail(uuid,integer)') is not null and to_regprocedure('public.class_insights(uuid)') is not null,
     'eleves_fiable', to_regprocedure('public.submit_student_items(text,text,text,text,text,jsonb)') is not null
                    and to_regprocedure('public.admin_item_spread()') is not null and v_ins like '%n_prev%',
+    'eleves_classe', to_regprocedure('public.class_items(uuid)') is not null,
     'nettoyage_auto', v_cron
   );
   return jsonb_build_object(
-    'version', 20,
+    'version', 21,
     'features', f,
     'migrations', coalesce((select jsonb_agg(id order by id) from private.schema_migrations), '[]'::jsonb),
     'plain_codes', (select count(*) from public.students where access_code is not null),
@@ -2569,3 +2611,4 @@ grant execute on function public.server_version() to authenticated;
 
 insert into private.schema_migrations (id) values ('2026-11-eleves') on conflict (id) do nothing;
 insert into private.schema_migrations (id) values ('2026-11-eleves-fiable') on conflict (id) do nothing;
+insert into private.schema_migrations (id) values ('2026-11-eleves-classe') on conflict (id) do nothing;

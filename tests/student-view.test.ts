@@ -103,6 +103,31 @@ test('un serveur qui ne connaît pas encore la fiche élève réclame sa mise à
   // première version de la fiche lancée, mais pas la révision (réussite jeu par jeu, envois hors connexion) : à relancer
   const first = todoFor({ version: 19, features: { goutte: true, eleves: true }, missing: [] });
   assert.ok(first.some((t) => t.file === 'mise-a-jour-eleves.sql'));
-  const ok = todoFor({ version: 20, features: { goutte: true, eleves: true, eleves_fiable: true }, missing: [] });
+  const second = todoFor({ version: 20, features: { goutte: true, eleves: true, eleves_fiable: true }, missing: [] });
+  assert.ok(second.some((t) => t.file === 'mise-a-jour-eleves.sql'));
+  const ok = todoFor({ version: 21, features: { goutte: true, eleves: true, eleves_fiable: true, eleves_classe: true }, missing: [] });
   assert.ok(!ok.some((t) => t.file === 'mise-a-jour-eleves.sql'));
+});
+
+import { classIsActive } from '../src/game/studentView';
+test('vacances : un élève absent n’est signalé que si sa classe joue', () => {
+  const absent = { last_played: NOW - 20 * DAY };
+  assert.equal(flagOf(absent, NOW, (x) => x, true).flag, 'inactive');
+  assert.equal(flagOf(absent, NOW, (x) => x, false).flag, 'steady');
+  assert.equal(classIsActive([NOW - 20 * DAY, NOW - 3 * DAY, null], NOW), true);
+  assert.equal(classIsActive([NOW - 20 * DAY, NOW - 9 * DAY, null], NOW), false);
+  assert.equal(classIsActive([], NOW), false);
+});
+
+import { classWeakPoints } from '../src/game/studentView';
+test('ce que la classe rate le plus : seuil de 25 %, les plus ratés d’abord, familles et exercices séparés', () => {
+  const r = (o: { kind: 'rule' | 'item'; err: number; players: number; item: string }) => o;
+  const { rules, items } = classWeakPoints([
+    r({ kind: 'rule', err: 20, players: 9, item: 'add' }),
+    r({ kind: 'rule', err: 55, players: 4, item: 'frac' }),
+    r({ kind: 'rule', err: 55, players: 8, item: 'div' }),
+    r({ kind: 'item', err: 70, players: 3, item: '7 × 8' }),
+  ]);
+  assert.deepEqual(rules.map((x) => x.item), ['div', 'frac']);
+  assert.deepEqual(items.map((x) => x.item), ['7 × 8']);
 });

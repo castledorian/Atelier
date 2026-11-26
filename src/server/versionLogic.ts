@@ -43,10 +43,11 @@ export const STEPS: Array<[string, Step]> = [
   ['stats', { file: 'mise-a-jour-stats.sql', why: 'statistiques détaillées (onglet Équilibrage) et mots ratés du facteur', critical: false }],
   ['eleves', { file: 'mise-a-jour-eleves.sql', why: 'fiche élève et repères de la classe (espace enseignant)', critical: false }],
   ['eleves_fiable', { file: 'mise-a-jour-eleves.sql', why: 'réussite jeu par jeu, erreurs gardées hors connexion, nombre d’élèves par exercice', critical: false }],
+  ['eleves_classe', { file: 'mise-a-jour-eleves.sql', why: 'ce que la classe rate le plus (espace enseignant)', critical: false }],
 ];
 
 /** Fonctionnalités apparues après la version 18 du serveur : un serveur plus ancien ne les connaît pas encore. */
-const NEWER = ['eleves', 'eleves_fiable'];
+const NEWER = ['eleves', 'eleves_fiable', 'eleves_classe'];
 
 export interface Todo {
   file: string;

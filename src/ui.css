@@ -645,3 +645,67 @@
   opacity: 0.8;
   white-space: nowrap;
 }
+
+/* ───────── Fiche élève imprimée (réunion de parents, équipe éducative) ───────── */
+.u-print-date {
+  display: none;
+}
+@media print {
+  /* l'espace enseignant n'imprime d'ordinaire que les fiches de codes : la fiche élève fait exception */
+  .page-in > .u-print,
+  .page-in > .observe-lock:has(.u-print) {
+    display: block !important;
+  }
+  .observe-lock:has(.u-print) > :not(.u-print) {
+    display: none !important;
+  }
+  .u-print {
+    color: #000;
+    font-size: 12pt;
+  }
+  .u-print .no-print,
+  .u-print .tip-i,
+  .u-print .seg,
+  .u-print .u-table,
+  .u-print .u-back {
+    display: none !important;
+  }
+  .u-print-date {
+    display: inline;
+  }
+  body {
+    background: #fff !important;
+  }
+  /* les barres et courbes portent l'information : elles s'impriment même si le navigateur retire les fonds */
+  .u-print .u-bar,
+  .u-print .u-bar-fill,
+  .u-print .u-range,
+  .u-print .u-range *,
+  .u-print .u-week-bar,
+  .u-print .u-key,
+  .u-print .u-lead {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .u-print .u-card,
+  .u-print .u-stat,
+  .u-print .u-lead,
+  .u-print li {
+    break-inside: avoid;
+  }
+  .u-print .u-card,
+  .u-print .u-stat,
+  .u-print .u-lead {
+    background: #fff;
+  }
+  .u-print .u-cols {
+    grid-template-columns: 1fr 1fr;
+  }
+  /* la liste des dernières parties n'apporte rien sur papier : la fiche tient sur deux pages */
+  .u-print .u-card.print-skip {
+    display: none !important;
+  }
+  .u-print .u-grid-stats {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}

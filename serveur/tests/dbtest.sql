@@ -730,8 +730,26 @@ select pg_temp.eq('dispersion : sommes par élève', (select (e->>'wn')::numeric
 select pg_temp.eq('dispersion : sans nom ni classe', (select count(*)::int from jsonb_array_elements(public.admin_item_spread()) e where e ? 'student_id' or e ? 'name'), 0);
 select pg_temp.as_admin();
 select pg_temp.eq('nettoyage : la purge garde les envois récents', (select count(*)::int from private.student_items_done) > 0 and (private.purge_old_data() ? 'runs'), true);
+
+-- ───────────────────────── Ce que la classe rate le plus ─────────────────────────
+select pg_temp.as_anon();
+select pg_temp.eq('classe : partie effacée → erreurs refusées', (public.submit_student_items((select v from ctx where k='tok_gtt'), 'gtt0000003', 'math', 'cm1', 'standard', '[{"k":"rule","i":"frac","l":"Fractions","n":6,"e":4,"p":{"1/2":2}}]'::jsonb)->>'error'), 'no_run');
+reset role;
+insert into public.runs (client_id, student_id, class_id, school_id, game, mode, kind, score, wave, wpm, acc, correct, duration, played_at)
+select 'cls0000001', s.id, s.class_id, s.school_id, 'math', 'cm1-standard', 'game', 100, 1, 0, 40, 4, 80, now() - interval '1 hour'
+from public.students s where s.id = (select v::uuid from ctx where k='tom_id');
+select pg_temp.as_anon();
+select pg_temp.eq('classe : compteurs du 2e élève', (public.submit_student_items((select v from ctx where k='tok_gtt'), 'cls0000001', 'math', 'cm1', 'standard', '[{"k":"rule","i":"frac","l":"Fractions","n":6,"e":4,"p":{"1/2":2}},{"k":"rule","i":"solo","l":"Seul","n":30,"e":30}]'::jsonb)->>'stored')::int, 2);
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
-select pg_temp.eq('serveur en version 20, tout est à jour', (select public.server_version()->>'version'), '20');
+select pg_temp.eq('classe : « Fractions » ratée par 2 élèves', (select (e->>'players')::int from jsonb_array_elements(public.class_items((select v::uuid from ctx where k='classX'))) e where e->>'item' = 'frac'), 2);
+select pg_temp.eq('classe : taux d''erreurs cumulé', (select (e->>'err')::numeric from jsonb_array_elements(public.class_items((select v::uuid from ctx where k='classX'))) e where e->>'item' = 'frac'), round(100.0 * 9 / 14, 1));
+select pg_temp.eq('classe : mauvaises réponses additionnées', (select e->'picks'->>'1/2' from jsonb_array_elements(public.class_items((select v::uuid from ctx where k='classX'))) e where e->>'item' = 'frac'), '2');
+select pg_temp.eq('classe : jamais le détail d''un seul élève', (select count(*)::int from jsonb_array_elements(public.class_items((select v::uuid from ctx where k='classX'))) e where e->>'item' = 'solo'), 0);
+select pg_temp.as_user('bbbbbbbb-0000-0000-0000-000000000002');
+select pg_temp.fails($$select public.class_items('$$||(select v from ctx where k='classX')||$$'::uuid)$$, 'forbidden');
+select pg_temp.as_admin();
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select pg_temp.eq('serveur en version 21, tout est à jour', (select public.server_version()->>'version'), '21');
 select pg_temp.eq('aucune fonctionnalité « fiche élève » manquante', (select count(*)::int from jsonb_array_elements_text(public.server_version()->'missing') m where m like 'eleves%'), 0);
 select pg_temp.as_admin();
 

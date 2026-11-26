@@ -1,5 +1,5 @@
 import type { AdminItems, BalanceLevel, GameStats, GradeStat, PeriodBalance } from '../server/admin';
-import { MIN_ROUNDS, diffName, gameName, levelName, mergeRows, picksText, rank, summaryText, targetOf, verdictOf } from './balanceView';
+import { MIN_ROUNDS, diffName, gameName, levelName, summaryText, targetOf, verdictOf } from './balanceView';
 
 /**
  * Lecture des statistiques détaillées (espace administrateur) : ce qu'il faut régler en priorité, jeu par jeu et niveau par niveau.
@@ -41,8 +41,8 @@ export const asLevels = (rows: readonly PeriodBalance[]): BalanceLevel[] =>
 
 const topicOf = (game: string, level: string, difficulty: string) => [gameName(game), level && level !== '-' && !gradeOfMode(difficulty) ? levelName(level) : '', diffName(difficulty)].filter(Boolean).join(' · ');
 
-/** Ce qu'il faut régler, du plus urgent au moins urgent (15 au plus). */
-export function adviceOf(g: GameStats, items: AdminItems | null): Advice[] {
+/** Ce qu'il faut régler au niveau des jeux, des niveaux et des difficultés, du plus urgent au moins urgent (15 au plus). */
+export function adviceOf(g: GameStats): Advice[] {
   const out: Advice[] = [];
 
   // 1. Réussite par manche, comparée à l'objectif du jeu et de la difficulté
@@ -108,20 +108,8 @@ export function adviceOf(g: GameStats, items: AdminItems | null): Advice[] {
     if (c.n < 5 || c.players < 3) continue;
     out.push({ priority: 2, topic: `Anti-triche · ${gameName(c.game)}`, fact: `« ${c.reason} » : ${c.n} parties refusées, ${c.players} élèves.`, hint: 'Si ce sont de bons élèves, la borne du serveur est trop stricte : à élargir.' });
   }
-  // 6. Exercices précis très ratés
-  if (items) {
-    for (const game of [...new Set(items.items.map((i) => i.game))]) {
-      for (const r of rank(mergeRows(items.items, { game, level: 'all', difficulty: 'all' }), 10).slice(0, 3)) {
-        if ((r.err_pct ?? 0) < SIGNAL.itemErr) continue;
-        out.push({
-          priority: 2,
-          topic: `${gameName(game)} · ${levelName(r.level)}`,
-          fact: `« ${r.label} » raté ${pct(r.err_pct)} (posé ${r.shown} fois)${Object.keys(r.picks).length ? `, confondu avec ${picksText(r.picks, 2)}` : ''}.`,
-          hint: game === 'facteur' ? 'Image peut-être ambiguë, ou mauvais mots trop proches : revoir l’image ou les mots proposés.' : 'Exercice à vérifier : formulation, réponse attendue, ou niveau trop élevé.',
-        });
-      }
-    }
-  }
+  // Les exercices précis (familles, calculs, mots) sont jugés à part, avec le nombre d'élèves et la marge d'incertitude :
+  // voir exerciseAdvice.ts (panneau « exercice par exercice »). Rien n'est répété ici.
   return out.sort((a, b) => a.priority - b.priority).slice(0, 15);
 }
 
@@ -164,7 +152,7 @@ export function statsText(g: GameStats, items: AdminItems, today: string): strin
   out.push(`${h.schoolPct} % des parties sur le temps scolaire.`);
   out.push('');
   out.push('À RÉGLER EN PRIORITÉ');
-  const adv = adviceOf(g, items);
+  const adv = adviceOf(g);
   if (adv.length === 0) out.push('(rien de net : pas assez de données ou tout est bien réglé)');
   for (const a of adv) out.push(`- [${a.priority}] ${a.topic} : ${a.fact} → ${a.hint}`);
   out.push('');

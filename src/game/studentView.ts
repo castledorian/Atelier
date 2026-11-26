@@ -207,9 +207,24 @@ export const deltaOf = (g: GameRecent | null): number | null =>
  * Un seul repère par élève, pour repérer d'un coup d'œil qui a besoin d'attention. Jamais une note.
  * Tout est calculé JEU PAR JEU : un élève n'est jamais jugé sur un mélange de jeux différents.
  */
-export function flagOf(recent: { last_played: number | null; games?: readonly GameRecent[] }, now: number, name: (g: string) => string = (g) => g): FlagInfo {
+/**
+ * La classe joue-t-elle en ce moment ? Si personne n'a joué depuis une semaine (vacances, sortie, période sans ordinateurs),
+ * un élève absent du site n'a rien d'inquiétant : on ne le signale pas.
+ */
+export const classIsActive = (lastPlayed: readonly (number | null)[], now: number) => lastPlayed.some((t) => t !== null && now - t <= 7 * DAY);
+
+export function flagOf(
+  recent: { last_played: number | null; games?: readonly GameRecent[] },
+  now: number,
+  name: (g: string) => string = (g) => g,
+  /** faux pendant les vacances de la classe (voir classIsActive) ; absent = on ne sait pas, on signale */
+  classActive = true,
+): FlagInfo {
   if (recent.last_played === null) return { flag: 'never', label: 'N’a pas encore joué', game: null };
-  if (now - recent.last_played > 14 * DAY) return { flag: 'inactive', label: 'N’a pas joué depuis 2 semaines', game: null };
+  if (now - recent.last_played > 14 * DAY) {
+    if (classActive) return { flag: 'inactive', label: 'N’a pas joué depuis 2 semaines', game: null };
+    return { flag: 'steady', label: 'Pas de partie récente (classe en pause)', game: null };
+  }
   const low = focusGame(recent.games);
   if (low && (low.acc_recent as number) < 60) return { flag: 'struggling', label: `Réussite basse · ${name(low.game)}`, game: low.game };
   const up = rated(recent.games)
@@ -231,4 +246,20 @@ export function summarySentence(name: string, runs: readonly StudentRun[], weak:
   if (weak.length) parts.push(`à retravailler : ${weak.slice(0, 2).map((w) => w.label.toLowerCase()).join(' et ')}`);
   if (strong.length) parts.push(`bien maîtrisé : ${strong.slice(0, 2).map((w) => w.label.toLowerCase()).join(' et ')}`);
   return parts.length ? `${name} — ${parts.join(' ; ')}.` : `${name} a joué ${games} partie${games > 1 ? 's' : ''} ; pas encore assez de données pour une tendance.`;
+}
+
+/** À partir de quel taux d'erreurs un point de la classe mérite d'être montré. */
+export const CLASS_ERR_MIN = 25;
+
+/**
+ * Ce que la classe rate le plus : les familles (ou règles) et les exercices précis au-dessus de CLASS_ERR_MIN % d'erreurs,
+ * les plus ratés d'abord ; à égalité, celui qui touche le plus d'élèves.
+ */
+export function classWeakPoints<T extends { kind: 'rule' | 'item'; err: number; players: number }>(rows: readonly T[], max = 5): { rules: T[]; items: T[] } {
+  const pick = (k: 'rule' | 'item') =>
+    rows
+      .filter((r) => r.kind === k && r.err >= CLASS_ERR_MIN)
+      .sort((a, b) => b.err - a.err || b.players - a.players)
+      .slice(0, max);
+  return { rules: pick('rule'), items: pick('item') };
 }

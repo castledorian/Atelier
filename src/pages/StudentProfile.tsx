@@ -52,20 +52,30 @@ export default function StudentProfile({ id, name, onBack, act, onScreen }: { id
   const trendText = trend.kind === 'few' ? 'Pas assez de parties' : trend.kind === 'up' ? `En progrès (+${trend.delta} pts)` : trend.kind === 'down' ? `En baisse (${trend.delta} pts)` : 'Stable';
 
   return (
-    <div className="u-page" data-observe-ok>
-      <div className="u-hero">
+    <div className="u-page u-print" data-observe-ok>
+      <div className="u-hero no-print">
         <button type="button" className="u-back" onClick={onBack}>
           <span aria-hidden="true">←</span> Retour à la classe
         </button>
-        {onScreen && (
-          <button type="button" className="btn btn-ghost" onClick={onScreen}>
-            Voir son écran d’élève
-          </button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {d && (
+            <button type="button" className="btn btn-ghost" onClick={() => window.print()}>
+              Imprimer la fiche
+            </button>
+          )}
+          {onScreen && (
+            <button type="button" className="btn btn-ghost" onClick={onScreen}>
+              Voir son écran d’élève
+            </button>
+          )}
+        </div>
       </div>
       <header className="u-hero">
         <div>
-          <p className="u-eyebrow">Fiche élève{d ? ` · ${d.student.class_name}` : ''}</p>
+          <p className="u-eyebrow">
+            Fiche élève{d ? ` · ${d.student.class_name}` : ''}
+            <span className="u-print-date"> · imprimée le {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+          </p>
           <h1 className="u-h1">{name}</h1>
         </div>
         {d && gameRuns.length > 0 && <Pill tone={trendTone}>{current ? `${gameName(current)} : ` : ''}{trendText}</Pill>}
@@ -217,7 +227,7 @@ export default function StudentProfile({ id, name, onBack, act, onScreen }: { id
             <Card title="Régularité" note="Parties par semaine, sur les 8 dernières semaines.">
               <WeekBars label="Parties par semaine" weeks={weeks.map((w) => ({ label: `semaine du ${day(w.start)}`, value: w.runs }))} />
             </Card>
-            <Card title="Dernières parties">
+            <Card title="Dernières parties" className="print-skip">
               {recent.length === 0 ? (
                 <p className="u-empty">Aucune partie.</p>
               ) : (
