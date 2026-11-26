@@ -10,6 +10,7 @@ import { GRADES } from '../game/grade';
 import * as T from '../server/teacher';
 import { Check } from '../components/Screens';
 import StudentProfile from './StudentProfile';
+import { Tip } from '../components/Tip';
 import { Card, Pill, Stat } from '../components/ui';
 import type { Tone } from '../components/ui';
 import { flagOf } from '../game/studentView';
@@ -274,10 +275,10 @@ function InviteForm({ onAccepted, act }: { onAccepted: () => void; act: Act }) {
   };
   return (
     <form className="form mt-4" onSubmit={go} aria-label="Code d’invitation">
-      <h2 className="subhead">Code d’invitation</h2>
-      <p className="text-[15px] leading-snug">
-        Créer une école demande un code d’invitation, donné par l’administrateur du site.
-      </p>
+      <h2 className="subhead">
+        Code d’invitation
+        <Tip label="D’où vient ce code ?">Créer une école demande un code donné par l’administrateur du site.</Tip>
+      </h2>
       <label className="subhead" htmlFor="inv-code">
         Ton code
       </label>
@@ -333,8 +334,10 @@ function NameForm({
   };
   return (
     <form className="form mt-4" onSubmit={go} aria-label={title}>
-      <h2 className="subhead">{title}</h2>
-      <p className="text-[15px] leading-snug">{text}</p>
+      <h2 className="subhead">
+        {title}
+        <Tip label={`À propos : ${title}`}>{text}</Tip>
+      </h2>
       <label className="subhead" htmlFor="nf-name">
         {label}
       </label>
@@ -633,8 +636,10 @@ function ClassPanel({
       {part === 'results' && endOfYearReminder(new Date()) && (
         <div className="notice notice-info" role="status">
           <p>
-            <strong>Fin d’année scolaire.</strong> Exporte les résultats de la classe, puis efface-les : les élèves gardent leur code et repartent de zéro. Sans
-            action de ta part, le serveur efface lui-même les parties de plus de {RETENTION_MONTHS} mois.
+            <strong>Fin d’année : exporte puis efface les résultats.</strong>
+            <Tip label="Pourquoi ?">
+              Les élèves gardent leur code et repartent de zéro. Sinon, le serveur efface lui-même les parties de plus de {RETENTION_MONTHS} mois.
+            </Tip>
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             <button type="button" className="btn btn-ghost" onClick={exportRuns}>
@@ -695,6 +700,7 @@ function ClassPanel({
                     <span className="subhead" id={`grade-${cls.id}`}>
                       Niveau de la classe
                     </span>
+                    <Tip label="À propos du niveau">Tes élèves ne voient que les jeux de leur niveau, sans rien avoir à choisir.</Tip>
                     <div className="seg mt-1" role="radiogroup" aria-labelledby={`grade-${cls.id}`}>
                       {GRADES.map((g) => (
                         <button
@@ -715,10 +721,7 @@ function ClassPanel({
                         </button>
                       ))}
                     </div>
-                    <p className="mt-1 text-[14px] leading-snug text-ink/75">
-                      Tes élèves ne voient que les jeux de leur niveau, sans rien avoir à choisir.
-                      {grade === null && ' Niveau non fixé : chaque élève choisit sa classe.'}
-                    </p>
+                    {grade === null && <p className="mt-1 text-[14px]">Non fixé : chaque élève choisit.</p>}
                   </div>
                 )}
                 {cls.hide_board !== undefined && (
@@ -752,15 +755,15 @@ function ClassPanel({
             <>
               <div className="u-grid-stats">
                 <Stat label="Élèves" value={rows.length} />
-                <Stat label="Ont joué cette semaine" value={`${active7} / ${rows.length}`} />
-                <Stat label="Parties ce mois-ci" value={insights ? runs30 : '—'} />
-                <Stat label="Réussite récente" value={accAvg === null ? '—' : `${accAvg} %`} hint="moyenne des 5 dernières parties" />
+                <Stat label="Actifs cette semaine" value={`${active7} / ${rows.length}`} />
+                <Stat label="Parties en 30 jours" value={insights ? runs30 : '—'} />
+                <Stat label="Réussite" value={accAvg === null ? '—' : `${accAvg} %`} hint="Moyenne de la classe sur les 5 dernières parties de chaque élève." />
               </div>
               {insights === null && (
-                <p className="u-info">Les repères d’aide et les fiches élèves demandent la mise à jour <code>serveur/mise-a-jour-eleves.sql</code> (à lancer une fois dans Supabase).</p>
+                <p className="u-info">Fiches élèves indisponibles : mise à jour du serveur à faire.</p>
               )}
               {toWatch.length > 0 && (
-                <Card title="À suivre" note="Élèves qui ont peut-être besoin d’un coup de pouce. Cliquez pour ouvrir la fiche.">
+                <Card title="À suivre" note="Élèves qui ont peut-être besoin d’un coup de pouce : réussite basse en ce moment, ou pas de partie depuis 2 semaines.">
                   <ul className="u-watch">
                     {toWatch.map(({ r, f }) => (
                       <li key={r.id}>
@@ -773,6 +776,10 @@ function ClassPanel({
                   </ul>
                 </Card>
               )}
+              <p className="text-[15px]">
+                Clique sur un prénom pour ouvrir sa fiche.
+                <Tip label="Lire le tableau">« Réussite » : moyenne des 5 dernières parties (flèche : hausse ou baisse par rapport aux 5 d’avant). Clique sur un titre pour trier. L’export CSV contient tout.</Tip>
+              </p>
               <div className="tbl-wrap">
                 <table className="scores tbl">
                   <caption className="sr-only">Élèves de la classe : repère, parties, réussite récente, point à revoir, dernière partie. Cliquez sur un prénom pour ouvrir sa fiche.</caption>
@@ -788,7 +795,7 @@ function ClassPanel({
                         Parties
                       </SortTh>
                       <SortTh col="acc" sort={sort} onSort={toggle} numeric className="num c-sm">
-                        Réussite récente
+                        Réussite
                       </SortTh>
                       <SortTh col="weak" sort={sort} onSort={toggle} className="c-mid">
                         À revoir
@@ -878,9 +885,6 @@ function ClassPanel({
               </div>
             </>
           )}
-          <p className="sec-note">
-            Clique sur un prénom pour ouvrir sa fiche (courbes, erreurs, réussites), sur un titre pour trier. « Réussite récente » : moyenne de ses 5 dernières parties. L’export CSV contient tout.
-          </p>
         </section>
       )}
 
@@ -890,8 +894,9 @@ function ClassPanel({
             Ajouter des élèves
           </h2>
           <form onSubmit={add} className="form">
-            <label className="text-[14px] leading-snug" htmlFor="add-names">
-              Un prénom ou pseudo par ligne (jamais de nom complet) ; tu peux coller une liste. Chaque élève reçoit un code.
+            <label className="text-[15px]" htmlFor="add-names">
+              Un prénom par ligne
+              <Tip label="Conseils">Prénom ou pseudo, jamais de nom complet. Tu peux coller une liste. Chaque élève reçoit un code.</Tip>
             </label>
             <textarea
               id="add-names"
@@ -918,8 +923,8 @@ function ClassPanel({
                   </li>
                 ))}
               </ul>
-              <p className="mt-1 text-[14px] text-ink/75">
-                Note-les ou imprime la fiche maintenant : ils ne s’afficheront plus (tu pourras en créer de nouveaux).
+              <p className="mt-1 text-[15px]">
+                <strong>Imprime-les maintenant :</strong> ils ne s’afficheront plus.
               </p>
               <p className="mt-1">
                 <button type="button" className="btn btn-ghost" onClick={() => window.print()}>
@@ -938,9 +943,9 @@ function ClassPanel({
           <h2 id="clr-h" className="subhead">
             Effacer les résultats de {cls.name}
           </h2>
-          <p className="mt-2 text-[14px] leading-snug">
-            Efface les scores et l’historique de la classe, mais garde les élèves et leurs codes (idéal pour repartir de zéro à la rentrée). Pense à exporter
-            d’abord. Les parties de plus de {RETENTION_MONTHS} mois sont de toute façon effacées par le serveur.
+          <p className="mt-2 text-[15px] leading-snug">
+            Efface les scores ; garde les élèves et leurs codes. Exporte d’abord.
+            <Tip label="Bon à savoir">Idéal pour repartir de zéro à la rentrée. Les parties de plus de {RETENTION_MONTHS} mois sont de toute façon effacées par le serveur.</Tip>
           </p>
           <button type="button" className="btn btn-ghost mt-2" onClick={() => void clearRuns()}>
             Effacer les résultats
@@ -1012,8 +1017,9 @@ function AccountPanel({ email, act, onDeleted }: { email: string; act: <R>(f: ()
       <div className="mt-2 flex flex-col gap-3">
         {preview === null ? (
           <div className="danger">
-            <p className="text-[14px] leading-snug">
-              Tu peux supprimer ton compte enseignant. Rien n’est supprimé avant les étapes de confirmation qui suivent.
+            <p className="text-[15px] leading-snug">
+              Supprimer mon compte enseignant
+              <Tip label="Est-ce immédiat ?">Non : rien n’est supprimé avant les étapes de confirmation.</Tip>
             </p>
             <div className="mt-2">
               <button

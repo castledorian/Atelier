@@ -5,6 +5,7 @@ import { ApiError, explain } from '../server/api';
 import { fetchClassWeek, fetchSessions } from '../server/student';
 import type { ClassWeek, SessionInfo, StudentAccount } from '../server/types';
 import { Frame, Notice } from './Frame';
+import { Tip } from '../components/Tip';
 
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
@@ -44,15 +45,11 @@ export default function Sessions({ account, onBack, onPlay, onSessionLost }: { a
             {GAME_NAMES[s.game]} · {describeConfig(s.game, s.config).join(' · ')}
           </span>
           <span className="text-[14px]">
-            {!s.active
-              ? 'Séance fermée'
-              : left > 0
-                ? `${left} essai${left > 1 ? 's' : ''} restant${left > 1 ? 's' : ''} sur ${s.max_attempts}`
-                : `Terminée (${s.max_attempts} essais)`}
+            {!s.active ? 'Fermée' : left > 0 ? `${left} essai${left > 1 ? 's' : ''} sur ${s.max_attempts}` : 'Terminée'}
             {s.best_score !== null && (
               <>
                 {' '}
-                · meilleur score <strong>{fmt(s.best_score)}</strong>
+                · record <strong>{fmt(s.best_score)}</strong>
               </>
             )}
           </span>
@@ -72,15 +69,15 @@ export default function Sessions({ account, onBack, onPlay, onSessionLost }: { a
       <p className="eyebrow">
         {account.student.name} · {account.class.name}
       </p>
-      <h1 className="title-sm">Mes séances</h1>
+      <h1 className="title-sm">
+        Mes séances
+        <Tip label="Comment ça marche ?">Préparées par ton enseignant. Tu peux essayer plusieurs fois : seul ton meilleur score compte.</Tip>
+      </h1>
       <div className="rule" aria-hidden="true" />
-      <p className="mt-2 text-[15px] leading-snug">
-        Ce sont les séances préparées par ton enseignant. Tu peux t’essayer plusieurs fois&nbsp;: seul ton <strong>meilleur score</strong> compte.
-      </p>
       {week && week.games > 0 && <ClassGoal week={week} />}
       {err && <Notice kind="error">{err}</Notice>}
       {list === null && !err && <p className="mt-3 text-[15px]">Chargement…</p>}
-      {list !== null && list.length === 0 && <p className="mt-3 text-[15px]">Aucune séance pour l’instant. Tu peux jouer librement depuis l’accueil.</p>}
+      {list !== null && list.length === 0 && <p className="mt-3 text-[15px]">Aucune séance pour l’instant.</p>}
       {todo.length > 0 && (
         <>
           <h2 className="subhead mt-[var(--sp)]">À faire</h2>
@@ -103,7 +100,7 @@ function ClassGoal({ week }: { week: ClassWeek }) {
   return (
     <div className="class-goal mt-3">
       <p className="text-[15px]">
-        <strong>La classe a joué {week.games} partie{week.games > 1 ? 's' : ''}</strong> cette semaine. Prochain objectif&nbsp;: {goal}.
+        <strong>Classe : {week.games} partie{week.games > 1 ? 's' : ''}</strong> cette semaine · objectif {goal}
       </p>
       <div className="class-goal-bar" role="img" aria-label={`${week.games} parties sur ${goal}`}>
         <span style={{ width: `${Math.round((week.games / goal) * 100)}%` }} />

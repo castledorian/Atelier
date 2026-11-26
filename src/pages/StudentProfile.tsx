@@ -5,6 +5,7 @@ import { diffName, gameName, levelName, picksText } from '../game/balanceView';
 import { gameSummaries, missedItems, progressSeries, strengthsAndWeaknesses, summarySentence, trendOf, weeklyActivity } from '../game/studentView';
 import type { StudentDetail } from '../game/studentView';
 import * as T from '../server/teacher';
+import { Tip } from '../components/Tip';
 
 const day = (ms: number) => new Date(ms).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 const when = (ms: number) => new Date(ms).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -67,7 +68,8 @@ export default function StudentProfile({ id, name, onBack, act }: { id: string; 
       {!d && !failed && <p className="u-empty">Chargement de la fiche…</p>}
       {failed && (
         <p className="u-empty">
-          La fiche n’a pas pu être chargée. Si le message d’erreur parle d’une fonction absente, la mise à jour <code>mise-a-jour-eleves.sql</code> n’a pas encore été lancée dans Supabase.
+          Fiche indisponible.
+          <Tip label="Pourquoi ?">Le serveur n’a pas répondu, ou sa mise à jour « fiche élève » n’est pas encore faite.</Tip>
         </p>
       )}
 
@@ -78,14 +80,14 @@ export default function StudentProfile({ id, name, onBack, act }: { id: string; 
           <div className="u-grid-stats">
             <Stat label="Parties jouées" value={gameRuns.length} hint={d.runs.length > gameRuns.length ? `+ ${d.runs.length - gameRuns.length} entraînements` : undefined} />
             <Stat label="Temps de jeu" value={seconds ? dur(seconds) : '—'} />
-            <Stat label="Réussite moyenne" value={pct(accAll)} />
+            <Stat label="Réussite moyenne" value={pct(accAll)} hint="Moyenne de toutes ses parties (hors entraînements)." />
             <Stat label="Dernière partie" value={d.runs.length ? when(Math.max(...d.runs.map((r) => r.at))) : '—'} />
           </div>
 
           {summaries.length > 0 && (
             <Card
               title="Évolution de la réussite"
-              note="Chaque point est une partie ; le trait épais lisse les hauts et les bas sur 3 parties."
+              note="Point rouge : une partie. Trait noir : moyenne des 3 dernières parties, pour lisser les hauts et les bas."
               action={
                 summaries.length > 1 ? (
                   <div className="seg" role="radiogroup" aria-label="Jeu affiché">
@@ -162,7 +164,8 @@ export default function StudentProfile({ id, name, onBack, act }: { id: string; 
 
           {!hasItems && summaries.some((s) => DETAILED.includes(s.game)) && (
             <p className="u-info">
-              Le détail des erreurs se remplit à partir de la prochaine partie de l’élève (les parties déjà jouées n’avaient pas gardé ce détail). Frappe ! et Mémoire d’encre n’ont pas de calculs ni de mots à détailler : seules leurs parties sont suivies.
+              Détail des erreurs : dès la prochaine partie.
+              <Tip label="Pourquoi c’est vide ?">Les parties déjà jouées n’avaient pas gardé ce détail. Frappe ! et Mémoire d’encre n’ont ni calculs ni mots à détailler.</Tip>
             </p>
           )}
 

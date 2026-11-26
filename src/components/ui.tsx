@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import type { ReactNode } from 'react';
+import { Tip } from './Tip';
 
 /**
  * Éléments d'interface communs aux pages de données (espace enseignant, administration) : une seule façon de montrer un chiffre,
@@ -24,16 +25,18 @@ export function Pill({ tone = 'mute', children }: { tone?: Tone; children: React
   );
 }
 
-/** Carte : un titre, un contenu, éventuellement une action à droite du titre. */
+/** Carte : un titre (le détail éventuel est dans une bulle « i »), un contenu, éventuellement une action à droite du titre. */
 export function Card({ title, note, action, children, className = '' }: { title?: ReactNode; note?: ReactNode; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
     <section className={`u-card ${className}`}>
       {(title || action) && (
         <header className="u-card-head">
-          <div>
-            {title && <h2 className="u-card-title">{title}</h2>}
-            {note && <p className="u-card-note">{note}</p>}
-          </div>
+          {title && (
+            <h2 className="u-card-title">
+              {title}
+              {note && <Tip label={`À propos : ${typeof title === 'string' ? title : 'cette partie'}`}>{note}</Tip>}
+            </h2>
+          )}
           {action && <div className="u-card-action">{action}</div>}
         </header>
       )}
@@ -42,13 +45,15 @@ export function Card({ title, note, action, children, className = '' }: { title?
   );
 }
 
-/** Un chiffre clé avec son libellé. */
+/** Un chiffre clé avec son libellé ; la précision éventuelle va dans une bulle « i ». */
 export function Stat({ label, value, hint, tone }: { label: string; value: ReactNode; hint?: ReactNode; tone?: Tone }) {
   return (
     <div className={`u-stat${tone ? ` u-stat-${tone}` : ''}`}>
-      <div className="u-stat-label">{label}</div>
+      <div className="u-stat-label">
+        {label}
+        {hint && <Tip label={`À propos : ${label}`}>{hint}</Tip>}
+      </div>
       <div className="u-stat-value">{value}</div>
-      {hint && <div className="u-stat-hint">{hint}</div>}
     </div>
   );
 }

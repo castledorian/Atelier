@@ -4,6 +4,7 @@ import { ApiError, explain } from '../server/api';
 import { adminCreateInvitation, adminInvitations, adminRevokeInvitation, adminSetInviteOnly } from '../server/admin';
 import type { AdminInvitations as Data } from '../server/admin';
 import { Notice } from './Frame';
+import { Tip } from '../components/Tip';
 
 const day = (ms: number) => new Date(ms).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 const nice = (c: string) => `${c.slice(0, 4)} ${c.slice(4)}`;
@@ -74,11 +75,13 @@ export default function AdminInvitations({ onSignOut }: { onSignOut: () => void 
         <p className="mt-2 text-[14px] leading-snug">
           {data.invite_only ? (
             <>
-              <strong>Inscription sur invitation : activée.</strong> Tout le monde peut créer un compte, mais seul un enseignant qui saisit un code peut créer une école.
+              <strong>Inscription sur invitation : activée.</strong>
+              <Tip label="Ce que ça change">Tout le monde peut créer un compte, mais seul un enseignant qui saisit un code peut créer une école.</Tip>
             </>
           ) : (
             <>
-              <strong>Inscription sur invitation : désactivée.</strong> Tout enseignant avec un compte confirmé peut créer une école.
+              <strong>Inscription sur invitation : désactivée.</strong>
+              <Tip label="Ce que ça change">Tout enseignant avec un compte confirmé peut créer une école.</Tip>
             </>
           )}{' '}
           <button type="button" className="link" disabled={busy} onClick={() => void toggle(!data.invite_only)}>

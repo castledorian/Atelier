@@ -76,3 +76,11 @@ test('phrase de synthèse', () => {
   assert.match(s, /progresse/);
   assert.match(s, /fractions/);
 });
+
+import { todoFor } from '../src/server/versionLogic';
+test('un serveur qui ne connaît pas encore la fiche élève réclame sa mise à jour', () => {
+  const old = todoFor({ version: 18, features: { goutte: true }, missing: [] });
+  assert.ok(old.some((t) => t.file === 'mise-a-jour-eleves.sql'));
+  const ok = todoFor({ version: 19, features: { goutte: true, eleves: true }, missing: [] });
+  assert.ok(!ok.some((t) => t.file === 'mise-a-jour-eleves.sql'));
+});

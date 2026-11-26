@@ -41,7 +41,11 @@ export const STEPS: Array<[string, Step]> = [
   ['facteur', { file: 'mise-a-jour-facteur.sql', why: 'jeu « Le facteur » (séances, contrôle des parties, record)', critical: false }],
   ['goutte', { file: 'mise-a-jour-goutte.sql', why: 'Ma goutte sur le compte élève, équipe de la classe et courbe de la grotte', critical: false }],
   ['stats', { file: 'mise-a-jour-stats.sql', why: 'statistiques détaillées (onglet Équilibrage) et mots ratés du facteur', critical: false }],
+  ['eleves', { file: 'mise-a-jour-eleves.sql', why: 'fiche élève et repères de la classe (espace enseignant)', critical: false }],
 ];
+
+/** Fonctionnalités apparues après la version 18 du serveur : un serveur plus ancien ne les connaît pas. */
+const NEWER = ['eleves'];
 
 export interface Todo {
   file: string;
@@ -53,7 +57,8 @@ export interface Todo {
 export function todoFor(v: ServerVersion): Todo[] {
   const out: Todo[] = [];
   for (const [key, step] of STEPS) {
-    if (!v.missing.includes(key)) continue;
+    // une fonctionnalité plus récente que le serveur n'apparaît pas encore dans sa liste : elle manque aussi
+    if (!v.missing.includes(key) && !(NEWER.includes(key) && Object.keys(v.features).length > 0 && !(key in v.features))) continue;
     const have = out.find((t) => t.file === step.file);
     if (have) {
       have.why.push(step.why);

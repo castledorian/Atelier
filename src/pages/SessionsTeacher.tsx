@@ -18,6 +18,17 @@ import { LEX_DIFFS, LEX_LEVELS, LEX_RELS } from '../game/lexique/rounds';
 import type { LexDiff, LexLevel, Rel } from '../game/lexique/rounds';
 import type { Settings } from '../game/storage';
 import * as T from '../server/teacher';
+import { Tip } from '../components/Tip';
+
+/** Détail de chaque jeu, montré dans la bulle « i » du formulaire (la page reste courte). */
+const GAME_HELP: Record<string, string> = {
+  typing: 'Choisis la difficulté ; « Perso » ouvre les réglages détaillés.',
+  math: 'Les calculs suivent le programme du niveau ; la difficulté règle le temps et l’indulgence.',
+  spelling: 'Dix phrases par essai. La difficulté règle le nombre de propositions et l’indice.',
+  lexique: 'Synonymes, contraires, familles de mots. La difficulté règle vitesse, nombre de mots et vies.',
+  facteur: '16 colis par essai. Chaque niveau reprend les mots des précédents.',
+  memory: 'La Suite : refaire une suite dans l’ordre. Les Cases : retrouver des places sur une grille. « Départ » choisit la page du cahier où commencer.',
+};
 import type { ClassRow, ClassSession, SessionResultRow } from '../server/types';
 
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -185,7 +196,13 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
         </p>
         <p className="mt-1 text-[14px]">
           {done.length} élève{done.length > 1 ? 's' : ''} sur {rows.length} {done.length > 1 ? 'ont' : 'a'} joué
-          {done.length > 0 && <> · score moyen (meilleurs essais) : <strong>{fmt(avg)}</strong></>}
+          {done.length > 0 && (
+            <>
+              {' '}
+              · moyenne <strong>{fmt(avg)}</strong>
+              <Tip label="Calcul de la moyenne">Moyenne des meilleurs essais des élèves qui ont joué.</Tip>
+            </>
+          )}
         </p>
         <div className="mt-2 overflow-x-auto">
           <table className="scores">
@@ -236,10 +253,13 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
       <section className="sec" aria-labelledby="sform-h">
         <h2 id="sform-h" className="subhead mb-2">
           {draft.id ? 'Modifier la séance' : 'Nouvelle séance'}
+          <Tip label="À propos de ce réglage">
+            {GAME_HELP[draft.game]} Seul le meilleur essai de chaque élève compte ; tu vois tous ses essais.
+          </Tip>
         </h2>
         <form className="form" onSubmit={save}>
           <label className="cfg-label" htmlFor="ses-title">
-            Titre (vu par les élèves)
+            Titre
           </label>
           <input
             id="ses-title"
@@ -252,7 +272,12 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
           />
           <div className="cfg mt-2">
             <Seg label="Jeu" value={draft.game} options={GAMES.map((g) => [g, GAME_NAMES[g]] as [GameKind, string])} onChange={(game) => !locked && set({ game })} />
-            {locked && <p className="text-[14px] text-ink/70">Des élèves ont déjà joué : le jeu ne peut plus changer (les résultats resteraient incomparables).</p>}
+            {locked && (
+              <p className="text-[14px]">
+                Jeu verrouillé
+                <Tip label="Pourquoi ?">Des élèves ont déjà joué : changer de jeu rendrait les résultats incomparables.</Tip>
+              </p>
+            )}
 
             <div className="cfg-stack">
               <div className={pane('typing')}>
@@ -262,22 +287,18 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
               <div className={pane('math')}>
                 <Seg label="Niveau" value={draft.level} options={LEVELS.map((l) => [l.id, l.label] as [Level, string])} onChange={(level) => set({ level })} />
                 <Seg label="Difficulté" value={draft.courseDiff} options={COURSE_DIFFS.map((d) => [d.id, d.label] as [CourseDiff, string])} onChange={(courseDiff) => set({ courseDiff })} />
-                <p className="text-[14px] leading-snug text-ink/70">Les calculs suivent le programme du niveau ; la difficulté règle le temps et l’indulgence.</p>
               </div>
               <div className={pane('spelling')}>
                 <Seg label="Niveau" value={draft.level} options={LEVELS.filter((l) => AVAILABLE.spelling.includes(l.id)).map((l) => [l.id, l.label] as [Level, string])} onChange={(level) => set({ level })} />
                 <Seg label="Difficulté" value={draft.courseDiff} options={COURSE_DIFFS.map((d) => [d.id, d.label] as [CourseDiff, string])} onChange={(courseDiff) => set({ courseDiff })} />
-                <p className="text-[14px] leading-snug text-ink/70">Dix phrases par essai. La difficulté règle le nombre de propositions et la présence de l’indice.</p>
               </div>
               <div className={pane('lexique')}>
                 <Seg label="Consigne" value={draft.lexRel} options={LEX_RELS.map((r) => [r.id, r.label] as [Rel, string])} onChange={(lexRel) => set({ lexRel })} />
                 <Seg label="Niveau des mots" value={draft.lexLevel} options={LEX_LEVELS.map((l) => [l.id, l.label] as [LexLevel, string])} onChange={(lexLevel) => set({ lexLevel })} />
                 <Seg label="Difficulté" value={draft.lexDiff} options={LEX_DIFFS.map((d) => [d.id, d.label] as [LexDiff, string])} onChange={(lexDiff) => set({ lexDiff })} />
-                <p className="text-[14px] leading-snug text-ink/70">Synonymes, contraires, familles de mots. La difficulté règle vitesse, nombre de mots et vies.</p>
               </div>
               <div className={pane('facteur')}>
                 <Seg label="Niveau" value={draft.fLevel} options={F_LEVELS.map((l) => [l.id, l.label] as [FLevel, string])} onChange={(fLevel) => set({ fLevel })} />
-                <p className="text-[14px] leading-snug text-ink/70">Lecture de mots, 16 colis par essai. Chaque niveau reprend les mots des précédents.</p>
               </div>
               <div className={pane('memory')}>
                 <Seg label="Mode" value={draft.mode} options={MODES.map((m) => [m.id, m.label] as [Mode, string])} onChange={(mode) => set({ mode })} />
@@ -301,13 +322,11 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
             {draft.id && (
               <label className="opt" style={{ cursor: 'pointer' }}>
                 <input type="checkbox" checked={draft.active} onChange={(e) => set({ active: e.target.checked })} />
-                &nbsp;Séance ouverte (décocher pour la fermer : les élèves ne peuvent plus jouer)
+                &nbsp;Séance ouverte
+                <Tip label="Fermer une séance">Décoche pour la fermer : les élèves ne peuvent plus jouer.</Tip>
               </label>
             )}
           </div>
-          <p className="text-[14px] leading-snug text-ink/75">
-            Seul le <strong>meilleur score</strong> de chaque élève compte pour l’évaluation ; tu vois tous ses essais. Un essai est compté quand la partie est terminée.
-          </p>
           <div className="flex flex-wrap gap-3">
             <button type="submit" className="btn btn-primary" disabled={busy || draft.title.trim().length < 1}>
               {draft.id ? 'Enregistrer' : 'Créer la séance'}
@@ -325,10 +344,8 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
     <section className="sec" aria-labelledby="ses-h">
       <h2 id="ses-h" className="subhead mb-2">
         Séances de la classe
+        <Tip label="Qu’est-ce qu’une séance ?">Un jeu réglé pour la classe, à essayer 1 à 3 fois dans « Mes séances ». Le meilleur score compte.</Tip>
       </h2>
-      <p className="text-[14px] leading-snug text-ink/80">
-        Un jeu réglé pour la classe, à essayer 1 à 3 fois dans « Mes séances » ; le meilleur score compte.
-      </p>
       <div className="mt-2">
         <button type="button" className="btn btn-primary" onClick={() => setDraft(blank())}>
           + Nouvelle séance

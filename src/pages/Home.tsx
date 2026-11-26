@@ -5,6 +5,7 @@ import { Frame } from './Frame';
 import { SiteFooter } from './Info';
 import type { InfoView } from './Info';
 import { InfoButton } from '../components/Preview';
+import { Tip } from '../components/Tip';
 import type { PreviewGame } from '../components/Preview';
 import PreviewWindow from '../components/PreviewWindow';
 import type { InstallInfo } from '../components/Screens';
@@ -179,7 +180,8 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
       </h2>
       {classGrade ? (
         <p className="mt-1 text-[16px]">
-          <strong>{gradeLabel(classGrade)}</strong> <span className="text-ink/75">(choisi par ton enseignant)</span>
+          <strong>{gradeLabel(classGrade)}</strong>
+          <Tip label="Pourquoi je ne peux pas changer ?">Ta classe est choisie par ton enseignant.</Tip>
         </p>
       ) : (
         <div className="seg mt-1" role="radiogroup" aria-labelledby="grade-h">
@@ -226,11 +228,6 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
             </div>
           );
         })}
-        <div className="gcard gcard-soon" aria-label="Autres jeux à venir">
-          <span className="gcard-tag">Bientôt</span>
-          <span className="gcard-name">Autres jeux</span>
-          <span className="gcard-text">Conjugaison, géométrie… d’autres jeux arrivent.</span>
-        </div>
       </div>}
 
       {CAVE_ON && (student || teacher) && grade !== null && (
@@ -260,15 +257,17 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
       {(install.mode === 'prompt' || install.mode === 'ios') && (
         <section className="sec" aria-label="Installer l’application">
           {install.mode === 'prompt' ? (
+            <>
             <button type="button" className="btn btn-ghost" onClick={install.onInstall}>
-              Installer l’application sur cet appareil
+              Installer l’application
             </button>
+            <Tip label="À propos de l’installation">Les jeux s’ouvrent ensuite comme une application, même sans internet.</Tip>
+            </>
           ) : (
             <p className="text-[14px] leading-snug">
               Pour installer sur iPhone / iPad&nbsp;: touche <strong>Partager</strong> puis <strong>Sur l’écran d’accueil</strong>.
             </p>
           )}
-          <p className="mt-2 text-[14px] leading-snug text-ink/75">Les jeux s’ouvrent ensuite comme une application, même sans connexion internet.</p>
         </section>
       )}
       <SiteFooter onNav={onInfo} />

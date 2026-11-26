@@ -7,6 +7,7 @@ import type { AdminBalance as AdminBalanceData, AdminItems, GameStats, AdminLogs
 import AdminBalance from './AdminBalance';
 import AdminInvitations from './AdminInvitations';
 import { ServerNotice } from '../components/ServerNotice';
+import { Tip } from '../components/Tip';
 import { Frame, Notice } from './Frame';
 import Cave from './Cave';
 import Dashboard from './Dashboard';
@@ -148,7 +149,10 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
       </div>
       <div className="dash-head">
         <div>
-          <p className="eyebrow">Administration du site</p>
+          <p className="eyebrow">
+            Administration du site
+            <Tip label="Confidentialité de cet espace">Les codes des élèves ne sont jamais affichés. Chaque consultation et chaque invitation sont enregistrées (qui, quand, quoi).</Tip>
+          </p>
           <h1 className="title-sm">Suivre et inviter</h1>
         </div>
         <div className="dash-who">
@@ -178,7 +182,6 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
         ))}
       </div>
 
-      <p className="adm-note">Les codes d’accès des élèves ne sont jamais affichés. Chaque consultation de cet espace et chaque invitation sont enregistrées (qui, quand, quoi).</p>
       {err && <Notice kind="error">{err}</Notice>}
       <ServerNotice mode="admin" />
 
@@ -392,8 +395,10 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
               </table>
             </div>
 
-            <h2 className="subhead mt-4">Parties refusées (anti-triche)</h2>
-            <p className="adm-note">Parties impossibles à réaliser normalement, non enregistrées. Effacées après 90 jours.</p>
+            <h2 className="subhead mt-4">
+              Parties refusées (anti-triche)
+              <Tip label="Parties refusées">Parties impossibles à réaliser normalement, non enregistrées. Effacées après 90 jours.</Tip>
+            </h2>
             <div className="adm-wrap">
               <table className="adm-table">
                 <thead>

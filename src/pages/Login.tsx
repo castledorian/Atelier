@@ -2,6 +2,7 @@ import { BackButton } from '../components/BackButton';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Frame, Notice } from './Frame';
+import { Tip } from '../components/Tip';
 import { explain } from '../server/api';
 import { studentLogin } from '../server/student';
 import type { StudentAccount } from '../server/types';
@@ -41,11 +42,11 @@ export default function Login({ initialTab, recovery, onStudent, onTeacher, onBa
       )}
 
       {tab === 'student' ? <StudentForm onDone={onStudent} /> : <TeacherForm recovery={recovery} onDone={onTeacher} />}
-      <p className="mt-4 text-[14px] text-ink/75">
-        {tab === 'student' ? 'Ton enseignant voit ton prénom et tes résultats. ' : ''}
+      <p className="mt-4 text-[14px]">
         <button type="button" className="link" onClick={onPrivacy}>
           Confidentialité
         </button>
+        {tab === 'student' && <Tip label="Qui voit mes résultats ?">Ton enseignant voit ton prénom et tes résultats.</Tip>}
       </p>
     </Frame>
   );
@@ -72,9 +73,8 @@ function StudentForm({ onDone }: { onDone: (a: StudentAccount) => void }) {
 
   return (
     <form className="form" onSubmit={submit} aria-label="Connexion élève">
-      <p className="text-[15px] leading-snug">Tape le code personnel que ton enseignant t’a donné.</p>
       <label className="subhead" htmlFor="s-code">
-        Ton code (8 caractères)
+        Ton code
       </label>
       <input
         id="s-code"
@@ -95,6 +95,7 @@ function StudentForm({ onDone }: { onDone: (a: StudentAccount) => void }) {
         <button type="submit" className="btn btn-primary" disabled={clean.length !== 8 || busy}>
           {busy ? 'Connexion…' : 'Entrer'}
         </button>
+        <Tip label="Où trouver mon code ?">Les 8 lettres et chiffres donnés par ton enseignant.</Tip>
       </div>
     </form>
   );
@@ -153,11 +154,6 @@ function TeacherForm({ recovery, onDone }: { recovery: boolean; onDone: (s: Teac
   return (
     <form className="form" onSubmit={submit} aria-label={title}>
       <h2 className="subhead">{title}</h2>
-      {mode === 'signup' && (
-        <p className="text-[14px] leading-snug text-ink/80">
-          Le compte est gratuit. Tu pourras ensuite créer ton école, tes classes et les codes de tes élèves.
-        </p>
-      )}
       {mode !== 'newpass' && (
         <>
           <label className="subhead" htmlFor="t-mail">
@@ -169,7 +165,8 @@ function TeacherForm({ recovery, onDone }: { recovery: boolean; onDone: (s: Teac
       {mode !== 'recover' && (
         <>
           <label className="subhead" htmlFor="t-pw">
-            {mode === 'newpass' ? 'Nouveau mot de passe' : 'Mot de passe'} (8 caractères minimum)
+            {mode === 'newpass' ? 'Nouveau mot de passe' : 'Mot de passe'}
+            {mode !== 'login' && <Tip label="Règle du mot de passe">8 caractères au minimum.</Tip>}
           </label>
           <input
             id="t-pw"

@@ -9,6 +9,7 @@ import { ACTION_LABEL, adviceText, countByAction, exerciseAdvice } from '../game
 import type { Action, ExerciseAdvice } from '../game/exerciseAdvice';
 import { CONFIDENCE_LABEL, confidenceOf } from '../game/reliability';
 import { Card, Pill, RangeBar } from '../components/ui';
+import { Tip } from '../components/Tip';
 import type { Tone } from '../components/ui';
 
 const ORDER = ['cp', 'ce1', 'ce2', 'cm1', 'cm2'];
@@ -99,11 +100,12 @@ export default function AdminBalance({ levels: allTime, stats, detail, days, onD
 
       <ExercisePanel rules={stats.rules} items={stats.items} />
 
-      <h2 className="subhead mt-4">Réussite par niveau</h2>
-      <p className="adm-note">
-        Objectif : Apprenti ≈ {TARGET.apprenti} %, Standard ≈ {TARGET.standard} %, Expert ≈ {TARGET.expert} % de manches réussies du premier coup (± {TOLERANCE} points) ; Le facteur ≈ {FACTEUR_TARGET} % de colis rangés du premier coup.
-        Jugé à partir de 150 manches. Parties libres d’élèves connectés seulement.
-      </p>
+      <h2 className="subhead mt-4">
+        Réussite par niveau
+        <Tip label="Objectifs">
+          Apprenti ≈ {TARGET.apprenti} %, Standard ≈ {TARGET.standard} %, Expert ≈ {TARGET.expert} % de manches réussies du premier coup (± {TOLERANCE} points) ; Le facteur ≈ {FACTEUR_TARGET} %. Jugé à partir de 150 manches, parties libres seulement.
+        </Tip>
+      </h2>
       <p className="adm-note adm-actions">
         <button type="button" className="link" onClick={() => downloadText(`reussite-par-niveau-${stamp()}.csv`, levelsCsv(levels))} disabled={levels.length === 0}>
           Exporter en CSV
@@ -217,12 +219,13 @@ export default function AdminBalance({ levels: allTime, stats, detail, days, onD
         <button type="button" className="link" onClick={() => downloadText(`exercices-rates-${stamp()}.csv`, itemsCsv(stats.rules, stats.items))} disabled={stats.rules.length + stats.items.length === 0}>
           Exporter tous les exercices en CSV
         </button>
-        <span>Les exercices posés moins de 5 fois sont masqués ici (trop peu fiables).</span>
+        <Tip label="Exercices masqués">Les exercices posés moins de 5 fois sont masqués ici (trop peu fiables). Le CSV les contient tous.</Tip>
       </p>
 
       {families.length === 0 && items.length === 0 ? (
         <p className="adm-note">
-          Pas encore de données. Elles viennent des parties libres d’élèves connectés ; si rien n’apparaît, vérifiez la mise à jour SQL « exercices ».
+          Pas encore de données.
+          <Tip label="D’où viennent les données ?">Des parties libres d’élèves connectés. Si rien n’apparaît, vérifiez la mise à jour SQL « exercices ».</Tip>
         </p>
       ) : (
         <>
@@ -458,8 +461,10 @@ function Activity({ g }: { g: GameStats }) {
 
       {g.cheats.length > 0 && (
         <>
-          <h2 className="subhead mt-4">Parties refusées par le serveur</h2>
-          <p className="adm-note">Beaucoup de refus pour une même raison, chez plusieurs élèves : la borne est sans doute trop stricte.</p>
+          <h2 className="subhead mt-4">
+            Parties refusées par le serveur
+            <Tip label="Comment lire">Beaucoup de refus pour une même raison, chez plusieurs élèves : la borne est sans doute trop stricte.</Tip>
+          </h2>
           <div className="adm-wrap">
             <table className="adm-table">
               <caption className="sr-only">Parties refusées, par jeu et par raison</caption>
@@ -554,10 +559,10 @@ function ByGrade({ g }: { g: GameStats }) {
   if (present.length === 0) return null;
   return (
     <>
-      <h2 className="subhead mt-4">Par niveau de classe</h2>
-      <p className="adm-note">
-        Parties libres, regroupées par niveau de la classe (fixé par l’enseignant) et par mode joué. Réussite : médiane des parties ; score : médiane (1er–3e quartile).
-      </p>
+      <h2 className="subhead mt-4">
+        Par niveau de classe
+        <Tip label="Comment lire">Parties libres, regroupées par niveau de la classe (fixé par l’enseignant) et par mode joué. Réussite : médiane des parties ; score : médiane (1er–3e quartile).</Tip>
+      </h2>
       <div className="adm-filters">
         <label>
           Jeu
@@ -639,8 +644,10 @@ function ByGrade({ g }: { g: GameStats }) {
         </div>
       )}
 
-      <h3 className="font-bold mt-3">Par classe</h3>
-      <p className="adm-note">Seulement les classes où au moins 3 élèves ont joué à ce jeu (jamais un élève isolé). Séances comprises.</p>
+      <h3 className="font-bold mt-3">
+        Par classe
+        <Tip label="Classes affichées">Seulement les classes où au moins 3 élèves ont joué à ce jeu (jamais un élève isolé). Séances comprises.</Tip>
+      </h3>
       {classes.length === 0 ? (
         <p className="adm-note">Aucune classe de 3 joueurs ou plus pour ce jeu.</p>
       ) : (
@@ -730,7 +737,7 @@ export function ExercisePanel({ rules, items }: { rules: AdminItems['rules']; it
     <Card
       className="mt-4"
       title="Exercice par exercice"
-      note="Chaque famille de calculs, règle ou mot est comparé à l’objectif de son niveau, avec sa marge d’incertitude. Ce sont des règles de calcul : rien n’est deviné."
+      note="Chaque famille de calculs, règle ou mot est comparée à l’objectif de son niveau. Une conclusion n’est tirée que si toute la marge d’incertitude (95 %) est du même côté de l’objectif. Barre : zone hachurée = objectif, trait noir = marge, trait rouge = valeur mesurée."
     >
       {all.length === 0 ? (
         <p className="u-empty">Pas encore de données : elles viennent des parties libres d’élèves connectés.</p>
