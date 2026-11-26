@@ -30,7 +30,7 @@ interface Props {
   onSignOut: () => void;
   onAccountDeleted: () => void;
   /** administrateur du site : on regarde l'espace d'une école, sans rien pouvoir modifier */
-  observe?: { schoolId: string; schoolName: string; onQuit: () => void };
+  observe?: { schoolId: string; schoolName: string; onQuit: () => void; /** ouvrir l'écran d'un élève (lecture seule) */ onStudent?: (id: string, name: string, label: string) => void };
 }
 
 export default function Dashboard({ email, onHome, onSignOut, onAccountDeleted, observe }: Props) {
@@ -213,6 +213,7 @@ export default function Dashboard({ email, onHome, onSignOut, onAccountDeleted, 
                   key={cls.id}
                   cls={cls}
                   schoolName={school.name}
+                  onStudentScreen={observe?.onStudent ? (id, name) => observe.onStudent?.(id, name, `${name} · ${cls.name} · ${school.name}`) : undefined}
                   act={act}
                   onDeleted={() => schoolId && void loadClasses(schoolId)}
                 />
@@ -496,11 +497,13 @@ function ClassPanel({
   schoolName,
   act,
   onDeleted,
+  onStudentScreen,
 }: {
   cls: ClassRow;
   schoolName: string;
   act: Act;
   onDeleted: () => void;
+  onStudentScreen?: (id: string, name: string) => void;
 }) {
   const [rawRows, setRows] = useState<Overview[] | null>(null);
   const [insights, setInsights] = useState<T.Insight[] | null>(null);
@@ -607,7 +610,16 @@ function ClassPanel({
     ['danger', 'Supprimer'],
   ];
 
-  if (openStudent) return <StudentProfile id={openStudent.id} name={openStudent.name} act={act} onBack={() => setOpenStudent(null)} />;
+  if (openStudent)
+    return (
+      <StudentProfile
+        id={openStudent.id}
+        name={openStudent.name}
+        act={act}
+        onBack={() => setOpenStudent(null)}
+        onScreen={onStudentScreen ? () => onStudentScreen(openStudent.id, openStudent.name) : undefined}
+      />
+    );
 
   const now = NOW();
   const weekAgo = now - 7 * 86_400_000;
@@ -642,7 +654,7 @@ function ClassPanel({
             </Tip>
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <button type="button" className="btn btn-ghost" onClick={exportRuns}>
+            <button type="button" data-observe-ok className="btn btn-ghost" onClick={exportRuns}>
               Exporter (CSV)
             </button>
             <button type="button" className="btn btn-ghost" onClick={() => void clearRuns()}>
@@ -659,10 +671,10 @@ function ClassPanel({
               Élèves et résultats · {cls.name}
             </h2>
             <div className="flex flex-wrap gap-2">
-              <button type="button" className="btn btn-ghost" onClick={() => void reload()}>
+              <button type="button" data-observe-ok className="btn btn-ghost" onClick={() => void reload()}>
                 Actualiser
               </button>
-              <button type="button" className="btn btn-ghost" onClick={exportRuns}>
+              <button type="button" data-observe-ok className="btn btn-ghost" onClick={exportRuns}>
                 Exporter (CSV)
               </button>
               <button type="button" className="btn btn-ghost" disabled={!(rows ?? []).some((r) => codeOf(r))} onClick={() => window.print()}>
@@ -767,7 +779,7 @@ function ClassPanel({
                   <ul className="u-watch">
                     {toWatch.map(({ r, f }) => (
                       <li key={r.id}>
-                        <button type="button" className="u-name" onClick={() => setOpenStudent({ id: r.id, name: r.name })}>
+                        <button type="button" data-observe-ok className="u-name" onClick={() => setOpenStudent({ id: r.id, name: r.name })}>
                           {r.name}
                         </button>
                         <Pill tone={FLAG_TONE[f.flag]}>{f.label}</Pill>
@@ -818,7 +830,7 @@ function ClassPanel({
                       return (
                         <tr key={r.id}>
                           <td>
-                            <button type="button" className="u-name" onClick={() => setOpenStudent({ id: r.id, name: r.name })}>
+                            <button type="button" data-observe-ok className="u-name" onClick={() => setOpenStudent({ id: r.id, name: r.name })}>
                               {r.name}
                             </button>
                           </td>

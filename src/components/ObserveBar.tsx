@@ -17,8 +17,11 @@ export function ObserveBar({ label, onQuit }: { label: string; onQuit: () => voi
   );
 }
 
-/** Ce qu'on peut encore toucher en observation : changer d'onglet, trier un tableau, ouvrir ou fermer un volet. */
-const NAV = '[role="tab"], .th-sort, summary';
+/**
+ * Ce qu'on peut encore toucher en observation : changer d'onglet, trier un tableau, ouvrir un volet, une bulle « i »,
+ * et tout ce qui est marqué `data-observe-ok` (consultation pure : fiche élève, résultats de séance, export).
+ */
+const NAV = '[role="tab"], .th-sort, summary, .tip-i, [data-observe-ok]';
 
 /**
  * Zone en lecture seule : les clics, saisies et envois de formulaire qui ne servent pas à naviguer sont interceptés avant d'atteindre

@@ -5296,9 +5296,9 @@ th[aria-sort='descending'] .th-sort {
   background: #fffaf0;
   border-color: #3d2900;
 }
-.observe-lock button:not([role='tab']):not(.th-sort),
+.observe-lock button:not([role='tab']):not(.th-sort):not(.tip-i):not([data-observe-ok]):not([data-observe-ok] *),
 .observe-lock input,
-.observe-lock select,
+.observe-lock select:not([data-observe-ok] *),
 .observe-lock textarea {
   opacity: 0.55;
   cursor: not-allowed;

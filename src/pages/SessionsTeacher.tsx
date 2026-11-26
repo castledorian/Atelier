@@ -184,7 +184,7 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
     const done = rows.filter((r) => r.attempts > 0);
     const avg = done.length ? done.reduce((a, r) => a + (r.best_score ?? 0), 0) / done.length : 0;
     return (
-      <section className="sec" aria-labelledby="sres-h">
+      <section className="sec" aria-labelledby="sres-h" data-observe-ok>
         <button type="button" className="link" onClick={() => setView(null)}>
           ← Toutes les séances
         </button>
@@ -372,7 +372,7 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <button type="button" className="btn btn-primary" onClick={() => void open(s)}>
+                <button type="button" data-observe-ok className="btn btn-primary" onClick={() => void open(s)}>
                   Résultats
                 </button>
                 <button type="button" className="btn btn-ghost" onClick={() => setDraft(draftOf(s))}>

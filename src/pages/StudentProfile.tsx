@@ -17,7 +17,7 @@ const DETAILED = ['math', 'spelling', 'facteur'];
 type Act = <R>(f: () => Promise<R>) => Promise<R | undefined>;
 
 /** Fiche d'un élève : où il progresse, où il bute, ce qu'il a joué. Pensée pour aider, jamais pour classer. */
-export default function StudentProfile({ id, name, onBack, act }: { id: string; name: string; onBack: () => void; act: Act }) {
+export default function StudentProfile({ id, name, onBack, act, onScreen }: { id: string; name: string; onBack: () => void; act: Act; /** administrateur : voir l'écran de l'élève */ onScreen?: () => void }) {
   const [d, setD] = useState<StudentDetail | null>(null);
   const [failed, setFailed] = useState(false);
   const [game, setGame] = useState<string | null>(null);
@@ -53,10 +53,17 @@ export default function StudentProfile({ id, name, onBack, act }: { id: string; 
   const trendText = trend.kind === 'few' ? 'Pas assez de parties' : trend.kind === 'up' ? `En progrès (+${trend.delta} pts)` : trend.kind === 'down' ? `En baisse (${trend.delta} pts)` : 'Stable';
 
   return (
-    <div className="u-page">
-      <button type="button" className="u-back" onClick={onBack}>
-        <span aria-hidden="true">←</span> Retour à la classe
-      </button>
+    <div className="u-page" data-observe-ok>
+      <div className="u-hero">
+        <button type="button" className="u-back" onClick={onBack}>
+          <span aria-hidden="true">←</span> Retour à la classe
+        </button>
+        {onScreen && (
+          <button type="button" className="btn btn-ghost" onClick={onScreen}>
+            Voir son écran d’élève
+          </button>
+        )}
+      </div>
       <header className="u-hero">
         <div>
           <p className="u-eyebrow">Fiche élève{d ? ` · ${d.student.class_name}` : ''}</p>

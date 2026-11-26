@@ -24,7 +24,7 @@ const game = (g: string | null) => (g ? (GAME_NAME[g] ?? g) : '—');
 type Watch =
   | { kind: 'teacher'; schoolId: string; schoolName: string }
   | { kind: 'class'; classId: string; label: string }
-  | { kind: 'student'; studentId: string; name: string; label: string; account?: StudentAccount };
+  | { kind: 'student'; studentId: string; name: string; label: string; account?: StudentAccount; /** observation d'où l'on vient (retour) */ back?: Watch };
 
 type Tab = 'overview' | 'school' | 'balance' | 'logs' | 'invites';
 
@@ -137,10 +137,15 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
   const max = Math.max(1, ...(ov?.daily.map((d) => d.runs) ?? [1]));
 
   if (watch?.kind === 'teacher') {
-    return <Dashboard email={email} onHome={() => setWatch(null)} onSignOut={onSignOut} onAccountDeleted={() => setWatch(null)} observe={{ schoolId: watch.schoolId, schoolName: watch.schoolName, onQuit: () => setWatch(null) }} />;
+    return <Dashboard email={email} onHome={() => setWatch(null)} onSignOut={onSignOut} onAccountDeleted={() => setWatch(null)} observe={{
+          schoolId: watch.schoolId,
+          schoolName: watch.schoolName,
+          onQuit: () => setWatch(null),
+          onStudent: (studentId, name, label) => void observe({ kind: 'student', studentId, name, label, back: watch }),
+        }} />;
   }
   if (watch?.kind === 'class') return <Cave onBack={() => setWatch(null)} observe={{ source: { kind: 'class', classId: watch.classId }, label: watch.label, onQuit: () => setWatch(null) }} />;
-  if (watch?.kind === 'student' && watch.account) return <ObserveStudent account={watch.account} label={watch.label} onQuit={() => setWatch(null)} />;
+  if (watch?.kind === 'student' && watch.account) return <ObserveStudent account={watch.account} label={watch.label} onQuit={() => setWatch(watch.back ?? null)} />;
 
   return (
     <Frame wide fill>
