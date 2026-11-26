@@ -164,24 +164,70 @@ export type Flag = 'never' | 'inactive' | 'struggling' | 'rising' | 'steady';
 export interface FlagInfo {
   flag: Flag;
   label: string;
+  /** jeu concerné (réussite basse ou progrès), sinon null */
+  game: string | null;
 }
 
-/** Un seul repère par élève, pour repérer d'un coup d'œil qui a besoin d'attention. Jamais une note. */
-export function flagOf(recent: { last_played: number | null; runs_30d: number; acc_recent: number | null; acc_prev: number | null }, now: number): FlagInfo {
-  if (recent.last_played === null) return { flag: 'never', label: 'N’a pas encore joué' };
-  if (now - recent.last_played > 14 * DAY) return { flag: 'inactive', label: 'N’a pas joué depuis 2 semaines' };
-  if (recent.acc_recent !== null && recent.runs_30d >= 3 && recent.acc_recent < 60) return { flag: 'struggling', label: 'Réussite basse en ce moment' };
-  if (recent.acc_recent !== null && recent.acc_prev !== null && recent.acc_recent - recent.acc_prev >= 8) return { flag: 'rising', label: 'En progrès' };
-  return { flag: 'steady', label: 'Régulier' };
+/**
+ * Jeux dont la valeur « acc » est un taux de bonnes réponses. Frappe ! en est exclu : sa valeur est une précision de frappe
+ * (souvent au-dessus de 90 %), qu'on ne peut ni comparer ni moyenner avec un taux de bonnes réponses.
+ */
+export const SUCCESS_GAMES = ['math', 'spelling', 'facteur', 'lexique', 'memory'];
+
+/** Ce que mesure « acc » pour un jeu. */
+export const metricOf = (game: string) => (game === 'typing' ? 'précision' : 'réussite');
+
+/** Réussite récente d'un élève à UN jeu : ses 5 dernières parties (n), et les 5 d'avant (n_prev). */
+export interface GameRecent {
+  game: string;
+  n: number;
+  n_prev: number;
+  acc_recent: number | null;
+  acc_prev: number | null;
+}
+
+/** Au moins ce nombre de parties récentes à un jeu avant d'en tirer un repère. */
+export const MIN_RECENT = 3;
+
+const rated = (games: readonly GameRecent[] | undefined) =>
+  (games ?? []).filter((g) => SUCCESS_GAMES.includes(g.game) && g.n >= MIN_RECENT && g.acc_recent !== null);
+
+/** Le jeu où l'élève réussit le moins en ce moment (celui qui mérite l'attention), ou null. */
+export function focusGame(games: readonly GameRecent[] | undefined): GameRecent | null {
+  const list = rated(games);
+  if (list.length === 0) return null;
+  return list.reduce((a, b) => ((b.acc_recent as number) < (a.acc_recent as number) ? b : a));
+}
+
+/** Écart entre les 5 dernières parties et les 5 d'avant, pour un jeu (null s'il n'y a pas assez de parties anciennes). */
+export const deltaOf = (g: GameRecent | null): number | null =>
+  g && g.acc_recent !== null && g.acc_prev !== null && g.n_prev >= MIN_RECENT ? Math.round(g.acc_recent - g.acc_prev) : null;
+
+/**
+ * Un seul repère par élève, pour repérer d'un coup d'œil qui a besoin d'attention. Jamais une note.
+ * Tout est calculé JEU PAR JEU : un élève n'est jamais jugé sur un mélange de jeux différents.
+ */
+export function flagOf(recent: { last_played: number | null; games?: readonly GameRecent[] }, now: number, name: (g: string) => string = (g) => g): FlagInfo {
+  if (recent.last_played === null) return { flag: 'never', label: 'N’a pas encore joué', game: null };
+  if (now - recent.last_played > 14 * DAY) return { flag: 'inactive', label: 'N’a pas joué depuis 2 semaines', game: null };
+  const low = focusGame(recent.games);
+  if (low && (low.acc_recent as number) < 60) return { flag: 'struggling', label: `Réussite basse · ${name(low.game)}`, game: low.game };
+  const up = rated(recent.games)
+    .map((g) => ({ g, d: deltaOf(g) }))
+    .filter((x): x is { g: GameRecent; d: number } => x.d !== null && x.d >= 8)
+    .sort((a, b) => b.d - a.d)[0];
+  if (up) return { flag: 'rising', label: `En progrès · ${name(up.g.game)}`, game: up.g.game };
+  return { flag: 'steady', label: 'Régulier', game: null };
 }
 
 /** Phrase d'accompagnement générée à partir des chiffres (aucune supposition au-delà des données). */
-export function summarySentence(name: string, runs: readonly StudentRun[], weak: readonly RuleStat[], strong: readonly RuleStat[], trend: Trend): string {
+export function summarySentence(name: string, runs: readonly StudentRun[], weak: readonly RuleStat[], strong: readonly RuleStat[], trend: Trend, game?: { label: string; metric: string }): string {
+  const what = game ? `sa ${game.metric} à ${game.label}` : 'sa réussite';
   const games = runs.filter((r) => r.kind === 'game').length;
   if (games === 0) return `${name} n’a pas encore joué.`;
   const parts: string[] = [];
-  if (trend.kind === 'up') parts.push(`sa réussite progresse (+${trend.delta} points sur ses dernières parties)`);
-  else if (trend.kind === 'down') parts.push(`sa réussite baisse (${trend.delta} points sur ses dernières parties)`);
+  if (trend.kind === 'up') parts.push(`${what} progresse (+${trend.delta} points sur ses dernières parties)`);
+  else if (trend.kind === 'down') parts.push(`${what} baisse (${trend.delta} points sur ses dernières parties)`);
   if (weak.length) parts.push(`à retravailler : ${weak.slice(0, 2).map((w) => w.label.toLowerCase()).join(' et ')}`);
   if (strong.length) parts.push(`bien maîtrisé : ${strong.slice(0, 2).map((w) => w.label.toLowerCase()).join(' et ')}`);
   return parts.length ? `${name} — ${parts.join(' ; ')}.` : `${name} a joué ${games} partie${games > 1 ? 's' : ''} ; pas encore assez de données pour une tendance.`;

@@ -690,7 +690,8 @@ select pg_temp.eq('fiche : mauvaise réponse gardée', (select e->'picks'->>'54'
 select pg_temp.eq('fiche : parties de l''élève', jsonb_array_length(public.student_detail((select v::uuid from ctx where k='zid'))->'runs'), 1);
 select pg_temp.eq('fiche : nom et classe', public.student_detail((select v::uuid from ctx where k='zid'))->'student'->>'class_name', 'CE2 X');
 select pg_temp.eq('aperçu de classe : un élève par ligne', jsonb_array_length(public.class_insights((select v::uuid from ctx where k='classX'))) >= 5, true);
-select pg_temp.eq('aperçu de classe : réussite récente de Zoé', (select (e->>'acc_recent')::numeric from jsonb_array_elements(public.class_insights((select v::uuid from ctx where k='classX'))) e where e->>'name' = 'Zoé'), 70.0);
+select pg_temp.eq('aperçu de classe : réussite récente de Zoé, jeu par jeu', (select (g->>'acc_recent')::numeric from jsonb_array_elements(public.class_insights((select v::uuid from ctx where k='classX'))) e, jsonb_array_elements(e->'games') g where e->>'name' = 'Zoé' and g->>'game' = 'math'), 70.0);
+select pg_temp.eq('aperçu de classe : nombre de parties récentes', (select (g->>'n')::int from jsonb_array_elements(public.class_insights((select v::uuid from ctx where k='classX'))) e, jsonb_array_elements(e->'games') g where e->>'name' = 'Zoé' and g->>'game' = 'math'), 1);
 select pg_temp.eq('aperçu de classe : point faible repéré', (select e->'weak'->>'label' from jsonb_array_elements(public.class_insights((select v::uuid from ctx where k='classX'))) e where e->>'name' = 'Zoé'), 'Tables de multiplication');
 select pg_temp.as_user('bbbbbbbb-0000-0000-0000-000000000002');
 select pg_temp.fails($$select public.student_detail('$$||(select v from ctx where k='zid')||$$'::uuid)$$, 'forbidden');
@@ -704,6 +705,34 @@ select pg_temp.eq('fiche : observation notée dans le journal', (select count(*)
 select pg_temp.as_anon();
 select pg_temp.eq('fiche : un jeton d''observation n''écrit rien', public.submit_student_items('obs:' || (select v from ctx where k='zid'), 'math', 'cm1', '[]'::jsonb)->>'error', 'invalid_session');
 select pg_temp.as_admin();
-select pg_temp.eq('fiche : serveur en version 19', (select public.server_version()->>'version' from (select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001')) z), '19');
+
+-- ───────────────────────── Fiche élève : envoi rattaché à une partie, dispersion pour l'administrateur ─────────────────────────
+select pg_temp.as_anon();
+select pg_temp.eq('erreurs : partie inconnue → réessayer plus tard', public.submit_student_items((select v from ctx where k='tok_z'), 'zz99999999', 'math', 'cm1', 'standard', '[{"k":"rule","i":"frac","l":"Fractions","n":4,"e":2}]'::jsonb)->>'error', 'no_run');
+select pg_temp.eq('erreurs : identifiant de partie mal formé refusé', public.submit_student_items((select v from ctx where k='tok_z'), 'x', 'math', 'cm1', 'standard', '[]'::jsonb)->>'error', 'invalid_data');
+select pg_temp.eq('erreurs : difficulté mal formée refusée', public.submit_student_items((select v from ctx where k='tok_z'), 'zz00000001', 'math', 'cm1', 'EXPERT!', '[]'::jsonb)->>'error', 'invalid_data');
+select pg_temp.eq('erreurs : rattachées à la partie reçue', (public.submit_student_items((select v from ctx where k='tok_z'), 'zz00000001', 'math', 'cm1', 'standard', '[{"k":"rule","i":"frac","l":"Fractions","n":4,"e":2}]'::jsonb)->>'stored')::int, 1);
+select pg_temp.eq('erreurs : un renvoi n''est pas compté deux fois', public.submit_student_items((select v from ctx where k='tok_z'), 'zz00000001', 'math', 'cm1', 'standard', '[{"k":"rule","i":"frac","l":"Fractions","n":4,"e":2}]'::jsonb)->>'duplicate', 'true');
+reset role;
+-- une partie jouée il y a 3 jours (réseau revenu tard) : ses erreurs sont acceptées
+insert into public.runs (client_id, student_id, class_id, school_id, game, mode, kind, score, wave, wpm, acc, correct, duration, played_at)
+select 'zz00000002', s.id, s.class_id, s.school_id, 'math', 'cm1-standard', 'game', 150, 2, 0, 50, 10, 90, now() - interval '3 days' from public.students s where s.id = (select v::uuid from ctx where k='zid');
+select pg_temp.as_anon();
+select pg_temp.eq('erreurs : une partie ancienne reçue tard est acceptée', (public.submit_student_items((select v from ctx where k='tok_z'), 'zz00000002', 'math', 'cm1', 'standard', '[{"k":"rule","i":"frac","l":"Fractions","n":4,"e":3}]'::jsonb)->>'stored')::int, 1);
+select pg_temp.eq('erreurs : jeton d''un autre élève → partie introuvable', public.submit_student_items((select v from ctx where k='tok_gtt'), 'zz00000001', 'math', 'cm1', 'standard', '[{"k":"rule","i":"frac","l":"Fractions","n":4,"e":2}]'::jsonb)->>'error', 'no_run');
+reset role;
+select pg_temp.eq('erreurs : cumul par difficulté', (select shown from public.student_items where student_id = (select v::uuid from ctx where k='zid') and difficulty = 'standard' and item = 'frac'), 8);
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select pg_temp.fails($$select public.admin_item_spread()$$, 'forbidden');
+select pg_temp.as_user('cccccccc-0000-0000-0000-000000000003');
+select pg_temp.eq('dispersion : un élève derrière « Fractions »', (select (e->>'players')::int from jsonb_array_elements(public.admin_item_spread()) e where e->>'item' = 'frac' and e->>'difficulty' = 'standard'), 1);
+select pg_temp.eq('dispersion : sommes par élève', (select (e->>'wn')::numeric from jsonb_array_elements(public.admin_item_spread()) e where e->>'item' = 'frac' and e->>'difficulty' = 'standard'), 40::numeric);
+select pg_temp.eq('dispersion : sans nom ni classe', (select count(*)::int from jsonb_array_elements(public.admin_item_spread()) e where e ? 'student_id' or e ? 'name'), 0);
+select pg_temp.as_admin();
+select pg_temp.eq('nettoyage : la purge garde les envois récents', (select count(*)::int from private.student_items_done) > 0 and (private.purge_old_data() ? 'runs'), true);
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select pg_temp.eq('serveur en version 20, tout est à jour', (select public.server_version()->>'version'), '20');
+select pg_temp.eq('aucune fonctionnalité « fiche élève » manquante', (select count(*)::int from jsonb_array_elements_text(public.server_version()->'missing') m where m like 'eleves%'), 0);
+select pg_temp.as_admin();
 
 \echo TOUS LES TESTS SQL PASSENT

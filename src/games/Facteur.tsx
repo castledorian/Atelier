@@ -7,8 +7,8 @@ import { SessionIntro, SessionOver, useSessionRun } from '../components/SessionP
 import { Sfx } from '../game/audio';
 import { newRunId } from '../game/history';
 import { parseFacteur } from '../game/sessionConfig';
-import { enqueue, flush } from '../server/outbox';
-import { dropCave, sendItemStats, sendRun, sendStudentItems } from '../server/student';
+import { enqueue, flush, queueStudentItems } from '../server/outbox';
+import { dropCave, sendItemStats, sendRun } from '../server/student';
 import { feedBoss } from '../game/boss/state';
 import type { RunPayload } from '../server/types';
 import { effectiveGrade, gradeLabel } from '../game/grade';
@@ -192,10 +192,11 @@ export default function Facteur({ account, onHome, onSessionLost, session, onSes
         () => {
           lost.current = true;
         },
-        { game: 'facteur', level: 'cp', items },
+        { game: 'facteur', level: 'cp', difficulty: `n${r.level}`, items },
       );
     } else if (acct && r.delivered > 0) {
       setCloud('sending');
+      const mine = { studentId: acct.student.id, clientId: payload.clientId, game: 'facteur' as const, level: 'cp', difficulty: `n${r.level}`, items };
       sendRun(acct.token, payload)
         .then((s) => {
           if (s === 'invalid_session') {
@@ -204,10 +205,11 @@ export default function Facteur({ account, onHome, onSessionLost, session, onSes
           }
           setCloud(s === 'ok' ? 'sent' : 'queued');
           if (s === 'ok' && payload.balance) void sendItemStats(acct.token, 'facteur', 'cp', `n${r.level}`, items);
-          if (s === 'ok') void sendStudentItems(acct.token, 'facteur', 'cp', items);
+          if (s === 'ok' || s === 'invalid_session') queueStudentItems(acct.token, mine, s === 'ok');
         })
         .catch(() => {
           enqueue(acct.student.id, payload);
+          queueStudentItems(acct.token, mine, false);
           setCloud('queued');
         });
     } else if (acct && payload.cave) {

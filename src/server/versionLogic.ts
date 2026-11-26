@@ -42,10 +42,11 @@ export const STEPS: Array<[string, Step]> = [
   ['goutte', { file: 'mise-a-jour-goutte.sql', why: 'Ma goutte sur le compte élève, équipe de la classe et courbe de la grotte', critical: false }],
   ['stats', { file: 'mise-a-jour-stats.sql', why: 'statistiques détaillées (onglet Équilibrage) et mots ratés du facteur', critical: false }],
   ['eleves', { file: 'mise-a-jour-eleves.sql', why: 'fiche élève et repères de la classe (espace enseignant)', critical: false }],
+  ['eleves_fiable', { file: 'mise-a-jour-eleves.sql', why: 'réussite jeu par jeu, erreurs gardées hors connexion, nombre d’élèves par exercice', critical: false }],
 ];
 
-/** Fonctionnalités apparues après la version 18 du serveur : un serveur plus ancien ne les connaît pas. */
-const NEWER = ['eleves'];
+/** Fonctionnalités apparues après la version 18 du serveur : un serveur plus ancien ne les connaît pas encore. */
+const NEWER = ['eleves', 'eleves_fiable'];
 
 export interface Todo {
   file: string;

@@ -637,3 +637,11 @@
   white-space: normal;
   pointer-events: auto;
 }
+
+/* petite ligne sous une valeur de tableau (ex. le jeu concerné) */
+.u-cell-sub {
+  display: block;
+  font-size: 12px;
+  opacity: 0.8;
+  white-space: nowrap;
+}

@@ -4,8 +4,8 @@ import { adviceOf, asLevels, gradeRows, hourly, statsText, weeklyTotals } from '
 import { downloadText, toCsv } from '../game/history';
 import { SortTh, sortRows, useSort } from '../components/SortTable';
 import type { SortValue } from '../components/SortTable';
-import type { AdminItems, BalanceLevel, ClassStat, GameStats, GradeStat } from '../server/admin';
-import { ACTION_LABEL, adviceText, countByAction, exerciseAdvice } from '../game/exerciseAdvice';
+import type { AdminItems, BalanceLevel, ClassStat, GameStats, GradeStat, ItemSpreadRow } from '../server/admin';
+import { ACTION_LABEL, MIN_PLAYERS, adviceText, countByAction, exerciseAdvice } from '../game/exerciseAdvice';
 import type { Action, ExerciseAdvice } from '../game/exerciseAdvice';
 import { CONFIDENCE_LABEL, confidenceOf } from '../game/reliability';
 import { Card, Pill, RangeBar } from '../components/ui';
@@ -26,7 +26,7 @@ const today = () => new Date().toLocaleDateString('fr-FR', { day: '2-digit', mon
 const stamp = () => new Date().toISOString().slice(0, 10);
 
 /** Onglet « Équilibrage » : où les élèves réussissent trop ou pas assez, et ce qui les fait échouer. */
-export default function AdminBalance({ levels: allTime, stats, detail, days, onDays }: { levels: BalanceLevel[]; stats: AdminItems; detail: GameStats | null; days: number; onDays: (d: number) => void }) {
+export default function AdminBalance({ levels: allTime, stats, detail, spread = null, days, onDays }: { levels: BalanceLevel[]; stats: AdminItems; detail: GameStats | null; spread?: ItemSpreadRow[] | null; days: number; onDays: (d: number) => void }) {
   const levels = useMemo(() => (detail ? asLevels(detail.balance) : allTime), [detail, allTime]);
   const advice = useMemo(() => (detail ? adviceOf(detail, stats) : []), [detail, stats]);
   const [game, setGame] = useState('math');
@@ -50,7 +50,7 @@ export default function AdminBalance({ levels: allTime, stats, detail, days, onD
   const itemRows = useMemo(() => sortRows(items, it.sort, itemValue), [items, it.sort]);
 
   const copy = async () => {
-    const text = (detail ? statsText(detail, stats, today()) : summaryText(levels, stats.rules, stats.items, today())) + '\n' + adviceText(exerciseAdvice(stats.rules, stats.items));
+    const text = (detail ? statsText(detail, stats, today()) : summaryText(levels, stats.rules, stats.items, today())) + '\n' + adviceText(exerciseAdvice(stats.rules, stats.items, spread));
     try {
       await navigator.clipboard.writeText(text);
       setCopied('Résumé copié : collez-le dans la conversation.');
@@ -98,7 +98,7 @@ export default function AdminBalance({ levels: allTime, stats, detail, days, onD
         </>
       )}
 
-      <ExercisePanel rules={stats.rules} items={stats.items} />
+      <ExercisePanel rules={stats.rules} items={stats.items} spread={spread} />
 
       <h2 className="subhead mt-4">
         Réussite par niveau
@@ -724,8 +724,8 @@ const FILTERS: Array<[Action | 'todo', string]> = [
  * améliorer (le contenu est en cause) ou garder. Les chiffres sont toujours donnés avec leur marge d'incertitude à 95 % :
  * sur peu de manches, on préfère « trop tôt pour juger » à une fausse certitude.
  */
-export function ExercisePanel({ rules, items }: { rules: AdminItems['rules']; items: AdminItems['items'] }) {
-  const all = useMemo(() => exerciseAdvice(rules, items), [rules, items]);
+export function ExercisePanel({ rules, items, spread = null }: { rules: AdminItems['rules']; items: AdminItems['items']; spread?: ItemSpreadRow[] | null }) {
+  const all = useMemo(() => exerciseAdvice(rules, items, spread), [rules, items, spread]);
   const counts = useMemo(() => countByAction(all), [all]);
   const [filter, setFilter] = useState<Action | 'todo'>('todo');
   const [gameF, setGameF] = useState('all');
@@ -737,7 +737,7 @@ export function ExercisePanel({ rules, items }: { rules: AdminItems['rules']; it
     <Card
       className="mt-4"
       title="Exercice par exercice"
-      note="Chaque famille de calculs, règle ou mot est comparée à l’objectif de son niveau. Une conclusion n’est tirée que si toute la marge d’incertitude (95 %) est du même côté de l’objectif. Barre : zone hachurée = objectif, trait noir = marge, trait rouge = valeur mesurée."
+      note={`Chaque famille de calculs, règle ou mot est comparée à l’objectif de son niveau. Une conclusion n’est tirée que si toute la marge d’incertitude (95 %) est du même côté de l’objectif, et jamais avec moins de ${MIN_PLAYERS} élèves différents. La marge est élargie quand les résultats varient beaucoup d’un élève à l’autre. Barre : zone hachurée = objectif, trait noir = marge, trait rouge = valeur mesurée.`}
     >
       {all.length === 0 ? (
         <p className="u-empty">Pas encore de données : elles viennent des parties libres d’élèves connectés.</p>
@@ -782,7 +782,8 @@ export function ExercisePanel({ rules, items }: { rules: AdminItems['rules']; it
 }
 
 function AdviceCard({ a }: { a: ExerciseAdvice }) {
-  const conf = confidenceOf(a.shown);
+  const conf = confidenceOf(a.shown / Math.max(1, a.deff));
+  const who = a.players === null ? 'élèves : pas encore comptés' : `${a.players} élève${a.players > 1 ? 's' : ''}`;
   return (
     <li className="u-advice-item">
       <div className="u-advice-top">
@@ -796,7 +797,14 @@ function AdviceCard({ a }: { a: ExerciseAdvice }) {
         <RangeBar p={a.interval.p} lo={a.interval.lo} hi={a.interval.hi} target={a.target} tolerance={TOLERANCE} label={a.label} />
       )}
       <p className="u-advice-todo">
-        <strong>À faire :</strong> {a.todo} <span className="u-dim">· {CONFIDENCE_LABEL[conf]} ({a.shown} manches)</span>
+        <strong>À faire :</strong> {a.todo} <span className="u-dim">
+          · {CONFIDENCE_LABEL[conf]} ({a.shown} manches, {who})
+        </span>
+        {a.deff > 1.05 && (
+          <Tip label="Pourquoi cette marge ?">
+            Les résultats varient d’un élève à l’autre : ces {a.shown} manches valent environ {Math.round(a.shown / a.deff)} réponses indépendantes. La marge en tient compte.
+          </Tip>
+        )}
       </p>
     </li>
   );

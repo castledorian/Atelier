@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { BackButton } from '../components/BackButton';
 import { downloadText, toCsv } from '../game/history';
 import { ApiError, explain } from '../server/api';
-import { GAME_NAME, adminBalance, adminGameStats, adminObserve, observeStudent, adminItemStats, adminLogs, adminOverview, adminSchool } from '../server/admin';
-import type { AdminBalance as AdminBalanceData, AdminItems, GameStats, AdminLogs, AdminOverview, AdminRun, AdminSchool } from '../server/admin';
+import { GAME_NAME, adminItemSpread, adminBalance, adminGameStats, adminObserve, observeStudent, adminItemStats, adminLogs, adminOverview, adminSchool } from '../server/admin';
+import type { AdminBalance as AdminBalanceData, ItemSpreadRow, AdminItems, GameStats, AdminLogs, AdminOverview, AdminRun, AdminSchool } from '../server/admin';
 import AdminBalance from './AdminBalance';
 import AdminInvitations from './AdminInvitations';
 import { ServerNotice } from '../components/ServerNotice';
@@ -40,7 +40,7 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
   const [ov, setOv] = useState<AdminOverview | null>(null);
   const [sch, setSch] = useState<AdminSchool | null>(null);
   const [logs, setLogs] = useState<AdminLogs | null>(null);
-  const [bal, setBal] = useState<{ levels: AdminBalanceData['levels']; stats: AdminItems; detail: GameStats | null } | null>(null);
+  const [bal, setBal] = useState<{ levels: AdminBalanceData['levels']; stats: AdminItems; detail: GameStats | null; spread: ItemSpreadRow[] | null } | null>(null);
   const [days, setDays] = useState(90);
   const [q, setQ] = useState('');
   const [err, setErr] = useState('');
@@ -77,8 +77,9 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
     const d = await act(
       async () => {
         // statistiques détaillées : seulement si la mise à jour « stats » a été faite (sinon, le reste s'affiche quand même)
-        const [b, s, g] = await Promise.all([adminBalance(), adminItemStats(), adminGameStats(days).catch(() => null)]);
-        return { levels: b.levels, stats: s, detail: g };
+        // nombre d'élèves par exercice : seulement si la mise à jour « fiche élève » a été faite
+        const [b, s, g, sp] = await Promise.all([adminBalance(), adminItemStats(), adminGameStats(days).catch(() => null), adminItemSpread()]);
+        return { levels: b.levels, stats: s, detail: g, spread: sp };
       },
       'La mise à jour « exercices » n’a pas encore été exécutée sur le serveur : collez serveur/mise-a-jour-exercices.sql dans Supabase (voir le guide).',
     );
@@ -359,7 +360,7 @@ export default function Admin({ email, onHome, onSignOut }: Props) {
           </>
         ))}
 
-      {tab === 'balance' && (!bal ? <p className="mt-4 text-[15px]">{busy ? 'Chargement…' : ''}</p> : <AdminBalance levels={bal.levels} stats={bal.stats} detail={bal.detail} days={days} onDays={(d) => { setDays(d); setBal(null); }} />)}
+      {tab === 'balance' && (!bal ? <p className="mt-4 text-[15px]">{busy ? 'Chargement…' : ''}</p> : <AdminBalance levels={bal.levels} stats={bal.stats} detail={bal.detail} spread={bal.spread} days={days} onDays={(d) => { setDays(d); setBal(null); }} />)}
 
       {tab === 'logs' &&
         (!logs ? (

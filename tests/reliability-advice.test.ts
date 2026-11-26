@@ -83,3 +83,74 @@ test('texte de synthèse : seules les actions utiles sont listées', () => {
   assert.equal(ACTION_LABEL.garder, 'Bien réglé');
   assert.match(adviceText([]), /rien à régler/);
 });
+
+import { clusteredWilson, designEffect } from '../src/game/reliability';
+import { MIN_PLAYERS } from '../src/game/exerciseAdvice';
+import type { ItemSpreadRow } from '../src/server/admin';
+
+/** Sommes envoyées par le serveur, calculées à partir des résultats (ratés, posés) de chaque élève. */
+const spreadOf = (per: Array<[number, number]>, o: Partial<ItemSpreadRow> = {}): ItemSpreadRow => ({
+  game: 'math',
+  level: 'cm1',
+  difficulty: 'standard',
+  kind: 'rule',
+  item: 'tables',
+  players: per.length,
+  shown: per.reduce((s, [, n]) => s + n, 0),
+  wrong: per.reduce((s, [w]) => s + w, 0),
+  ww: per.reduce((s, [w]) => s + w * w, 0),
+  wn: per.reduce((s, [w, n]) => s + w * n, 0),
+  nn: per.reduce((s, [, n]) => s + n * n, 0),
+  ...o,
+});
+
+test('effet de grappe : proche de 1 si les élèves se ressemblent, grand si quelques élèves ratent tout', () => {
+  const same = designEffect(spreadOf(Array.from({ length: 20 }, () => [3, 20] as [number, number])));
+  assert.ok(same !== null && same < 1.3, `classe homogène : ${same}`);
+  const split = designEffect(spreadOf([...Array.from({ length: 3 }, () => [20, 20] as [number, number]), ...Array.from({ length: 17 }, () => [0, 20] as [number, number])]));
+  assert.ok(split !== null && split > 8, `trois élèves ratent tout : ${split}`);
+  assert.equal(designEffect(spreadOf([[3, 20]])), null);
+  assert.equal(designEffect(spreadOf([[0, 20], [0, 20]])), null);
+});
+
+test('marge élargie par l’effet de grappe, valeur observée inchangée', () => {
+  const plain = clusteredWilson(800, 1000, 1);
+  const wide = clusteredWilson(800, 1000, 6);
+  assert.ok(plain && wide);
+  assert.equal(plain.p, wide.p);
+  assert.ok(wide.hi - wide.lo > 2 * (plain.hi - plain.lo));
+  assert.equal(wide.n, 1000);
+});
+
+test('quelques élèves qui ratent tout ne suffisent pas à déclarer une famille trop difficile', () => {
+  // 3 élèves ratent tout, 17 réussissent tout : 85 % de réussite globale mais très dispersée ; même chose à 60 %
+  const per: Array<[number, number]> = [...Array.from({ length: 8 }, () => [20, 20] as [number, number]), ...Array.from({ length: 12 }, () => [0, 20] as [number, number])];
+  const sp = spreadOf(per);
+  const fam = row({ item: 'tables', label: 'Tables', shown: sp.shown, wrong: sp.wrong });
+  const naive = exerciseAdvice([fam], [], []).find((a) => a.id === 'tables');
+  const fair = exerciseAdvice([fam], [], [sp]).find((a) => a.id === 'tables');
+  assert.ok(naive && fair);
+  assert.ok((fair.interval?.hi ?? 0) - (fair.interval?.lo ?? 0) > (naive.interval?.hi ?? 0) - (naive.interval?.lo ?? 0));
+  assert.equal(fair.players, 20);
+});
+
+test(`moins de ${MIN_PLAYERS} élèves : « trop tôt pour juger », même avec beaucoup de manches`, () => {
+  const per: Array<[number, number]> = Array.from({ length: 6 }, () => [50, 100] as [number, number]);
+  const sp = spreadOf(per, { item: 'frac' });
+  const list = exerciseAdvice([row({ item: 'frac', label: 'Fractions', shown: sp.shown, wrong: sp.wrong })], [], [sp]);
+  assert.equal(list[0].action, 'attendre');
+  assert.match(list[0].reason, /seulement 6 élèves/);
+});
+
+test('suivi par élève trop récent pour couvrir l’historique : le nombre d’élèves n’est pas retenu', () => {
+  const sp = spreadOf([[2, 10], [3, 10]], { item: 'frac' });
+  const list = exerciseAdvice([row({ item: 'frac', label: 'Fractions', shown: 500, wrong: 250 })], [], [sp]);
+  assert.equal(list[0].players, null);
+  assert.equal(list[0].action, 'diminuer');
+});
+
+test('une réponse répétée par un ou deux élèves seulement ne rend pas un exercice « à améliorer »', () => {
+  const it = row({ item: '7 × 8', label: '7 × 8', shown: 30, wrong: 18, picks: { '54': 5, '63': 1 } });
+  const sp = spreadOf([[9, 15], [9, 15]], { kind: 'item', item: '7 × 8' });
+  assert.equal(exerciseAdvice([], [it], [sp]).length, 0);
+});

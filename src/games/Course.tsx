@@ -37,8 +37,8 @@ import { parseMath } from '../game/sessionConfig';
 import { loadSettings, saveSettings } from '../game/storage';
 import type { Settings, TextSize } from '../game/storage';
 import { explain } from '../server/api';
-import { enqueue, flush } from '../server/outbox';
-import { dropCave, fetchBoard, sendItemStats, sendRun, sendStudentItems } from '../server/student';
+import { enqueue, flush, queueStudentItems } from '../server/outbox';
+import { dropCave, fetchBoard, sendItemStats, sendRun } from '../server/student';
 import type { BoardRow, RunPayload, Scope, SessionInfo, StudentAccount } from '../server/types';
 
 /**
@@ -166,7 +166,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
         () => {
           lost.current = true;
         },
-        { game: 'math', level: result.level, items: summarize(result.outcomes) },
+        { game: 'math', level: result.level, difficulty: result.diff, items: summarize(result.outcomes) },
       );
       live.current.drill = false;
       live.current.overAt = performance.now();
@@ -200,6 +200,8 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
     }
     if (acct && result.correct > 0) {
       setCloud('sending');
+      // fiche de l'élève (rattachée à lui, contrairement au suivi anonyme) : toute partie sauf l'entraînement ciblé
+      const mine = result.drill ? null : { studentId: acct.student.id, clientId: payload.clientId, game: 'math' as const, level: result.level, difficulty: result.diff, items: summarize(result.outcomes) };
       sendRun(acct.token, payload)
         .then((r) => {
           if (r === 'invalid_session') {
@@ -208,12 +210,12 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
           }
           // suivi anonyme des calculs ratés (parties libres seulement : payload.balance n'existe ni en séance ni en entraînement)
           if (r === 'ok' && payload.balance) void sendItemStats(acct.token, 'math', result.level, result.diff, summarize(result.outcomes));
-          // fiche de l'élève (rattachée à lui, contrairement au suivi anonyme) : toute partie sauf l'entraînement ciblé
-          if (r === 'ok' && !result.drill) void sendStudentItems(acct.token, 'math', result.level, summarize(result.outcomes));
+          if (mine && (r === 'ok' || r === 'invalid_session')) queueStudentItems(acct.token, mine, r === 'ok');
           if (id === live.current.recId) setCloud(r === 'ok' ? 'sent' : 'queued');
         })
         .catch(() => {
           enqueue(acct.student.id, payload);
+          if (mine) queueStudentItems(acct.token, mine, false);
           if (id === live.current.recId) setCloud('queued');
         });
     } else {

@@ -28,8 +28,37 @@ jobs:
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
+  # Tests de la base de données : installation neuve (schema.sql), puis la dernière mise à jour relancée deux fois par-dessus
+  # (elle doit être sans danger si on la répète), puis tous les tests SQL. Un échec bloque la mise en ligne.
+  sql:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: tests
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: tests
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v7
+      - name: Tests SQL
+        run: >-
+          psql -v ON_ERROR_STOP=1 -q
+          -f serveur/tests/prelude.sql
+          -f serveur/schema.sql
+          -f serveur/mise-a-jour-eleves.sql
+          -f serveur/mise-a-jour-eleves.sql
+          -f serveur/tests/dbtest.sql
+          | tee sql.log
+      - run: grep -q "TOUS LES TESTS SQL PASSENT" sql.log
   deploy:
-    needs: build
+    needs: [build, sql]
     runs-on: ubuntu-latest
     environment:
       name: github-pages

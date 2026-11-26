@@ -57,17 +57,31 @@ export async function sendItemStats(token: string, game: 'math' | 'spelling' | '
   }
 }
 
+/** Résultat d'un envoi des erreurs d'une partie : envoyé (ou déjà reçu), à réessayer plus tard, ou à abandonner. */
+export type ItemsStatus = 'ok' | 'later' | 'drop';
+
 /**
- * Envoie à l'enseignant de l'élève ce qu'il a réussi et raté dans la partie (familles de calculs, mots, règles), pour sa fiche.
- * Contrairement au suivi anonyme ci-dessus, ces compteurs sont rattachés à l'élève et se remplissent aussi en séance de classe.
- * Facultatif : toute erreur est ignorée (réseau coupé, mise à jour SQL « fiche élève » pas encore faite…).
+ * Envoie à l'enseignant de l'élève ce qu'il a réussi et raté dans UNE partie (familles de calculs, mots, règles), pour sa fiche.
+ * L'envoi est rattaché à l'identifiant de la partie : si la partie n'est pas encore arrivée (réseau coupé), le serveur répond
+ * « no_run » et l'envoi est retenté plus tard (voir server/outbox.ts) ; un renvoi n'est jamais compté deux fois.
  */
-export async function sendStudentItems(token: string, game: 'math' | 'spelling' | 'facteur', level: string, items: ItemEntry[]): Promise<void> {
-  if (items.length === 0) return;
+export async function sendStudentItems(token: string, clientId: string, game: 'math' | 'spelling' | 'facteur', level: string, difficulty: string, items: ItemEntry[]): Promise<ItemsStatus> {
+  if (items.length === 0) return 'ok';
   try {
-    await rpc('submit_student_items', { p_token: token, p_game: game, p_level: level, p_items: items });
+    const r = await rpc<{ ok?: boolean; error?: string } | null>('submit_student_items', {
+      p_token: token,
+      p_client_id: clientId,
+      p_game: game,
+      p_level: level,
+      p_difficulty: difficulty,
+      p_items: items,
+    });
+    if (r?.ok) return 'ok';
+    if (r?.error === 'no_run' || r?.error === 'rate_limited' || r?.error === 'invalid_session') return 'later';
+    return 'drop';
   } catch {
-    /* un bonus : il ne doit jamais gêner la partie */
+    // réseau coupé, ou serveur pas encore mis à jour : on garde, la file d'attente abandonne d'elle-même au bout de 7 jours
+    return 'later';
   }
 }
 

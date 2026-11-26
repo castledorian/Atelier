@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Bar, Card, LineChart, Pill, Stat, WeekBars } from '../components/ui';
 import type { ChartPoint, Tone } from '../components/ui';
 import { diffName, gameName, levelName, picksText } from '../game/balanceView';
-import { gameSummaries, missedItems, progressSeries, strengthsAndWeaknesses, summarySentence, trendOf, weeklyActivity } from '../game/studentView';
+import { gameSummaries, metricOf, missedItems, progressSeries, strengthsAndWeaknesses, summarySentence, trendOf, weeklyActivity } from '../game/studentView';
 import type { StudentDetail } from '../game/studentView';
 import * as T from '../server/teacher';
 import { Tip } from '../components/Tip';
@@ -44,7 +44,6 @@ export default function StudentProfile({ id, name, onBack, act, onScreen }: { id
   const weeks = useMemo(() => (d ? weeklyActivity(d.runs, now) : []), [d, now]);
   const gameRuns = d ? d.runs.filter((r) => r.kind === 'game') : [];
   const seconds = d ? d.runs.reduce((s, r) => s + r.duration, 0) : 0;
-  const accAll = gameRuns.length ? gameRuns.reduce((s, r) => s + r.acc, 0) / gameRuns.length : null;
   const recent = d ? [...d.runs].sort((a, b) => b.at - a.at).slice(0, 12) : [];
   const hasItems = !!d && d.items.length > 0;
 
@@ -82,19 +81,19 @@ export default function StudentProfile({ id, name, onBack, act, onScreen }: { id
 
       {d && (
         <>
-          <p className="u-lead">{summarySentence(d.student.name, d.runs, weak, strong, trend)}</p>
+          <p className="u-lead">{summarySentence(d.student.name, d.runs, weak, strong, trend, current ? { label: gameName(current), metric: metricOf(current) } : undefined)}</p>
 
           <div className="u-grid-stats">
             <Stat label="Parties jouées" value={gameRuns.length} hint={d.runs.length > gameRuns.length ? `+ ${d.runs.length - gameRuns.length} entraînements` : undefined} />
             <Stat label="Temps de jeu" value={seconds ? dur(seconds) : '—'} />
-            <Stat label="Réussite moyenne" value={pct(accAll)} hint="Moyenne de toutes ses parties (hors entraînements)." />
+            <Stat label="Jeux joués" value={summaries.length} />
             <Stat label="Dernière partie" value={d.runs.length ? when(Math.max(...d.runs.map((r) => r.at))) : '—'} />
           </div>
 
           {summaries.length > 0 && (
             <Card
-              title="Évolution de la réussite"
-              note="Point rouge : une partie. Trait noir : moyenne des 3 dernières parties, pour lisser les hauts et les bas."
+              title="Évolution"
+              note="Point rouge : une partie. Trait noir : moyenne des 3 dernières parties, pour lisser les hauts et les bas. Pour Frappe !, c’est la précision de frappe (pas un taux de bonnes réponses)."
               action={
                 summaries.length > 1 ? (
                   <div className="seg" role="radiogroup" aria-label="Jeu affiché">
@@ -107,13 +106,18 @@ export default function StudentProfile({ id, name, onBack, act, onScreen }: { id
                 ) : undefined
               }
             >
-              <LineChart points={points} title={`Réussite de ${d.student.name} à ${current ? gameName(current) : ''}`} />
+              <LineChart
+                points={points}
+                title={`${current ? metricOf(current) : 'réussite'} de ${d.student.name} à ${current ? gameName(current) : ''}`}
+                rawLabel="Partie"
+                smoothLabel={current === 'typing' ? 'Précision (moyenne glissante)' : 'Réussite (moyenne glissante)'}
+              />
               <ul className="u-game-list">
                 {summaries.map((s) => (
                   <li key={s.game}>
                     <strong>{gameName(s.game)}</strong>
                     <span>
-                      {s.runs} partie{s.runs > 1 ? 's' : ''} · record {s.best} · réussite {pct(s.acc)}
+                      {s.runs} partie{s.runs > 1 ? 's' : ''} · record {s.best} · {metricOf(s.game)} {pct(s.acc)}
                     </span>
                   </li>
                 ))}

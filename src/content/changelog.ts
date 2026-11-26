@@ -33,6 +33,9 @@ export const RELEASES: Release[] = [
       { kind: 'new', text: 'Espace enseignant : un repère par élève (« En progrès », « Réussite basse », « N’a pas joué depuis 2 semaines ») et une liste « À suivre ».' },
       { kind: 'new', text: 'Administration : conseils exercice par exercice (à diminuer, à équilibrer, à améliorer) avec la marge d’incertitude de chaque chiffre.' },
       { kind: 'better', text: 'Pages enseignant, administration et informations : présentation plus aérée et plus lisible, même sur petit écran.' },
+      { kind: 'fix', text: 'Repères des élèves calculés jeu par jeu (un élève n’est plus jugé sur une moyenne de jeux différents).' },
+      { kind: 'fix', text: 'Erreurs d’une partie jouée sans réseau : gardées sur l’appareil et envoyées au retour de la connexion.' },
+      { kind: 'fix', text: 'Administration : aucun conseil tiré de moins de 10 élèves, et marge d’incertitude plus juste.' },
     ],
   },
   {

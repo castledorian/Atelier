@@ -2,8 +2,8 @@ import { useCallback, useRef, useState } from 'react';
 import { Dialog } from './Dialog';
 import type { ReactNode } from 'react';
 import { GAME_NAMES, describeConfig } from '../game/sessionConfig';
-import { enqueue } from '../server/outbox';
-import { sendStudentItems, submitRun } from '../server/student';
+import { enqueue, queueStudentItems } from '../server/outbox';
+import { submitRun } from '../server/student';
 import type { ItemEntry } from '../game/itemstats';
 import type { RunPayload, SessionInfo, StudentAccount } from '../server/types';
 import { BackButton } from './BackButton';
@@ -19,6 +19,7 @@ const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g
 export interface StudentDetailItems {
   game: 'math' | 'spelling' | 'facteur';
   level: string;
+  difficulty: string;
   items: ItemEntry[];
 }
 
@@ -45,10 +46,11 @@ export function useSessionRun(account: StudentAccount | null, initial: SessionIn
       .then((r) => {
         if (r.status === 'ok') {
           setState('saved');
-          if (detail) void sendStudentItems(acct.token, detail.game, detail.level, detail.items);
+          if (detail) queueStudentItems(acct.token, { ...detail, studentId: acct.student.id, clientId: run.clientId }, true);
           if (r.attemptsUsed) setSess((x) => (x ? { ...x, attempts_used: r.attemptsUsed as number } : x));
         } else if (r.status === 'invalid_session') {
           enqueue(acct.student.id, run);
+          if (detail) queueStudentItems(acct.token, { ...detail, studentId: acct.student.id, clientId: run.clientId }, false);
           setState('queued');
           onLost();
         } else {
@@ -58,6 +60,7 @@ export function useSessionRun(account: StudentAccount | null, initial: SessionIn
       })
       .catch(() => {
         enqueue(acct.student.id, run);
+        if (detail) queueStudentItems(acct.token, { ...detail, studentId: acct.student.id, clientId: run.clientId }, false);
         setState('queued');
       });
   }, []);

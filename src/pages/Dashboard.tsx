@@ -13,7 +13,8 @@ import StudentProfile from './StudentProfile';
 import { Tip } from '../components/Tip';
 import { Card, Pill, Stat } from '../components/ui';
 import type { Tone } from '../components/ui';
-import { flagOf } from '../game/studentView';
+import { deltaOf, flagOf, focusGame } from '../game/studentView';
+import { GAME_NAMES as GAME_LABELS } from '../game/sessionConfig';
 import type { Flag } from '../game/studentView';
 import { ObserveBar, ReadOnlyZone } from '../components/ObserveBar';
 import { ServerNotice } from '../components/ServerNotice';
@@ -237,8 +238,10 @@ const FLAG_ORDER: Record<Flag, number> = { struggling: 0, inactive: 1, never: 2,
 const FLAG_TONE: Record<Flag, Tone> = { struggling: 'bad', inactive: 'warn', never: 'mute', steady: 'good', rising: 'good' };
 const NOW = () => Date.now();
 
+const gameLabel = (g: string) => (GAME_LABELS as Record<string, string>)[g] ?? g;
+
 function rowFlag(r: Row) {
-  return flagOf(r.ins ?? { last_played: r.last_played, runs_30d: 0, acc_recent: null, acc_prev: null }, NOW());
+  return flagOf(r.ins ?? { last_played: r.last_played }, NOW(), gameLabel);
 }
 
 function overValue(r: Row, key: OverKey): SortValue {
@@ -250,7 +253,7 @@ function overValue(r: Row, key: OverKey): SortValue {
     case 'games':
       return r.games;
     case 'acc':
-      return r.ins?.acc_recent ?? null;
+      return focusGame(r.ins?.games)?.acc_recent ?? null;
     case 'weak':
       return r.ins?.weak?.err ?? null;
     case 'last':
@@ -625,13 +628,11 @@ function ClassPanel({
   const weekAgo = now - 7 * 86_400_000;
   const active7 = (rows ?? []).filter((r) => r.last_played !== null && r.last_played >= weekAgo).length;
   const runs30 = (insights ?? []).reduce((n, i) => n + i.runs_30d, 0);
-  const accs = (insights ?? []).flatMap((i) => (i.acc_recent === null ? [] : [i.acc_recent]));
-  const accAvg = accs.length ? Math.round(accs.reduce((a, b) => a + b, 0) / accs.length) : null;
-  const toWatch = (rows ?? [])
+  const watchAll = (rows ?? [])
     .map((r) => ({ r, f: rowFlag(r) }))
     .filter((x) => x.f.flag === 'struggling' || x.f.flag === 'inactive')
-    .sort((a, b) => FLAG_ORDER[a.f.flag] - FLAG_ORDER[b.f.flag])
-    .slice(0, 6);
+    .sort((a, b) => FLAG_ORDER[a.f.flag] - FLAG_ORDER[b.f.flag]);
+  const toWatch = watchAll.slice(0, 6);
 
   return (
     <>
@@ -769,7 +770,7 @@ function ClassPanel({
                 <Stat label="Élèves" value={rows.length} />
                 <Stat label="Actifs cette semaine" value={`${active7} / ${rows.length}`} />
                 <Stat label="Parties en 30 jours" value={insights ? runs30 : '—'} />
-                <Stat label="Réussite" value={accAvg === null ? '—' : `${accAvg} %`} hint="Moyenne de la classe sur les 5 dernières parties de chaque élève." />
+                <Stat label="À suivre" value={insights ? watchAll.length : '—'} hint="Élèves avec une réussite basse à un jeu, ou sans partie depuis 2 semaines." />
               </div>
               {insights === null && (
                 <p className="u-info">Fiches élèves indisponibles : mise à jour du serveur à faire.</p>
@@ -790,7 +791,7 @@ function ClassPanel({
               )}
               <p className="text-[15px]">
                 Clique sur un prénom pour ouvrir sa fiche.
-                <Tip label="Lire le tableau">« Réussite » : moyenne des 5 dernières parties (flèche : hausse ou baisse par rapport aux 5 d’avant). Clique sur un titre pour trier. L’export CSV contient tout.</Tip>
+                <Tip label="Lire le tableau">« Réussite » : le jeu où l’élève réussit le moins en ce moment (moyenne de ses 5 dernières parties à ce jeu, 3 au minimum ; Frappe ! n’est pas compté, sa précision de frappe n’est pas une réussite). Flèche : hausse ou baisse par rapport aux 5 parties d’avant. L’export CSV contient tout.</Tip>
               </p>
               <div className="tbl-wrap">
                 <table className="scores tbl">
@@ -826,7 +827,8 @@ function ClassPanel({
                   <tbody>
                     {(shown ?? []).map((r) => {
                       const f = rowFlag(r);
-                      const trend = r.ins && r.ins.acc_recent !== null && r.ins.acc_prev !== null ? r.ins.acc_recent - r.ins.acc_prev : null;
+                      const focus = focusGame(r.ins?.games);
+                      const trend = deltaOf(focus);
                       return (
                         <tr key={r.id}>
                           <td>
@@ -839,12 +841,13 @@ function ClassPanel({
                           </td>
                           <td className="num c-mid">{r.games}</td>
                           <td className="num c-sm">
-                            {r.ins?.acc_recent != null ? `${Math.round(r.ins.acc_recent)} %` : '–'}
+                            {focus && focus.acc_recent !== null ? `${Math.round(focus.acc_recent)} %` : '–'}
                             {trend !== null && Math.abs(trend) >= 5 && (
                               <span className={trend > 0 ? 'u-up' : 'u-down'} aria-label={trend > 0 ? 'en hausse' : 'en baisse'}>
                                 {trend > 0 ? ' ↑' : ' ↓'}
                               </span>
                             )}
+                            {focus && <span className="u-cell-sub">{gameLabel(focus.game)}</span>}
                           </td>
                           <td className="c-mid">{r.ins?.weak ? `${r.ins.weak.label} (${r.ins.weak.err} %)` : '–'}</td>
                           <td className="c-lo">{r.last_played ? fmtDate(r.last_played) : '–'}</td>

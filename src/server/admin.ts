@@ -198,6 +198,29 @@ export const adminSchool = (id: string) => authed((t) => rpc<AdminSchool>('admin
 export const adminBalance = () => authed((t) => rpc<AdminBalance>('admin_balance', {}, t));
 export const adminGameStats = (days: number) => authed((t) => rpc<GameStats>('admin_game_stats', { p_days: days }, t));
 export const adminItemStats = () => authed((t) => rpc<AdminItems>('admin_item_stats', {}, t));
+
+/** Nombre d'élèves derrière chaque exercice et dispersion de leurs résultats (mise à jour « fiche élève ») ; null si absente. */
+export interface ItemSpreadRow {
+  game: string;
+  level: string;
+  difficulty: string;
+  kind: 'rule' | 'item';
+  item: string;
+  players: number;
+  shown: number;
+  wrong: number;
+  ww: number;
+  wn: number;
+  nn: number;
+}
+export async function adminItemSpread(): Promise<ItemSpreadRow[] | null> {
+  try {
+    const rows = await authed((t) => rpc<ItemSpreadRow[]>('admin_item_spread', {}, t));
+    return rows.map((r) => ({ ...r, players: Number(r.players), shown: Number(r.shown), wrong: Number(r.wrong), ww: Number(r.ww), wn: Number(r.wn), nn: Number(r.nn) }));
+  } catch {
+    return null;
+  }
+}
 export const adminLogs = (limit = 200) => authed((t) => rpc<AdminLogs>('admin_logs', { p_limit: limit }, t));
 
 // ───────────────────────── Invitations d'enseignants ─────────────────────────

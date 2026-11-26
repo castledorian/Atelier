@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { flagOf, gameSummaries, missedItems, progressSeries, strengthsAndWeaknesses, summarySentence, trendOf, weeklyActivity } from '../src/game/studentView';
-import type { StudentItem, StudentRun } from '../src/game/studentView';
+import { deltaOf, flagOf, focusGame, gameSummaries, missedItems, progressSeries, strengthsAndWeaknesses, summarySentence, trendOf, weeklyActivity } from '../src/game/studentView';
+import type { GameRecent, StudentItem, StudentRun } from '../src/game/studentView';
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 10, 26, 12);
@@ -61,13 +61,32 @@ test('activité hebdomadaire sur 8 semaines', () => {
   assert.equal(w.reduce((s, x) => s + x.runs, 0), 3);
 });
 
+const g = (o: Partial<GameRecent>): GameRecent => ({ game: 'math', n: 5, n_prev: 5, acc_recent: 80, acc_prev: 78, ...o });
+
 test('repère d’attention : jamais une note, toujours une aide', () => {
-  const base = { last_played: NOW - DAY, runs_30d: 5, acc_recent: 80, acc_prev: 78 };
+  const base = { last_played: NOW - DAY, games: [g({})] };
   assert.equal(flagOf({ ...base, last_played: null }, NOW).flag, 'never');
   assert.equal(flagOf({ ...base, last_played: NOW - 20 * DAY }, NOW).flag, 'inactive');
-  assert.equal(flagOf({ ...base, acc_recent: 50 }, NOW).flag, 'struggling');
-  assert.equal(flagOf({ ...base, acc_recent: 85, acc_prev: 70 }, NOW).flag, 'rising');
+  assert.equal(flagOf({ ...base, games: [g({ acc_recent: 50 })] }, NOW).flag, 'struggling');
+  assert.equal(flagOf({ ...base, games: [g({ acc_recent: 85, acc_prev: 70 })] }, NOW).flag, 'rising');
   assert.equal(flagOf(base, NOW).flag, 'steady');
+  assert.equal(flagOf({ last_played: NOW - DAY }, NOW).flag, 'steady');
+});
+
+test('repères calculés jeu par jeu, jamais sur un mélange de jeux', () => {
+  // très bon en calcul, en difficulté en lecture : la moyenne des deux (69 %) cacherait le problème
+  const f = flagOf({ last_played: NOW - DAY, games: [g({ game: 'math', acc_recent: 92 }), g({ game: 'facteur', acc_recent: 46 })] }, NOW);
+  assert.equal(f.flag, 'struggling');
+  assert.equal(f.game, 'facteur');
+  // Frappe ! : précision de frappe, jamais prise pour une réussite
+  assert.equal(flagOf({ last_played: NOW - DAY, games: [g({ game: 'typing', acc_recent: 40 })] }, NOW).flag, 'steady');
+  // moins de 3 parties récentes : pas de repère
+  assert.equal(flagOf({ last_played: NOW - DAY, games: [g({ n: 2, acc_recent: 20 })] }, NOW).flag, 'steady');
+  // progrès : il faut assez de parties anciennes pour comparer
+  assert.equal(flagOf({ last_played: NOW - DAY, games: [g({ acc_recent: 90, acc_prev: 60, n_prev: 1 })] }, NOW).flag, 'steady');
+  assert.equal(focusGame([g({ game: 'math', acc_recent: 92 }), g({ game: 'lexique', acc_recent: 70 })])?.game, 'lexique');
+  assert.equal(deltaOf(g({ acc_recent: 80, acc_prev: 70 })), 10);
+  assert.equal(deltaOf(null), null);
 });
 
 test('phrase de synthèse', () => {
@@ -81,6 +100,9 @@ import { todoFor } from '../src/server/versionLogic';
 test('un serveur qui ne connaît pas encore la fiche élève réclame sa mise à jour', () => {
   const old = todoFor({ version: 18, features: { goutte: true }, missing: [] });
   assert.ok(old.some((t) => t.file === 'mise-a-jour-eleves.sql'));
-  const ok = todoFor({ version: 19, features: { goutte: true, eleves: true }, missing: [] });
+  // première version de la fiche lancée, mais pas la révision (réussite jeu par jeu, envois hors connexion) : à relancer
+  const first = todoFor({ version: 19, features: { goutte: true, eleves: true }, missing: [] });
+  assert.ok(first.some((t) => t.file === 'mise-a-jour-eleves.sql'));
+  const ok = todoFor({ version: 20, features: { goutte: true, eleves: true, eleves_fiable: true }, missing: [] });
   assert.ok(!ok.some((t) => t.file === 'mise-a-jour-eleves.sql'));
 });

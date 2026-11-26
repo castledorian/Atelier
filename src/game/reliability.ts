@@ -51,9 +51,9 @@ export type Reading = 'few' | 'hard' | 'easy' | 'ok' | 'unsure';
  * - « ok » : l'intervalle entier est dans la zone acceptable ;
  * - « unsure » : l'intervalle chevauche la limite, il faut plus de données avant de décider.
  */
-export function readAgainstTarget(ok: number, n: number, target: number, tolerance: number): { reading: Reading; interval: Interval | null } {
-  const interval = wilson(ok, n);
-  if (!interval || n < 30) return { reading: 'few', interval };
+export function readAgainstTarget(ok: number, n: number, target: number, tolerance: number, deff = 1): { reading: Reading; interval: Interval | null } {
+  const interval = deff > 1 ? clusteredWilson(ok, n, deff) : wilson(ok, n);
+  if (!interval || n / Math.max(1, deff) < 30) return { reading: 'few', interval };
   if (interval.hi < target - tolerance) return { reading: 'hard', interval };
   if (interval.lo > target + tolerance) return { reading: 'easy', interval };
   if (interval.lo >= target - tolerance && interval.hi <= target + tolerance) return { reading: 'ok', interval };
@@ -64,4 +64,41 @@ export function readAgainstTarget(ok: number, n: number, target: number, toleran
 export function roundsNeeded(p: number, half: number): number {
   const q = Math.min(0.99, Math.max(0.01, p / 100));
   return Math.ceil((Z * Z * q * (1 - q)) / ((half / 100) * (half / 100)));
+}
+
+/**
+ * Les manches ne sont pas indépendantes : un même élève répond à beaucoup de calculs de la même famille. Si quelques élèves ratent
+ * presque tout, ils pèsent lourd, et l'intervalle de Wilson « naïf » serait trop étroit. L'effet de grappe (design effect) mesure
+ * de combien la dispersion réelle ENTRE ÉLÈVES dépasse celle qu'on aurait si chaque manche venait d'un élève différent.
+ * On divise ensuite le nombre de manches par cet effet : c'est le « nombre de manches utiles ».
+ *
+ * Données : par élève i, w_i ratés sur n_i posés ; on reçoit seulement les sommes Σw², Σw·n, Σn² (aucun élève n'est identifiable).
+ */
+export interface Spread {
+  players: number;
+  shown: number;
+  wrong: number;
+  ww: number;
+  wn: number;
+  nn: number;
+}
+
+/** Effet de grappe (au moins 1), ou null s'il ne peut pas être estimé (moins de 2 élèves, ou tout réussi / tout raté). */
+export function designEffect(s: Spread): number | null {
+  const N = s.shown;
+  const g = s.players;
+  if (!(N > 0) || g < 2) return null;
+  const p = s.wrong / N;
+  if (p <= 0 || p >= 1) return null;
+  const between = Math.max(0, s.ww - 2 * p * s.wn + p * p * s.nn); // Σ (w_i − p·n_i)²
+  const vCluster = ((g / (g - 1)) * between) / (N * N);
+  const vBinomial = (p * (1 - p)) / N;
+  return Math.max(1, Math.round((vCluster / vBinomial) * 100) / 100);
+}
+
+/** Intervalle de Wilson calculé sur le nombre de manches UTILES (manches ÷ effet de grappe). */
+export function clusteredWilson(ok: number, n: number, deff: number): Interval | null {
+  const d = Math.max(1, deff);
+  const w = wilson(ok / d, n / d);
+  return w ? { ...w, n } : null;
 }

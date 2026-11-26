@@ -1,6 +1,6 @@
 import { ApiError, patch, remove, request, rpc, select } from './api';
 import type { ClassRow, ClassSession, NewStudent, Overview, School, SessionResultRow } from './types';
-import type { StudentDetail } from '../game/studentView';
+import type { GameRecent, StudentDetail } from '../game/studentView';
 
 // ───────────────────────── Compte enseignant (Supabase Auth) ─────────────────────────
 
@@ -200,8 +200,8 @@ export interface Insight {
   name: string;
   last_played: number | null;
   runs_30d: number;
-  acc_recent: number | null;
-  acc_prev: number | null;
+  /** réussite récente jeu par jeu (absent tant que la mise à jour SQL « fiche élève » n'a pas été relancée) */
+  games?: GameRecent[];
   weak: { game: string; label: string; err: number } | null;
 }
 export async function classInsights(cls: string): Promise<Insight[] | null> {

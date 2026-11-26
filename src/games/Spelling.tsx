@@ -25,8 +25,8 @@ import type { Settings } from '../game/storage';
 import { BOSS_AT, HINT, RETRY_MAX, ROUNDS, choicesFor, duelItems, hpFor, isFault, isPerfect, isTyped, isTypedRight, nextItem, pickFeedback, pickRetry, pointsFor, roleOf, shuffle } from '../game/spelling/engine';
 import type { EnemyRole, Item, RoundOutcome } from '../game/spelling/engine';
 import { addSpellingScore, loadSpellingPrefs, loadSpellingScores, saveSpellingPrefs } from '../game/spelling/scores';
-import { enqueue, flush } from '../server/outbox';
-import { dropCave, sendItemStats, sendRun, sendStudentItems } from '../server/student';
+import { enqueue, flush, queueStudentItems } from '../server/outbox';
+import { dropCave, sendItemStats, sendRun } from '../server/student';
 import type { RunPayload, SessionInfo, StudentAccount } from '../server/types';
 import { Frame } from '../pages/Frame';
 import { MenuScene, SpellingMenu } from './SpellingMenu';
@@ -319,7 +319,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
           () => {
             lost.current = true;
           },
-          { game: 'spelling', level: s.level, items: summarize(s.outcomes) },
+          { game: 'spelling', level: s.level, difficulty: s.diff, items: summarize(s.outcomes) },
         );
       } else {
         const board = boardKey(s.level, s.diff);
@@ -350,6 +350,7 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
         }
         if (acct && s.score > 0) {
           setCloud('sending');
+          const mine = { studentId: acct.student.id, clientId: payload.clientId, game: 'spelling' as const, level: s.level, difficulty: s.diff, items: summarize(s.outcomes) };
           sendRun(acct.token, payload)
             .then((r) => {
               if (r === 'invalid_session') {
@@ -357,11 +358,12 @@ export default function Spelling({ account, onHome, onSessionLost, session, onSe
                 lost.current = true;
               }
               if (r === 'ok' && payload.balance) void sendItemStats(acct.token, 'spelling', s.level, s.diff, summarize(s.outcomes));
-              if (r === 'ok') void sendStudentItems(acct.token, 'spelling', s.level, summarize(s.outcomes));
+              if (r === 'ok' || r === 'invalid_session') queueStudentItems(acct.token, mine, r === 'ok');
               setCloud(r === 'ok' ? 'sent' : 'queued');
             })
             .catch(() => {
               enqueue(acct.student.id, payload);
+              queueStudentItems(acct.token, mine, false);
               setCloud('queued');
             });
         } else {
