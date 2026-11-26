@@ -1,0 +1,65 @@
+/* ───────── Mode observation (administrateur, lecture seule) ───────── */
+.observe-top {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  padding: 0.5rem 0.75rem 0.35rem;
+  background: #fffaf0;
+  border-bottom: 2px solid #8a5a00;
+}
+.observe-top .observe-bar {
+  margin-bottom: 0.4rem;
+}
+.observe-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: var(--sp, 1rem);
+  border: 2px solid #8a5a00;
+  border-radius: 10px;
+  background: #fff4d6;
+  color: #3d2900;
+  font-size: 15px;
+  line-height: 1.35;
+}
+.observe-bar .btn {
+  color: #3d2900;
+  background: #fffaf0;
+  border-color: #3d2900;
+}
+.observe-lock button:not([role='tab']):not(.th-sort):not(.tip-i):not([data-observe-ok]):not([data-observe-ok] *),
+.observe-lock input,
+.observe-lock select:not([data-observe-ok] *),
+.observe-lock textarea {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.observe-tree ul {
+  list-style: none;
+  margin: 0;
+  padding-left: 1rem;
+}
+.observe-tree li {
+  margin: 0.25rem 0;
+}
+.observe-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+}
+.observe-top .seg-b {
+  color: #3d2900;
+  background: #fffaf0;
+  border-color: #3d2900;
+}
+.observe-top .seg-b[aria-selected='true'] {
+  color: #fffaf0;
+  background: #3d2900;
+}
+

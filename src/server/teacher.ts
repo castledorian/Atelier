@@ -1,6 +1,7 @@
 import { ApiError, patch, remove, request, rpc, select } from './api';
 import type { ClassRow, ClassSession, NewStudent, Overview, School, SessionResultRow } from './types';
 import type { GameRecent, StudentDetail } from '../game/studentView';
+import type { WeakRow } from '../components/WeakPoints';
 
 // ───────────────────────── Compte enseignant (Supabase Auth) ─────────────────────────
 
@@ -230,6 +231,17 @@ export interface ClassItem {
 export async function classItems(cls: string): Promise<ClassItem[] | null> {
   try {
     const rows = await authed((t) => rpc<ClassItem[]>('class_items', { p_class: cls }, t));
+    return rows.map((r) => ({ ...r, err: Number(r.err) }));
+  } catch (e) {
+    if (e instanceof ApiError && (e.status === 404 || e.status === 400)) return null;
+    throw e;
+  }
+}
+
+/** Questions les plus ratées d'une séance (null tant que la mise à jour SQL « fiche élève » n'a pas été relancée). */
+export async function sessionItems(id: string): Promise<WeakRow[] | null> {
+  try {
+    const rows = await authed((t) => rpc<WeakRow[]>('session_items', { p_id: id }, t));
     return rows.map((r) => ({ ...r, err: Number(r.err) }));
   } catch (e) {
     if (e instanceof ApiError && (e.status === 404 || e.status === 400)) return null;

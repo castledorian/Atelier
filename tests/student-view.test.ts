@@ -105,7 +105,9 @@ test('un serveur qui ne connaît pas encore la fiche élève réclame sa mise à
   assert.ok(first.some((t) => t.file === 'mise-a-jour-eleves.sql'));
   const second = todoFor({ version: 20, features: { goutte: true, eleves: true, eleves_fiable: true }, missing: [] });
   assert.ok(second.some((t) => t.file === 'mise-a-jour-eleves.sql'));
-  const ok = todoFor({ version: 21, features: { goutte: true, eleves: true, eleves_fiable: true, eleves_classe: true }, missing: [] });
+  const third = todoFor({ version: 21, features: { goutte: true, eleves: true, eleves_fiable: true, eleves_classe: true }, missing: [] });
+  assert.ok(third.some((t) => t.file === 'mise-a-jour-eleves.sql'));
+  const ok = todoFor({ version: 22, features: { goutte: true, eleves: true, eleves_fiable: true, eleves_classe: true, eleves_seance: true }, missing: [] });
   assert.ok(!ok.some((t) => t.file === 'mise-a-jour-eleves.sql'));
 });
 

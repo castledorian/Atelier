@@ -1,0 +1,154 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Espaces enseignant et administration : même habillage que le reste du site,
+   lecture en diagonale (lignes alternées, chiffres alignés, titres constants).
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* En-tête de page : plus compact, pour laisser la place aux données */
+.dash-head .title-sm {
+  font-size: clamp(22px, min(3.2vw, 4.4vh), 32px);
+}
+.dash-head {
+  align-items: baseline;
+  margin-bottom: 2px;
+}
+.dash-who {
+  gap: 0;
+}
+
+/* Barres d'onglets (classes, parties de la classe) : même forme, plus discrètes */
+.class-bar {
+  margin-top: 10px;
+}
+.class-tab,
+.part-tab {
+  min-height: 40px;
+  padding: 4px 12px;
+  font-size: 15px;
+}
+.part-bar {
+  margin-top: 8px;
+  padding-bottom: 2px;
+  border-bottom: 2px solid rgba(27, 25, 21, 0.25);
+}
+.part-tab {
+  border-width: 2px;
+  border-bottom-width: 3px;
+}
+
+/* Réglages secondaires repliés : ils ne poussent plus le tableau hors de l'écran */
+.fold-flat {
+  margin-top: 8px;
+}
+.fold-flat > summary {
+  color: rgba(27, 25, 21, 0.78);
+}
+.fold-flat .fold-in {
+  display: grid;
+  gap: 10px;
+  margin: 6px 0 10px;
+  padding: 10px 12px;
+  border-left: 4px solid rgba(27, 25, 21, 0.2);
+}
+
+/* Tableaux de données : lignes alternées, ligne survolée, chiffres alignés */
+.tbl,
+.adm-table {
+  font-variant-numeric: tabular-nums;
+}
+.tbl tbody tr:nth-child(even),
+.adm-table tbody tr:nth-child(even) {
+  background: rgba(27, 25, 21, 0.04);
+}
+.tbl tbody tr:hover,
+.adm-table tbody tr:hover {
+  background: rgba(201, 52, 31, 0.08);
+}
+.tbl td,
+.tbl th {
+  padding: 5px 8px 4px;
+}
+.tbl tbody td {
+  border-bottom: 1px solid rgba(27, 25, 21, 0.14);
+}
+.tbl th {
+  border-bottom: 2px solid var(--color-ink);
+  box-shadow: 0 1px 0 var(--color-ink);
+}
+.adm-table td {
+  line-height: 1.3;
+}
+.adm-game,
+.adm-nowrap {
+  white-space: nowrap;
+}
+.adm-wrap,
+.tbl-wrap {
+  box-shadow: 3px 3px 0 rgba(27, 25, 21, 0.14);
+}
+
+/* Le tableau des élèves occupe la hauteur restante, sans jamais recouvrir le texte qui suit :
+   il ne descend pas sous sa taille minimale, et c'est la page qui défile si l'écran est trop court. */
+.sec-fill {
+  flex: 1 1 auto;
+  min-height: min-content;
+  gap: 8px;
+}
+.sec-fill .tbl-wrap {
+  max-height: 62vh;
+}
+.sec-note {
+  flex: none;
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: rgba(27, 25, 21, 0.72);
+}
+
+/* Tableau des élèves : lignes compactes à la souris (plus d'élèves visibles d'un coup).
+   Au doigt, les cibles gardent leurs 44 px : la règle ne s'applique qu'aux pointeurs précis. */
+@media (pointer: fine) {
+  .tbl .row-actions .link {
+    min-height: 30px;
+  }
+  .tbl tbody td {
+    padding-top: 3px;
+    padding-bottom: 2px;
+  }
+}
+.sec-fill .tbl-wrap {
+  min-height: min(340px, 42vh);
+}
+
+/* Administration : lignes plus serrées, verdicts d'un seul tenant */
+.adm-verdict {
+  white-space: nowrap;
+}
+.adm-table .adm-gap {
+  font-size: 13px;
+  line-height: 1.25;
+}
+.adm-table td:first-child {
+  white-space: nowrap;
+}
+
+/* Petit écran : les actions de chaque élève restent visibles, collées à droite, pendant que le tableau glisse */
+@container (max-width: 620px) {
+  .tbl .row-actions {
+    position: sticky;
+    right: 0;
+    background: inherit;
+    box-shadow: -6px 0 6px -6px rgba(27, 25, 21, 0.5);
+  }
+  .tbl tbody tr {
+    background: var(--color-paper-hi);
+  }
+  .tbl tbody tr:nth-child(even) {
+    background: #f2ece0;
+  }
+  .tbl thead th:last-child {
+    position: sticky;
+    right: 0;
+    background: var(--color-paper-hi);
+  }
+}
+

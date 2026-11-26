@@ -179,6 +179,22 @@ select pg_temp.eq('essai 1 Léa', public.submit_session_run((select v from ctx w
 select pg_temp.eq('essai 2 Léa (meilleur)', public.submit_session_run((select v from ctx where k='tok_lea'), (select v::uuid from ctx where k='sess'), 'seance00002', 2400, 5, 0, 88, 40, 250,
   null, '{"game":"math","level":"cm1","difficulty":"standard","outcome":"finished","score":2400,"rounds_ok":40,"rounds_err":3,"pages":[{"a":8,"e":0}]}')->>'attempts_used', '2');
 select pg_temp.eq('renvoi du même essai : sans effet', public.submit_session_run((select v from ctx where k='tok_lea'), (select v::uuid from ctx where k='sess'), 'seance00002', 9, 1, 0, 1, 1, 1)->>'ok', 'true');
+-- erreurs des essais de séance : rattachées à la séance
+select pg_temp.eq('séance : erreurs du 1er essai', (public.submit_student_items((select v from ctx where k='tok_lea'), 'seance00001', 'math', 'cm1', 'standard', '[{"k":"rule","i":"tables","l":"Tables","n":10,"e":4},{"k":"item","i":"7 × 8","l":"7 × 8","n":2,"e":2,"p":{"54":2}}]'::jsonb)->>'stored')::int, 2);
+select pg_temp.eq('séance : erreurs du 2e essai', (public.submit_student_items((select v from ctx where k='tok_lea'), 'seance00002', 'math', 'cm1', 'standard', '[{"k":"rule","i":"tables","l":"Tables","n":10,"e":1}]'::jsonb)->>'stored')::int, 1);
+select pg_temp.eq('séance : renvoi non compté', public.submit_student_items((select v from ctx where k='tok_lea'), 'seance00002', 'math', 'cm1', 'standard', '[{"k":"rule","i":"tables","l":"Tables","n":10,"e":1}]'::jsonb)->>'duplicate', 'true');
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+select pg_temp.eq('séance : essais cumulés', (select (e->>'shown')::int from jsonb_array_elements(public.session_items((select v::uuid from ctx where k='sess'))) e where e->>'item' = 'tables'), 20);
+select pg_temp.eq('séance : erreurs cumulées', (select (e->>'wrong')::int from jsonb_array_elements(public.session_items((select v::uuid from ctx where k='sess'))) e where e->>'item' = 'tables'), 5);
+select pg_temp.eq('séance : exercice posé moins de 3 fois non montré', (select e->'picks'->>'54' from jsonb_array_elements(public.session_items((select v::uuid from ctx where k='sess'))) e where e->>'item' = '7 × 8'), null);
+select pg_temp.eq('séance : 1 élève concerné', (select (e->>'players')::int from jsonb_array_elements(public.session_items((select v::uuid from ctx where k='sess'))) e where e->>'item' = 'tables'), 1);
+select pg_temp.fails($$select count(*) from public.session_items$$, 'permission denied');
+reset role;
+select pg_temp.eq('séance : une partie libre n''y entre pas', (select count(*)::int from public.session_items where session_id <> (select v::uuid from ctx where k='sess')), 0);
+select pg_temp.as_user('bbbbbbbb-0000-0000-0000-000000000002');
+select pg_temp.fails($$select public.session_items('$$||(select v from ctx where k='sess')||$$'::uuid)$$, 'forbidden');
+select pg_temp.as_anon();
+select pg_temp.fails($$select public.session_items(gen_random_uuid())$$, 'permission denied');
 select pg_temp.eq('3e essai refusé (limite 2)', public.submit_session_run((select v from ctx where k='tok_lea'), (select v::uuid from ctx where k='sess'), 'seance00003', 99999, 9, 0, 99, 99, 99)->>'error', 'no_attempts_left');
 select pg_temp.eq('Nina ne peut pas jouer la séance d''une autre classe', public.submit_session_run((select v from ctx where k='tok_nina'), (select v::uuid from ctx where k='sess'), 'seance00004', 1, 1, 0, 1, 1, 1)->>'error', 'unknown_session');
 select pg_temp.eq('mon espace : 2 essais utilisés, meilleur 2400', (public.my_sessions((select v from ctx where k='tok_lea'))->'sessions'->0->>'attempts_used') || '/' || (public.my_sessions((select v from ctx where k='tok_lea'))->'sessions'->0->>'best_score'), '2/2400');
@@ -749,7 +765,7 @@ select pg_temp.as_user('bbbbbbbb-0000-0000-0000-000000000002');
 select pg_temp.fails($$select public.class_items('$$||(select v from ctx where k='classX')||$$'::uuid)$$, 'forbidden');
 select pg_temp.as_admin();
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
-select pg_temp.eq('serveur en version 21, tout est à jour', (select public.server_version()->>'version'), '21');
+select pg_temp.eq('serveur en version 22, tout est à jour', (select public.server_version()->>'version'), '22');
 select pg_temp.eq('aucune fonctionnalité « fiche élève » manquante', (select count(*)::int from jsonb_array_elements_text(public.server_version()->'missing') m where m like 'eleves%'), 0);
 select pg_temp.as_admin();
 

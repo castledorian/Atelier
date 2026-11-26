@@ -1,0 +1,258 @@
+/* ───────── Chasse aux fautes : combat contre les ennemis d'encre ───────── */
+
+.pen-icon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+}
+
+.en-puddle {
+  transition: rx 0.3s, ry 0.3s;
+}
+.en-body {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+.en-idle .en-body {
+  animation: en-breathe 2.6s ease-in-out infinite;
+}
+.en-dead .en-body {
+  animation: en-splat 0.55s ease-in forwards;
+}
+.en-attack .en-body {
+  animation: en-breathe 0.9s ease-in-out infinite;
+}
+
+@keyframes en-breathe {
+  50% {
+    transform: scale(1.03, 0.97);
+  }
+}
+@keyframes en-splat {
+  to {
+    transform: scale(1.25, 0.04);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .en-body {
+    animation: none !important;
+  }
+  .en-dead .en-body {
+    transform: scale(1.25, 0.04);
+    opacity: 0;
+  }
+}
+
+/* ───────── Chasse aux fautes : HUD compact, rôles des ennemis, effets d'encre ───────── */
+
+.en-drops circle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: en-drop 0.65s cubic-bezier(0.2, 0.7, 0.4, 1) forwards;
+}
+@keyframes en-drop {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), calc(var(--dy) + 70px)) scale(0.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .en-drops circle {
+    animation: none !important;
+  }
+}
+
+/* ───────── Écrans tactiles : cibles à toucher ≥ 44 px, et Chasse aux fautes sans défilement inutile ───────── */
+@media (pointer: coarse) {
+  .seg-b {
+    min-height: 44px;
+  }
+  .back-btn {
+    min-height: 44px !important;
+  }
+}
+@media (max-height: 480px) {
+  .sp-card {
+    padding: 8px 12px;
+  }
+}
+
+/* ennemis vivants : ils flottent, clignent, regardent autour d'eux et dégoulinent */
+.en-idle,
+.en-angry {
+  animation: en-float 3.1s ease-in-out infinite;
+  animation-delay: var(--d, 0s);
+}
+.en-angry {
+  animation-duration: 1.6s;
+}
+.en-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: en-blink 4.4s infinite;
+  animation-delay: var(--d, 0s);
+}
+.en-look {
+  animation: en-look 5.5s ease-in-out infinite;
+  animation-delay: var(--d, 0s);
+}
+.en-drip {
+  opacity: 0;
+  animation: en-drip 3.6s ease-in infinite;
+  animation-delay: var(--d, 0s);
+}
+@keyframes en-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1.2deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(1.2deg);
+  }
+}
+@keyframes en-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.08);
+  }
+}
+@keyframes en-look {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  30% {
+    transform: translate(-3px, 1px);
+  }
+  60% {
+    transform: translate(3px, -2px);
+  }
+  80% {
+    transform: translate(0, 2px);
+  }
+}
+@keyframes en-drip {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(30px) scale(0.8);
+  }
+}
+.en-dead .en-eye,
+.en-dead .en-look {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .en-idle,
+.en-angry,
+.en-eye,
+.en-look,
+.en-drip {
+    animation: none !important;
+  }
+}
+
+/* Téléphone : la feuille occupe tout l'écran, le combat s'étire pour remplir la hauteur */
+@media (max-width: 640px) {
+  .page-in.page-fill > .sp-card {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    box-shadow: none;
+  }
+  .sp-card .sp-play {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .sp-card .sp-arena {
+    flex: 1 1 auto;
+    justify-content: space-evenly;
+  }
+  .sp-card .sp-battle {
+    flex: 1 1 auto;
+    align-items: center;
+  }
+  .page:has(.sp-card) {
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+}
+
+/* la consigne (ou le message d'erreur) a toujours la même hauteur : la bulle ne bouge jamais */
+
+.ghost {
+  visibility: hidden;
+}
+@media (max-width: 640px) and (max-height: 700px) {
+  .sp-card {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+}
+
+/* ───── Le canon à encre (remplace le crayon) ───── */
+
+.cannon-icon {
+  overflow: visible;
+  transform-origin: 40% 85%;
+  /* un peu plus grand que l'ancien stylo : la bouche du canon est alors à 97 % / 33 % */
+  transform: scale(1.2);
+}
+.cn-barrel {
+  transform-origin: 18px 30px;
+  transition: transform 0.25s;
+}
+/* il vise vers le haut et se met à briller dès qu'on peut corriger : « prêt à tirer » */
+
+@keyframes cn-kick {
+  0% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-9px) rotate(-3deg);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+@keyframes cn-recoil {
+  0% {
+    transform: translate(0, 0);
+  }
+  18% {
+    transform: translate(-5px, 2px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  
+  
+}
+
+/* ───────── Proportions du combat : une seule unité (--u) règle le canon, les ennemis et les plaques ─────────
+   canon ≈ 0,6 × une tache ; éclat < tache < pâté < boss ; les deux plaques ont exactement la même taille. */
+

@@ -33,6 +33,7 @@ export default function AdminBalance({ levels: allTime, stats, detail, spread = 
   const [level, setLevel] = useState('all');
   const [diff, setDiff] = useState('all');
   const [copied, setCopied] = useState('');
+  const [tab, setTab] = useState<Tab>('conseils');
 
   const levelsSeen = useMemo(() => {
     const seen = new Set<string>();
@@ -77,10 +78,30 @@ export default function AdminBalance({ levels: allTime, stats, detail, spread = 
           Statistiques détaillées indisponibles : lancez <code>serveur/mise-a-jour-stats.sql</code> dans Supabase. En attendant, voici la réussite depuis le début.
         </p>
       )}
+      <p className="adm-note adm-actions">
+        <button type="button" className="link" onClick={() => void copy()} disabled={levels.length === 0 && stats.items.length === 0}>
+          Copier le bilan complet (texte)
+        </button>
+        <Tip label="À quoi sert ce bilan ?">Tout le contenu des quatre onglets, en texte, à coller dans une conversation pour décider des réglages.</Tip>
+        <span className="adm-copied" role="status" aria-live="polite">
+          {copied}
+        </span>
+      </p>
       {detail && <Kpis g={detail} />}
+
+      <div className="part-bar mt-4" role="tablist" aria-label="Équilibrage">
+        {TABS.map(([k, label]) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} className="part-tab" onClick={() => setTab(k)}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'conseils' && (
+        <>
       {detail && (
         <>
-          <h2 className="subhead mt-4">
+          <h2 className="subhead mt-3">
             À régler : jeux et niveaux
             <Tip label="Ce que couvre cette liste">Réussite de chaque jeu, niveau et difficulté, parties perdues tout de suite, jeux délaissés, anti-triche. Les familles de calculs, règles et mots sont jugées juste en dessous.</Tip>
           </h2>
@@ -102,8 +123,13 @@ export default function AdminBalance({ levels: allTime, stats, detail, spread = 
       )}
 
       <ExercisePanel rules={stats.rules} items={stats.items} spread={spread} />
+        </>
+      )}
 
-      <h2 className="subhead mt-4">
+      {tab === 'reussite' && (
+        <>
+
+      <h2 className="subhead mt-3">
         Réussite par niveau
         <Tip label="Objectifs">
           Apprenti ≈ {TARGET.apprenti} %, Standard ≈ {TARGET.standard} %, Expert ≈ {TARGET.expert} % de manches réussies du premier coup (± {TOLERANCE} points) ; Le facteur ≈ {FACTEUR_TARGET} %. Jugé à partir de 150 manches, parties libres seulement.
@@ -113,12 +139,6 @@ export default function AdminBalance({ levels: allTime, stats, detail, spread = 
         <button type="button" className="link" onClick={() => downloadText(`reussite-par-niveau-${stamp()}.csv`, levelsCsv(levels))} disabled={levels.length === 0}>
           Exporter en CSV
         </button>
-        <button type="button" className="link" onClick={() => void copy()} disabled={levels.length === 0 && stats.items.length === 0}>
-          Copier le bilan complet (texte)
-        </button>
-        <span className="adm-copied" role="status" aria-live="polite">
-          {copied}
-        </span>
       </p>
       {sorted.length === 0 ? (
         <p className="adm-note">Aucune partie enregistrée pour l’instant.</p>
@@ -182,8 +202,13 @@ export default function AdminBalance({ levels: allTime, stats, detail, spread = 
       )}
 
       {detail && <ByGrade g={detail} />}
+        </>
+      )}
 
-      <h2 className="subhead mt-4">Ce qui fait échouer</h2>
+      {tab === 'erreurs' && (
+        <>
+
+      <h2 className="subhead mt-3">Ce qui fait échouer</h2>
       <div className="adm-filters">
         <label>
           Jeu
@@ -307,10 +332,22 @@ export default function AdminBalance({ levels: allTime, stats, detail, spread = 
           )}
         </>
       )}
-      {detail && <Activity g={detail} />}
+        </>
+      )}
+
+      {tab === 'activite' && (detail ? <Activity g={detail} /> : <p className="adm-note mt-3">Activité indisponible : lancez <code>serveur/mise-a-jour-stats.sql</code> dans Supabase.</p>)}
     </>
   );
 }
+
+/** Onglets de la page : ce qu'il faut régler d'abord, puis les chiffres qui l'expliquent. */
+type Tab = 'conseils' | 'reussite' | 'erreurs' | 'activite';
+const TABS: Array<[Tab, string]> = [
+  ['conseils', 'À régler'],
+  ['reussite', 'Réussite'],
+  ['erreurs', 'Erreurs'],
+  ['activite', 'Activité'],
+];
 
 /** Colonnes triables du tableau « Réussite par niveau ». */
 type LvKey = 'place' | 'level' | 'runs' | 'success' | 'gap' | 'finished';
@@ -399,7 +436,7 @@ function Activity({ g }: { g: GameStats }) {
   const busiest = [...g.hours].sort((a, b) => b.runs - a.runs)[0];
   return (
     <>
-      <h2 className="subhead mt-5">Activité : parties par semaine</h2>
+      <h2 className="subhead mt-3">Activité : parties par semaine</h2>
       {weeks.length === 0 ? (
         <p className="adm-note">Aucune partie sur la période.</p>
       ) : (

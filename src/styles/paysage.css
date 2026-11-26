@@ -1,0 +1,53 @@
+/* ───── Téléphone en paysage : message « tourne ton téléphone » ───── */
+.rotate-notice {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 24px;
+  text-align: center;
+  background: var(--color-paper, #ede4d0);
+  color: var(--color-ink, #1b1915);
+}
+.rotate-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 26px;
+}
+.rotate-text {
+  margin: 0;
+  max-width: 460px;
+  font-size: 15px;
+}
+.rotate-phone {
+  animation: rotate-hint 2.4s ease-in-out infinite;
+}
+@keyframes rotate-hint {
+  0%, 25% { transform: rotate(-90deg); }
+  60%, 100% { transform: rotate(0deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rotate-phone { animation: none; }
+}
+
+/* Formulaire de séance : les réglages de tous les jeux occupent la même place (la plus haute),
+   le cadre ne change donc plus de taille quand on change de jeu. */
+.cfg-stack {
+  display: grid;
+}
+.cfg-stack > .cfg-pane {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+.cfg-pane.cfg-off {
+  visibility: hidden;
+  pointer-events: none;
+}
+.page {
+  scrollbar-gutter: stable;
+}
+

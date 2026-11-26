@@ -13,6 +13,8 @@
 --   4. public.class_insights : aperçu de la classe, avec la réussite récente JEU PAR JEU (jamais une moyenne de jeux différents).
 --   6. public.class_items : pour l'enseignant, ce que SA CLASSE rate le plus (familles et exercices, au moins 2 élèves concernés),
 --      avec les mauvaises réponses les plus choisies : de quoi préparer une leçon de remédiation.
+--   7. public.session_items : pour l'enseignant, les questions les plus ratées d'UNE séance (familles et exercices),
+--      rattachées à la séance (effacées avec elle).
 --   5. public.admin_item_spread : pour l'administrateur, le nombre d'élèves différents derrière chaque exercice et la dispersion de
 --      leurs résultats (des comptes, aucun nom), pour ne jamais conclure à partir de quelques élèves seulement.
 --
@@ -45,6 +47,22 @@ alter table public.student_items enable row level security;     -- aucune politi
 revoke all on public.student_items from anon, authenticated;
 create index if not exists student_items_updated_idx on public.student_items (updated_at);
 create index if not exists student_items_spread_idx on public.student_items (game, level, difficulty, kind, item);
+
+-- Erreurs des essais de séance, séance par séance (une ligne par élève et par exercice). Effacées avec la séance ou l'élève.
+create table if not exists public.session_items (
+  session_id uuid    not null references public.class_sessions(id) on delete cascade,
+  student_id uuid    not null references public.students(id) on delete cascade,
+  kind       text    not null check (kind in ('rule', 'item')),
+  item       text    not null check (char_length(item) between 1 and 80),
+  label      text    not null check (char_length(label) between 1 and 160),
+  shown      integer not null default 0 check (shown between 0 and 100000),
+  wrong      integer not null default 0 check (wrong between 0 and 100000),
+  picks      jsonb   not null default '{}'::jsonb check (jsonb_typeof(picks) = 'object'),
+  primary key (session_id, student_id, kind, item)
+);
+alter table public.session_items enable row level security;     -- aucune politique : illisible depuis le navigateur
+revoke all on public.session_items from anon, authenticated;
+create index if not exists session_items_student_idx on public.session_items (student_id);
 
 create table if not exists private.student_items_calls (
   student_id uuid not null,
@@ -113,6 +131,47 @@ begin
   return v_cnt;
 end $$;
 
+-- Recopie les compteurs d'un essai de séance dans la table de la séance (mêmes entrées, mêmes contrôles ; 120 exercices au plus par élève).
+create or replace function private.store_session_items(p_sess uuid, p_sid uuid, p_items jsonb) returns void
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  e   jsonb;
+  v_n integer;
+  v_e integer;
+  v_k text;
+  v_i text;
+  v_l text;
+  v_p jsonb;
+begin
+  for e in select value from jsonb_array_elements(p_items) limit 120 loop
+    begin
+      v_k := e->>'k';
+      v_i := left(btrim(coalesce(e->>'i', '')), 80);
+      v_l := left(btrim(coalesce(e->>'l', '')), 160);
+      v_n := (e->>'n')::integer;
+      v_e := (e->>'e')::integer;
+      continue when v_k not in ('rule', 'item') or v_i = '' or v_l = '' or v_n is null or v_e is null
+                    or v_n < 1 or v_n > (case when v_k = 'rule' then 100 else 5 end) or v_e < 0 or v_e > v_n;
+      continue when not exists (select 1 from public.session_items s where s.session_id = p_sess and s.student_id = p_sid and s.kind = v_k and s.item = v_i)
+                    and (select count(*) from public.session_items s where s.session_id = p_sess and s.student_id = p_sid) >= 120;
+      v_p := '{}'::jsonb;
+      if jsonb_typeof(e->'p') = 'object' then
+        select coalesce(jsonb_object_agg(left(x.key, 40), least(5, greatest(1, x.value::integer))), '{}'::jsonb)
+          into v_p from (select key, value from jsonb_each_text(e->'p') limit 3) x;
+      end if;
+      insert into public.session_items (session_id, student_id, kind, item, label, shown, wrong, picks)
+      values (p_sess, p_sid, v_k, v_i, v_l, v_n, v_e, v_p)
+      on conflict (session_id, student_id, kind, item) do update
+        set shown = least(100000, public.session_items.shown + excluded.shown),
+            wrong = least(100000, public.session_items.wrong + excluded.wrong),
+            picks = private.merge_picks(public.session_items.picks, excluded.picks),
+            label = excluded.label;
+    exception when others then
+      null;
+    end;
+  end loop;
+end $$;
+
 -- Contrôles communs aux deux façons d'envoyer. Renvoie null si tout va bien, sinon le code d'erreur.
 create or replace function private.student_items_check(p_sid uuid, p_game text, p_level text, p_diff text, p_items jsonb) returns text
 language plpgsql security definer set search_path = public, pg_temp as $$
@@ -136,9 +195,10 @@ end $$;
 create or replace function public.submit_student_items(p_token text, p_client_id text, p_game text, p_level text, p_difficulty text, p_items jsonb) returns jsonb
 language plpgsql security definer set search_path = public, pg_temp as $$
 declare
-  v_sid uuid := private.student_from_token(p_token);
-  v_err text;
-  v_n   integer;
+  v_sid  uuid := private.student_from_token(p_token);
+  v_err  text;
+  v_n    integer;
+  v_sess uuid;
 begin
   if v_sid is null then return jsonb_build_object('error', 'invalid_session'); end if;
   if p_client_id is null or p_client_id !~ '^[A-Za-z0-9_-]{6,40}$' then return jsonb_build_object('error', 'invalid_data'); end if;
@@ -152,6 +212,9 @@ begin
   if v_n = 0 then return jsonb_build_object('ok', true, 'duplicate', true); end if;
   insert into private.student_items_calls (student_id) values (v_sid);
   v_n := private.store_student_items(v_sid, p_game, p_level, coalesce(p_difficulty, ''), p_items);
+  -- essai de séance : la séance garde aussi ses propres compteurs (questions les plus ratées de la séance)
+  select r.session_id into v_sess from public.runs r where r.student_id = v_sid and r.client_id = p_client_id and r.game = p_game limit 1;
+  if v_sess is not null then perform private.store_session_items(v_sess, v_sid, p_items); end if;
   return jsonb_build_object('ok', true, 'stored', v_n);
 end $$;
 
@@ -251,6 +314,42 @@ begin
     ) t), '[]'::jsonb);
 end $$;
 
+-- Enseignant : les questions les plus ratées d'une séance (familles et exercices posés au moins 3 fois), et le nombre d'élèves concernés.
+create or replace function public.session_items(p_id uuid) returns jsonb
+language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare v_s public.class_sessions%rowtype;
+begin
+  select * into v_s from public.class_sessions where id = p_id;
+  if not found then raise exception 'forbidden' using errcode = '42501'; end if;
+  perform private.assert_reader(v_s.school_id);
+  return coalesce((
+    select jsonb_agg(to_jsonb(t) order by t.err desc, t.shown desc)
+    from (
+      select i.kind, i.item, max(i.label) as label,
+             count(*)::integer as players,
+             sum(i.shown)::integer as shown,
+             sum(i.wrong)::integer as wrong,
+             round(100.0 * sum(i.wrong) / sum(i.shown), 1) as err,
+             coalesce((
+               select jsonb_object_agg(p.k, p.n)
+               from (
+                 select x.key as k, sum(x.value::integer)::integer as n
+                 from public.session_items i2
+                 cross join lateral jsonb_each_text(i2.picks) x
+                 where i2.session_id = p_id and i2.kind = i.kind and i2.item = i.item
+                 group by x.key
+                 order by sum(x.value::integer) desc, x.key
+                 limit 3
+               ) p), '{}'::jsonb) as picks
+      from public.session_items i
+      where i.session_id = p_id
+      group by i.kind, i.item
+      having sum(i.shown) >= 3
+      order by 100.0 * sum(i.wrong) / sum(i.shown) desc
+      limit 60
+    ) t), '[]'::jsonb);
+end $$;
+
 -- Administrateur : combien d'élèves différents derrière chaque exercice (par jeu, niveau, difficulté), et de quoi mesurer la dispersion
 -- de leurs résultats (sommes et sommes de produits par élève). Aucun nom, aucune classe : seulement des comptes.
 create or replace function public.admin_item_spread() returns jsonb
@@ -321,6 +420,9 @@ revoke all on function public.student_detail(uuid, integer) from public, anon;
 revoke all on function public.class_insights(uuid) from public, anon;
 revoke all on function public.admin_item_spread() from public, anon;
 revoke all on function public.class_items(uuid) from public, anon;
+revoke all on function private.store_session_items(uuid, uuid, jsonb) from public, anon, authenticated;
+revoke all on function public.session_items(uuid) from public, anon;
+grant execute on function public.session_items(uuid) to authenticated;
 grant execute on function public.class_items(uuid) to authenticated;
 grant execute on function public.submit_student_items(text, text, text, text, text, jsonb) to anon, authenticated;
 grant execute on function public.submit_student_items(text, text, text, jsonb) to anon, authenticated;
@@ -352,7 +454,7 @@ begin
   return jsonb_build_object('runs', v_runs, 'students', v_students);
 end $$;
 
--- Version du serveur : 21 (fonctionnalités « eleves », « eleves_fiable », « eleves_classe »).
+-- Version du serveur : 22 (fonctionnalités « eleves », « eleves_fiable », « eleves_classe », « eleves_seance »).
 create or replace function public.server_version() returns jsonb
 language plpgsql stable security definer set search_path = public, pg_temp as $$
 declare
@@ -405,10 +507,11 @@ begin
     'eleves_fiable', to_regprocedure('public.submit_student_items(text,text,text,text,text,jsonb)') is not null
                    and to_regprocedure('public.admin_item_spread()') is not null and v_ins like '%n_prev%',
     'eleves_classe', to_regprocedure('public.class_items(uuid)') is not null,
+    'eleves_seance', to_regprocedure('public.session_items(uuid)') is not null,
     'nettoyage_auto', v_cron
   );
   return jsonb_build_object(
-    'version', 21,
+    'version', 22,
     'features', f,
     'migrations', coalesce((select jsonb_agg(id order by id) from private.schema_migrations), '[]'::jsonb),
     'plain_codes', (select count(*) from public.students where access_code is not null),
@@ -421,3 +524,4 @@ grant execute on function public.server_version() to authenticated;
 insert into private.schema_migrations (id) values ('2026-11-eleves') on conflict (id) do nothing;
 insert into private.schema_migrations (id) values ('2026-11-eleves-fiable') on conflict (id) do nothing;
 insert into private.schema_migrations (id) values ('2026-11-eleves-classe') on conflict (id) do nothing;
+insert into private.schema_migrations (id) values ('2026-11-eleves-seance') on conflict (id) do nothing;

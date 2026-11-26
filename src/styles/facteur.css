@@ -1,0 +1,333 @@
+/* ───────── « Le facteur » (CP) : colis sur un tapis, boîtes aux lettres ─────────
+   Écriture sans empattement et à « a » et « g » d'une seule forme quand le poste en dispose (comme à l'école) ; les lettres muettes sont grisées. */
+.fct {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 12px max(12px, env(safe-area-inset-bottom));
+  touch-action: manipulation;
+  font-family: "Andika", "Comic Sans MS", "Comic Neue", "Chalkboard SE", "Century Gothic", "Trebuchet MS", Verdana, sans-serif;
+}
+.fct-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+}
+.fct-prog {
+  flex: 1 1 auto;
+  height: 14px;
+  overflow: hidden;
+  border: 2px solid var(--color-ink);
+  border-radius: 8px;
+  background: #fff;
+}
+.fct-prog span {
+  display: block;
+  height: 100%;
+  background: var(--color-ribbon);
+  transition: width 0.4s ease-out;
+}
+.fct-score {
+  min-width: 4.5em;
+  font-family: var(--font-display);
+  font-size: 20px;
+  text-align: right;
+}
+.fct-mult {
+  color: var(--color-ribbon);
+}
+.fct-belt {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  align-items: flex-end; /* le colis est posé sur le tapis */
+  justify-content: center;
+  min-height: 0;
+  padding-bottom: 22px;
+  overflow: hidden;
+}
+.fct-belt::before,
+.fct-belt::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  height: 26px;
+}
+/* les rayures : un calque plus large qui glisse (transform : léger pour les vieux postes) exactement comme le colis ;
+   un motif (4 cqw) à chaque 1/25 de tour, le tour dure --ride et le colis parcourt 100 cqw */
+.fct-belt::before {
+  right: -10px;
+  left: calc(-10px - 4cqw);
+  background: repeating-linear-gradient(90deg, #3a342c 0 2cqw, #4a4338 2cqw 4cqw);
+  animation: fct-belt calc(var(--ride, 44s) / 25) linear infinite;
+  will-change: transform;
+}
+/* le cadre du tapis, fixe */
+.fct-belt::after {
+  right: -10px;
+  left: -10px;
+  border: 2px solid var(--color-ink);
+}
+@keyframes fct-belt {
+  to {
+    transform: translateX(4cqw);
+  }
+}
+.fct-parcel {
+  position: relative;
+  z-index: 1; /* posé sur le tapis, pas dessous */
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  --pw: min(44cqw, 34cqh);
+  width: var(--pw);
+  aspect-ratio: 1;
+  padding: min(2.4cqw, 1.8cqh); /* en cq, pas en % : un % se calcule sur la largeur du parent */
+  border: 3px solid var(--color-ink);
+  border-radius: 12px;
+  background: #d2aa6c;
+  box-shadow: 0 3px 0 rgba(27, 25, 21, 0.45); /* l'ombre touche le tapis */
+  animation: fct-ride var(--ride, 44s) linear infinite;
+}
+.fct-parcel::before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: 46%;
+  width: 8%;
+  background: rgba(255, 255, 255, 0.45);
+}
+.fct-parcel.is-sent {
+  animation: fct-send 0.7s ease-in both;
+}
+/* le colis est posé sur le tapis à gauche (il apparaît en fondu), avance à vitesse constante, la même que les rayures du tapis, sort à droite, puis refait un tour */
+@keyframes fct-ride {
+  0% {
+    transform: translateX(calc(-50cqw + var(--pw) / 2));
+    opacity: 0;
+  }
+  2% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(calc(50cqw + var(--pw) / 2));
+    opacity: 1;
+  }
+}
+@keyframes fct-send {
+  from {
+    transform: translate(var(--x0, 0), 0);
+  }
+  to {
+    transform: translate(calc(var(--x0, 0px) + var(--dx, 0px)), var(--dy, 40cqh)) scale(0.3);
+    opacity: 0;
+  }
+}
+.fct-img,
+.fct-emoji {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 8px;
+  background: #fdf9ee; /* le fond crème des images générées */
+  object-fit: contain;
+  font-size: min(19cqw, 14.5cqh);
+  line-height: 1;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.fct-pts {
+  position: absolute;
+  top: 12%;
+  font-family: var(--font-display);
+  font-size: 30px;
+  color: var(--color-ribbon);
+  animation: fct-float 1s ease-out both;
+}
+@keyframes fct-float {
+  from {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-14px);
+    opacity: 0;
+  }
+}
+.fct-say {
+  min-height: 1.7em;
+  margin: 0;
+  font-size: 19px;
+  text-align: center;
+}
+.fct-boxes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.fct-box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.fct-box-art {
+  display: block;
+  width: 100%;
+  max-height: 22cqh;
+}
+.fct-box-body {
+  fill: #f2c230;
+  stroke: var(--color-ink);
+  stroke-width: 3;
+}
+.fct-box-slot {
+  fill: var(--color-ink);
+}
+.fct-box-flag {
+  fill: var(--color-ribbon);
+  stroke: var(--color-ink);
+  stroke-width: 1.5;
+  transform: translateY(26px);
+  transition: transform 0.25s ease-out;
+}
+.fct-box[data-state="ok"] .fct-box-flag {
+  transform: none;
+}
+.fct-box[data-state="ok"] .fct-box-body {
+  fill: #7fc47a;
+}
+.fct-word {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: clamp(54px, 11cqh, 78px); /* même hauteur pour les trois étiquettes, quelle que soit la longueur du mot */
+  line-height: 1;
+  padding: 2px 6px 5px;
+  border: 2px solid var(--color-ink);
+  border-radius: 8px;
+  background: #fffaf0;
+  font-size: clamp(20px, 5.4cqw, 46px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+}
+.fct-mute {
+  color: #8a8478;
+  font-weight: 400;
+}
+.fct-box[data-state="off"],
+.fct-box[data-state="no"] {
+  cursor: default;
+}
+.fct-box[data-state="off"] .fct-box-art,
+.fct-box[data-state="off"] .fct-word {
+  opacity: 0.32;
+  filter: grayscale(1);
+}
+.fct-box[data-state="no"] {
+  animation: fct-shake 0.4s ease-in-out;
+}
+.fct-box[data-state="no"] .fct-box-art,
+.fct-box[data-state="no"] .fct-word {
+  opacity: 0.32;
+  filter: grayscale(1);
+}
+.fct-box[data-state="hint"] .fct-box-art {
+  animation: fct-pulse 0.9s ease-in-out infinite;
+}
+.fct-box[data-state="hint"] .fct-word {
+  box-shadow: 0 0 0 4px var(--color-ribbon);
+}
+.fct-box[data-state="ok"] .fct-word {
+  background: #d9f0d4;
+}
+@keyframes fct-shake {
+  25% {
+    transform: translateX(-8px);
+  }
+  75% {
+    transform: translateX(8px);
+  }
+}
+@keyframes fct-pulse {
+  50% {
+    transform: scale(1.05);
+  }
+}
+.fct-stars {
+  margin: 4px 0;
+  font-size: 46px;
+  letter-spacing: 0.12em;
+  line-height: 1.1;
+  text-align: center;
+  color: var(--color-ribbon);
+}
+.fct-missed {
+  margin: 4px 0 0;
+}
+.fct-chip {
+  display: inline-block;
+  margin: 3px 6px 3px 0;
+  padding: 1px 10px 3px;
+  border: 2px solid var(--color-ink);
+  border-radius: 8px;
+  background: #fff;
+  font-family: "Andika", "Comic Sans MS", "Comic Neue", "Chalkboard SE", "Century Gothic", "Trebuchet MS", Verdana, sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fct-belt::before,
+  .fct-pts,
+  .fct-box,
+  .fct-box[data-state="hint"] .fct-box-art {
+    animation: none !important;
+  }
+  .fct-parcel {
+    animation: none !important; /* sans mouvement : le colis reste au milieu du tapis */
+  }
+  .fct-parcel.is-sent {
+    opacity: 0;
+  }
+}
+
+/* Le facteur : écran des scores */
+.fct-scores {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fct-scores li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--color-ink);
+  font-size: 17px;
+}
+

@@ -19,6 +19,8 @@ import type { LexDiff, LexLevel, Rel } from '../game/lexique/rounds';
 import type { Settings } from '../game/storage';
 import * as T from '../server/teacher';
 import { Tip } from '../components/Tip';
+import { WeakPoints } from '../components/WeakPoints';
+import type { WeakRow } from '../components/WeakPoints';
 
 /** Détail de chaque jeu, montré dans la bulle « i » du formulaire (la page reste courte). */
 const GAME_HELP: Record<string, string> = {
@@ -132,7 +134,7 @@ function Seg<V extends string | number>({ label, value, options, onChange }: { l
 export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
   const [list, setList] = useState<ClassSession[] | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [view, setView] = useState<{ session: ClassSession; rows: SessionResultRow[] } | null>(null);
+  const [view, setView] = useState<{ session: ClassSession; rows: SessionResultRow[]; missed: WeakRow[] | null } | null>(null);
   const resSort = useSort<'name' | 'attempts' | 'best'>('best', 'desc');
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -160,8 +162,10 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
   };
 
   const open = async (s: ClassSession) => {
-    const rows = await act(() => T.sessionResults(s.id));
-    if (rows) setView({ session: s, rows });
+    // le détail des erreurs n'existe que pour les jeux de calcul, d'orthographe et de lecture
+    const detailed = s.game === 'math' || s.game === 'spelling' || s.game === 'facteur';
+    const [rows, missed] = await Promise.all([act(() => T.sessionResults(s.id)), detailed ? act(() => T.sessionItems(s.id)) : Promise.resolve(null)]);
+    if (rows) setView({ session: s, rows, missed: missed ?? null });
   };
 
   const exportCsv = (s: ClassSession, rows: SessionResultRow[]) => {
@@ -179,7 +183,7 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
   };
 
   if (view) {
-    const { session, rows } = view;
+    const { session, rows, missed } = view;
     const shown = sortRows(rows, resSort.sort, (r, k) => (k === 'name' ? r.name : k === 'attempts' ? r.attempts : r.best_score));
     const done = rows.filter((r) => r.attempts > 0);
     const avg = done.length ? done.reduce((a, r) => a + (r.best_score ?? 0), 0) / done.length : 0;
@@ -235,6 +239,15 @@ export function SessionsPanel({ cls, act }: { cls: ClassRow; act: Act }) {
             </tbody>
           </table>
         </div>
+        {missed && (
+          <div className="mt-3">
+            <WeakPoints
+              rows={missed}
+              title="Questions les plus ratées"
+              note="Familles et exercices de cette séance ratés au moins une fois sur quatre, tous essais confondus, avec les mauvaises réponses les plus choisies. Les essais joués avant la mise à jour n’ont pas ce détail."
+            />
+          </div>
+        )}
         <div className="mt-3">
           <button type="button" className="btn btn-ghost" onClick={() => exportCsv(session, rows)}>
             Exporter les essais (CSV)

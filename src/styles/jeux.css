@@ -1,0 +1,604 @@
+/* ───────── Écrans des jeux : tout tient dans l'écran, sans faire défiler ───────── */
+
+/* Bouton de retour : toujours en haut à gauche, même forme partout */
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: calc(var(--sp, 12px) * 0.6);
+}
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 2px 14px 0 10px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+  color: var(--color-ink);
+  box-shadow: 0 3px 0 var(--color-ink);
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.back-btn:hover {
+  background: #fff;
+}
+.back-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 var(--color-ink);
+}
+.back-arrow {
+  font-family: system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.tagline {
+  margin-top: calc(var(--sp) * 0.7);
+  max-width: 46ch;
+  font-size: 15px;
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+
+/* Boutons secondaires du menu (ouvrent un écran au lieu de rallonger la page) */
+.tools {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: var(--sp);
+}
+.tool {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 4px 6px;
+  border: 2px solid var(--color-ink);
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 14px;
+  line-height: 1.1;
+  text-align: center;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.tool:hover {
+  background: rgba(27, 25, 21, 0.07);
+}
+.tool > span {
+  font-family: system-ui, sans-serif;
+  font-weight: 700;
+  color: var(--color-ribbon);
+}
+@media (max-width: 560px) {
+  .tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Menu : partie « jouer » sous le titre ; les outils passent en bas */
+.card-menu {
+  display: flex;
+  flex-direction: column;
+}
+.card-menu .menu-a {
+  display: contents;
+}
+.card-menu .tools {
+  order: 3;
+}
+.card-menu .menu-b {
+  order: 2;
+  margin-top: var(--sp);
+}
+.btn-play {
+  min-width: 200px;
+}
+
+.sub-body {
+  margin-top: var(--sp);
+}
+.howto-list {
+  display: grid;
+  gap: calc(var(--sp) * 0.8);
+  font-size: 16px;
+  line-height: 1.35;
+}
+.seg-wide {
+  display: flex;
+  width: 100%;
+}
+.seg-wide .seg-b {
+  flex: 1;
+  min-height: 44px;
+  font-size: 15px;
+}
+
+/* Fin de partie : une colonne sur téléphone, deux sur grand écran */
+.card-over {
+  max-width: 520px;
+}
+.over-b {
+  margin-top: var(--sp);
+}
+@media (min-width: 760px) {
+  .card-over {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 28px;
+    max-width: 860px;
+  }
+  .over-b {
+    margin-top: 0;
+    padding-left: 24px;
+    border-left: 2px dashed rgba(27, 25, 21, 0.25);
+  }
+}
+.over-a {
+  position: relative;
+}
+.card-over .stamp {
+  top: 2px;
+  right: 0;
+  font-size: 14px;
+}
+
+/* Progrès : deux graphiques côte à côte quand il y a la place */
+.card-progress {
+  max-width: 620px;
+}
+.charts {
+  display: grid;
+  gap: 4px 18px;
+}
+.chart svg {
+  max-height: min(19vh, 150px);
+}
+@media (min-width: 640px), (max-height: 520px) {
+  .charts {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Écrans peu hauts (portable 1024×600, téléphone à l'horizontale…) : on resserre */
+@media (max-height: 620px) {
+  .card .eyebrow,
+  .card .rule,
+  .page .eyebrow,
+  .page .rule {
+    display: none;
+  }
+  .card .tagline {
+    display: none;
+  }
+  .btn {
+    min-height: 44px;
+  }
+  .howto-list {
+    font-size: 15px;
+  }
+}
+@media (max-height: 460px) {
+  .card .title {
+    font-size: clamp(32px, 12vh, 52px);
+  }
+  .diff-desc {
+    min-height: 0;
+  }
+  .enter-hint {
+    display: none;
+  }
+  .back-btn,
+  .tool {
+    min-height: 38px;
+  }
+}
+
+/* Téléphone à l'horizontale : le menu passe sur deux colonnes */
+@media (max-height: 520px) and (min-width: 640px) {
+  .card-menu {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    column-gap: 24px;
+    max-width: 820px;
+    align-items: start;
+  }
+  .card-menu .menu-a {
+    display: block;
+  }
+  .card-menu .menu-b {
+    margin-top: 0;
+  }
+  .card-menu .tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Grand écran (TBI / vidéoprojecteur) : tout est agrandi pour être lu du fond de la classe */
+@media (min-width: 1400px) and (min-height: 820px) {
+  .sheet {
+    max-width: 1120px;
+  }
+  .card,
+  .page-in {
+    zoom: 1.3;
+  }
+}
+
+/* Accueil et pages hors jeu : cartes de jeux compactes sur les petits écrans */
+.page .title {
+  font-size: clamp(36px, min(13vw, 11vh), 84px);
+}
+.page .tagline {
+  margin-top: 6px;
+}
+.games-levels {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+@media (max-width: 600px), (max-height: 700px) {
+  .gcard {
+    min-height: 0;
+    gap: 3px;
+    padding: 10px 12px 9px;
+  }
+  .gcard-name {
+    font-size: 22px;
+  }
+  .gcard-text {
+    font-size: 14px;
+  }
+  .who {
+    margin-top: 10px;
+    padding: 9px 12px;
+  }
+}
+@media (max-height: 700px) {
+  .gcard-soon {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .gcard-go {
+    display: none;
+  }
+}
+@media (max-height: 560px) and (min-width: 600px) {
+  .games {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+  .page .tagline {
+    display: none;
+  }
+}
+
+/* Espace enseignant : boutons d'action plus compacts, actions des lignes empilées sur téléphone */
+.sec-head .btn {
+  min-height: 44px;
+  padding: 2px 10px 0;
+  font-size: 14px;
+}
+@container (max-width: 520px) {
+  .tbl .row-actions {
+    white-space: normal;
+  }
+  .tbl .row-actions .link {
+    display: block;
+    margin: 0;
+    min-height: 32px;
+    text-align: left;
+  }
+}
+@media (max-height: 620px) {
+  .dash-head .eyebrow {
+    display: none;
+  }
+}
+
+/* Espace enseignant : la page occupe toute la hauteur, le tableau prend la place qui reste */
+.page-fill {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.sec-fill {
+  flex: 1 1 0;
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+}
+.sec-fill .tbl-wrap {
+  flex: 1 1 0;
+  min-height: 150px;
+}
+@media (min-width: 1400px) and (min-height: 820px) {
+  .page-in.page-fill {
+    zoom: 1.15;
+    min-height: calc(100% / 1.15);
+  }
+}
+
+/* Texte agrandi : on garde la même place à l'écran en resserrant les marges et en retirant le décor */
+html[data-text='large'] .card,
+html[data-text='xlarge'] .card {
+  --sp: clamp(6px, 1.4vh, 14px);
+}
+html[data-text='xlarge'] .card .tagline,
+html[data-text='xlarge'] .card .eyebrow,
+html[data-text='xlarge'] .card .rule {
+  display: none;
+}
+html[data-text='xlarge'] .card .title {
+  font-size: clamp(32px, min(13vw, 9vh), 80px);
+}
+
+/* Course à l'encre : 3 outils et 2 niveaux */
+.tools[data-n='3'] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 560px) {
+  .tools[data-n='3'] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .tools[data-n='3'] .tool {
+    font-size: 14px;
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+.games-levels[data-n='2'],
+.games-levels[data-n='4'] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Course : écrans courts (petits PC, téléphones) — rien ne dépasse, rien ne défile */
+@media (max-height: 660px) {
+  .card-cover .cover-missed {
+    display: none;
+  }
+  .card-cover .score-big {
+    font-size: 36px;
+  }
+}
+@media (max-height: 460px) {
+  .card-cover .rule,
+  .howto-opt {
+    display: none;
+  }
+  .card-cover .btn {
+    min-height: 44px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+}
+@media (max-height: 460px) {
+  .card-cover .cover-long {
+    display: none;
+  }
+  .card-cover .btn {
+    font-size: 14px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .card-cover .score-big {
+    font-size: 30px;
+  }
+  .card-cover dl > div {
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+  .card-cover .title-sm {
+    font-size: 26px;
+  }
+}
+
+/* Course : barre « Valider » sous la zone de jeu */
+.validate-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: var(--color-paper-hi);
+  border-top: 3px solid var(--color-ink);
+  touch-action: manipulation;
+}
+.vb-side,
+.vb-main {
+  min-height: 56px;
+  border: 3px solid var(--color-ink);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  box-shadow: 0 3px 0 var(--color-ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.vb-side {
+  flex: 0 0 22%;
+  max-width: 120px;
+  font-size: 26px;
+}
+.vb-main {
+  flex: 1 1 auto;
+  background: var(--color-paper-hi);
+  color: var(--color-ink);
+  font-size: 24px;
+  letter-spacing: 0.04em;
+  box-shadow: 0 3px 0 #b02a18;
+}
+.vb-main small {
+  margin-left: 10px;
+  font-size: 14px;
+  opacity: 0.7;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.vb-side:active,
+.vb-main:active {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+@media (pointer: coarse) {
+  .vb-main small {
+    display: none;
+  }
+}
+@media (max-height: 520px) {
+  .validate-bar {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+  .vb-side,
+  .vb-main {
+    min-height: 42px;
+    font-size: 20px;
+  }
+}
+
+/* Titre animé de « Course à l'encre » : deux lignes, mêmes lettres tamponnées que « Frappe ! » */
+.title-2l {
+  font-size: clamp(32px, min(13vw, 9.5vh), 78px);
+  line-height: 0.95;
+  white-space: normal;
+}
+.title-2l .tl {
+  display: block;
+  white-space: nowrap;
+}
+@media (max-height: 560px) {
+  .title-2l {
+    font-size: clamp(24px, 9vh, 40px);
+  }
+  .title-2l .tl {
+    display: inline;
+  }
+}
+
+/* Astuce de fin de partie : masquée quand la place manque (petits écrans). */
+@media (max-height: 600px) and (max-width: 500px), (max-height: 460px) {
+  .tip-opt {
+    display: none;
+  }
+}
+
+/* Tampons du cahier (Mémoire d'encre) */
+.gcard-stamps {
+  display: block;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  color: var(--color-ink);
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .desk {
+    background: #fff !important;
+  }
+}
+
+/* Séances de classe */
+.sess-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.sess-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px 14px; border: 2px solid var(--color-ink); background: rgba(255, 255, 255, 0.35); }
+.sess-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 260px; }
+.sess-title { font-size: 18px; line-height: 1.2; }
+.sess-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 8px 0; border-top: 1px dashed rgba(27, 25, 21, 0.35); }
+.sess-runs { margin: 0; padding-left: 18px; font-size: 14px; }
+
+/* Lecture confortable : lettres plus espacées, interligne large, titres sans texture */
+html[data-comfort='on'] body {
+  letter-spacing: 0.08em;
+  word-spacing: 0.12em;
+  line-height: 1.6;
+}
+html[data-comfort='on'] .title,
+html[data-comfort='on'] .title-sm {
+  font-family: var(--font-body);
+  font-weight: 700;
+}
+
+/* Message de pause : discret, en bas de l'écran, jamais bloquant */
+.break-notice {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--color-paper-hi);
+  color: var(--color-ink);
+  border: 2px solid var(--color-ink);
+  box-shadow: 4px 4px 0 var(--color-ink);
+  font-size: 16px;
+}
+
+/* Objectif collectif de la classe */
+.class-goal-bar {
+  height: 14px;
+  margin-top: 6px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+}
+.class-goal-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--color-ink);
+}
+
+/* Astuce en cours de partie, et note de fin de partie */
+.summon {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 64px;
+  z-index: 3;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  border: 2px solid var(--color-ink);
+  border-radius: 6px;
+  background: var(--color-paper-hi);
+  font-size: 14px;
+  line-height: 1.3;
+  pointer-events: none;
+}
+.encre-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border: 2px dashed var(--color-ink);
+  border-radius: 6px;
+}
+
+/* Chasse aux fautes */
+
+.sp-recap {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 0;
+  list-style: none;
+}
+.sp-recap li {
+  padding: 6px 10px;
+  border-left: 4px solid var(--color-ink);
+  font-size: 15px;
+  line-height: 1.4;
+}
+.sp-recap span {
+  display: block;
+  color: rgba(27, 25, 21, 0.8);
+}
+
