@@ -1,6 +1,5 @@
 import { GoutteArt } from './GoutteArt';
-import { InkBoss } from './InkBoss';
-import { BOSS_NAMES, POWER_STEPS } from '../game/boss/state';
+import { POWER_STEPS } from '../game/boss/state';
 import { defaultLook, levelOf, stageOf } from '../game/goutte/rules';
 import type { Look } from '../game/goutte/rules';
 import type { Team } from '../server/goutte';
@@ -16,27 +15,6 @@ export interface Fighter {
 export function fightersOf(team: Team | null): Fighter[] {
   if (!team) return [];
   return team.team.map((m, i) => ({ name: m.name, look: m.look ?? defaultLook(i), level: levelOf(m.xp), me: team.me === m.id }));
-}
-
-/**
- * Les étapes de la créature : celles déjà atteintes sont dessinées, les suivantes restent des silhouettes mystère.
- * On ne dit pas « encore N fautes » (on ne pousse jamais à se tromper) : on montre seulement le chemin parcouru.
- */
-export function StageStrip({ stage }: { stage: number }) {
-  return (
-    <ol className="cave-stages" aria-label="Les étapes de la créature">
-      {BOSS_NAMES.map((n, i) => (
-        <li key={n} data-state={i < stage ? 'past' : i === stage ? 'now' : 'next'}>
-          <span className="cave-stage-art" aria-hidden="true">
-            <InkBoss stage={i} mood={i <= stage ? 'idle' : 'sleep'} />
-          </span>
-          <span className="cave-stage-name">{i <= stage ? n : '?'}</span>
-          {i > stage && <span className="sr-only">étape pas encore atteinte</span>}
-          {i === stage && <span className="sr-only">(aujourd’hui)</span>}
-        </li>
-      ))}
-    </ol>
-  );
 }
 
 /** Lanternes de la classe : une par palier de réussites, et ce qu'il reste pour la suivante (un objectif positif). */

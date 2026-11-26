@@ -26,6 +26,3 @@ export function pictureOf(w: FWord): Picture | null {
 }
 
 export const hasPicture = (w: FWord): boolean => pictureOf(w) !== null;
-
-/** Mots du niveau (hors mots-outils) qui ont déjà une image ou un dessin : pour dire à l'enseignant ce qu'il reste à fournir. */
-export const missingImages = (words: FWord[]): string[] => words.filter((w) => !w.tool && !BY_SLUG.has(slug(w.mark))).map((w) => slug(w.mark));

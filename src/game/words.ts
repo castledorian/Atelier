@@ -50,13 +50,6 @@ const fits = (w: string, allowed?: string) => {
   return true;
 };
 
-/** Nombre de mots du dictionnaire de longueur [min, max] écrits uniquement avec les lettres autorisées. */
-export function countWords(allowed: string, min: number, max: number): number {
-  let n = 0;
-  for (let l = min; l <= max; l++) for (const w of BY_LEN.get(l) ?? []) if (fits(w, allowed)) n++;
-  return n;
-}
-
 /**
  * Mot aléatoire de longueur [min, max], en évitant si possible les initiales déjà à l'écran.
  * Avec des lettres autorisées (séance de l'enseignant) : seuls les mots écrits avec ces lettres sont tirés ;

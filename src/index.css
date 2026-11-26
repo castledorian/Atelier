@@ -15,6 +15,7 @@
 @import "./styles/observation.css"; /* Mode observation (administrateur, lecture seule) */
 @import "./styles/facteur.css"; /* Le facteur (CP) */
 @import "./styles/creature.css"; /* La créature de la grotte (InkBoss) */
+@import "./styles/monster.css"; /* Le monstre animé et le carrousel des formes */
 @import "./styles/goutte.css"; /* La goutte de l’élève */
 @import "./styles/ui.css"; /* Pièces des pages de données : fiche élève, conseils, bulles « i », impression */
 

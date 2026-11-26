@@ -1,8 +1,8 @@
 /**
  * « Le Boss de l'encre » — la grotte de fin d'année.
  *
- * Tout au long de l'année, les fautes des parties nourrissent la créature qui dort au fond de la grotte,
- * et les réussites donnent de la force à la classe. En fin d'année, la classe descend dans la grotte et
+ * Tout au long de l'année, les fautes des parties donnent des points de vie à la créature qui dort au fond de la grotte
+ * (sa FORME, elle, suit le calendrier : voir forms.ts), et les réussites donnent de la force à la classe. En fin d'année, la classe descend dans la grotte et
  * l'affronte : le combat est écrit d'avance, la classe gagne toujours — mais elle doit y croire.
  *
  * Ce module garde la grotte SUR L'APPAREIL (sans compte, ou en secours). Avec un compte, la grotte est celle de la classe,
@@ -20,7 +20,7 @@ export const CAVE_ON = false;
 export interface BossState {
   /** année scolaire en cours, ex. « 2026-2027 » (tout repart à zéro à la rentrée) */
   year: string;
-  /** fautes avalées par la créature : sa taille */
+  /** fautes avalées par la créature : ses points de vie */
   ink: number;
   /** réponses justes de la classe : la force de ses attaques */
   power: number;
@@ -130,44 +130,38 @@ export function resetBoss(d?: Date): BossState {
 
 // ───────────────────────── Taille, force, étapes ─────────────────────────
 
-/** Fautes nécessaires pour chaque taille (7 tailles, de la goutte au colosse). */
-export const INK_STEPS = [0, 25, 70, 150, 300, 550, 900];
 /** Réponses justes nécessaires pour chaque niveau de puissance de la classe. */
 export const POWER_STEPS = [0, 60, 180, 400, 750, 1200, 1800];
 
-export const BOSS_NAMES = ['Petite Goutte', 'Flaque', 'Gros Pâté', 'Mare d’encre', 'Monstre d’encre', 'Colosse d’encre', 'Le Grand Pâté'];
-
-/** Niveau (0 à 6) atteint pour une valeur donnée. */
+/** Palier (0 à 6) atteint pour une valeur donnée. */
 export function stepOf(value: number, steps: readonly number[]): number {
   let n = 0;
   for (let i = 0; i < steps.length; i++) if (value >= steps[i]) n = i;
   return n;
 }
 
-/** Dessin de la créature selon sa taille : une goutte, puis une tache, un gros pâté, et enfin le boss. */
-export const bossKind = (level: number): number => (level <= 0 ? 2 : level <= 1 ? 0 : level <= 2 ? 4 : level <= 4 ? 7 : 6);
-
 /** Points de vie de départ de la créature (la petite goutte). */
 export const BASE_HP = 10;
 /** Points de vie affichés : chaque faute des élèves en ajoute un ; une règle retravaillée en retire (voir CALM). */
 export const bossHp = (s: Pick<BossState, 'ink'>): number => BASE_HP + Math.max(0, Math.round(s.ink));
 
-/** Ce que dit la créature aux enfants : elle veut les faire partir (taquine, jamais effrayante). Plus elle grossit, plus elle se vante. */
+/** Ce que dit la créature aux enfants : elle veut les faire partir (taquine, jamais effrayante). Plus elle évolue, plus elle se vante. */
 export const BOSS_SPEECH: Record<'small' | 'big' | 'final', readonly string[]> = {
   small: ['Chut… Je dors ! Partez, petits.', 'Hé ! C’est ma grotte. Filez !', 'Allez, ouste ! Laissez-moi tranquille.'],
   big: ['Vos fautes me rendent fort ! Partez !', 'Je grossis, je grossis… Partez vite !', 'Pas de place pour vous ici. Sortez !'],
   final: ['Vous revenez ? Partez, je suis trop fort !', 'Dernière chance : partez d’ici !', 'Ma grotte, mes règles. Dehors !'],
 };
 
-/** Une phrase de la créature, selon la phase et sa taille ; `pick` (0 à 1) choisit parmi les phrases possibles. */
-export function bossSpeech(phase: BossPhase, ink: number, pick: number): string {
-  const list = phase === 'final' ? BOSS_SPEECH.final : ink >= 3 ? BOSS_SPEECH.big : BOSS_SPEECH.small;
+/** À partir de cette forme (0 à 9), la créature se vante au lieu de dormir. */
+const BRAGGING_FROM = 4;
+
+/** Une phrase de la créature, selon la phase et sa forme (0 à 9) ; `pick` (0 à 1) choisit parmi les phrases possibles. */
+export function bossSpeech(phase: BossPhase, form: number, pick: number): string {
+  const list = phase === 'final' ? BOSS_SPEECH.final : form >= BRAGGING_FROM ? BOSS_SPEECH.big : BOSS_SPEECH.small;
   return list[Math.min(list.length - 1, Math.max(0, Math.floor(pick * list.length)))];
 }
 
-export const inkLevel = (s: BossState) => stepOf(s.ink, INK_STEPS);
 export const powerLevel = (s: BossState) => stepOf(s.power, POWER_STEPS);
-export const bossName = (s: BossState) => BOSS_NAMES[inkLevel(s)];
 
 /** Part du palier en cours, de 0 à 1 (pour la jauge). Au dernier palier, la jauge est pleine. */
 export function fillOf(value: number, steps: readonly number[]): number {

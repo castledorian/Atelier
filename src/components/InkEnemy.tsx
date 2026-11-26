@@ -16,7 +16,6 @@ export const BOSS_NAME = 'Le Grand Pâté';
 export type EnemyMood = 'idle' | 'write' | 'angry' | 'attack' | 'dead';
 
 export type Role = 'splash' | 'tache' | 'pate' | 'boss';
-export const ROLE_LABEL: Record<Role, string> = { splash: 'Petit', tache: 'Moyen', pate: 'Costaud', boss: 'Boss' };
 const TACHE_KINDS = [0, 4, 5, 3, 1];
 /** Le dessin d'un ennemi selon son rôle : une silhouette par rôle, et plusieurs pour les taches. */
 export function kindFor(role: Role, n: number): number {
@@ -205,14 +204,3 @@ export function CannonIcon() {
   );
 }
 
-/** Petit stylo-plume (ancien « toi »). */
-export function PenIcon() {
-  return (
-    <svg className="pen-icon" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
-      <path d="M8 32 L12 20 L28 4 L36 12 L20 28 Z" fill={INK} />
-      <path d="M8 32 L12 20 L20 28 Z" fill="#c8932b" />
-      <circle cx="21" cy="15" r="2.2" fill={PAPER} />
-      <path d="M6 36 L14 34" stroke={INK} strokeWidth="3" strokeLinecap="round" />
-    </svg>
-  );
-}

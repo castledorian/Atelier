@@ -1,0 +1,328 @@
+/* ═════════════ Le monstre animé (Monster) et le carrousel des formes (CaveStage) ═════════════ */
+
+/* — le monstre : une illustration sans visage + un visage dessiné en code — */
+.mn {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.mn-all {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 92%;
+  transition: transform 0.6s ease;
+}
+.mn-pop,
+.mn-breathe {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 100%;
+}
+.mn-breathe {
+  animation: mn-breathe 4s ease-in-out infinite;
+}
+.mn[data-mood='sleep'] .mn-breathe {
+  animation-duration: 6.5s;
+}
+.mn[data-mood='angry'] .mn-breathe {
+  animation-duration: 3s;
+}
+.mn[data-mood='attack'] .mn-breathe {
+  animation: mn-shake 0.36s linear infinite;
+}
+.mn[data-mood='dead'] .mn-breathe {
+  animation: none;
+  transform: scale(1, 0.9);
+}
+.mn-boing .mn-pop {
+  animation: mn-boing 0.65s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+.mn-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.mn-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.mn-aura {
+  position: absolute;
+  inset: -14%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(166, 139, 255, 0.55), rgba(166, 139, 255, 0));
+  pointer-events: none;
+  animation: mn-aura 3.6s ease-in-out infinite;
+}
+.mn-zzz {
+  position: absolute;
+  top: 4%;
+  right: 6%;
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  font-size: clamp(18px, 3.2vw, 30px);
+  color: #e9e2f7;
+  animation: mn-z 3.2s ease-in-out infinite;
+}
+.mn-zzz b {
+  margin-left: 4px;
+  font-size: 1.35em;
+}
+@keyframes mn-breathe {
+  50% {
+    transform: scale(0.985, 1.028);
+  }
+}
+@keyframes mn-shake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-1.5%, 0.5%);
+  }
+  75% {
+    transform: translate(1.5%, -0.5%);
+  }
+}
+@keyframes mn-boing {
+  0% {
+    transform: scale(1, 1);
+  }
+  25% {
+    transform: scale(1.1, 0.86);
+  }
+  50% {
+    transform: scale(0.95, 1.09);
+  }
+  75% {
+    transform: scale(1.03, 0.98);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+@keyframes mn-aura {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.06);
+  }
+}
+@keyframes mn-z {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(2px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-8px);
+  }
+}
+
+/* — le visage, commun au monstre illustré et au dessin de secours : clignement et regard — */
+.mf-eye {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: mf-blink 5.4s ease-in-out infinite;
+}
+.mf-pupil {
+  animation: mf-look 8s ease-in-out infinite;
+}
+@keyframes mf-blink {
+  0%,
+  93%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.08);
+  }
+}
+@keyframes mf-look {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  30% {
+    transform: translate(2.5px, 0);
+  }
+  65% {
+    transform: translate(-2.5px, 1px);
+  }
+}
+
+/* — le carrousel des formes : flèches de chaque côté, pastilles dessous — */
+.cs {
+  position: relative;
+}
+.cs-swap {
+  display: contents;
+}
+.cs-swap .cave-boss {
+  animation: cs-in 0.45s ease-out both;
+}
+.cs-swap[data-dir='prev'] .cave-boss {
+  animation-name: cs-in-prev;
+}
+@keyframes cs-in {
+  from {
+    opacity: 0;
+    transform: translateX(28px) scale(0.96);
+  }
+}
+@keyframes cs-in-prev {
+  from {
+    opacity: 0;
+    transform: translateX(-28px) scale(0.96);
+  }
+}
+.cs-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-top: -26px;
+  border: 2px solid rgba(236, 226, 203, 0.85);
+  border-radius: 50%;
+  background: rgba(12, 10, 8, 0.72);
+  color: #f4ecd8;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.cs-arrow:hover:not(:disabled) {
+  background: rgba(236, 226, 203, 0.22);
+}
+.cs-arrow:focus-visible {
+  outline: 3px solid var(--color-ribbon);
+  outline-offset: 3px;
+}
+.cs-arrow:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+.cs-prev {
+  left: 10px;
+}
+.cs-next {
+  right: 10px;
+}
+.cs-dots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.cs-dot {
+  display: grid;
+  place-items: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 2px solid rgba(236, 226, 203, 0.45);
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(236, 226, 203, 0.85);
+  font-family: var(--font-display);
+  font-size: 14px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.cs-dot[aria-current='true'] {
+  border-color: #b9a6ff;
+  background: rgba(139, 114, 230, 0.3);
+  color: #fff;
+}
+.cs-dot:disabled {
+  border-style: dashed;
+  border-color: rgba(236, 226, 203, 0.22);
+  color: rgba(236, 226, 203, 0.4);
+  cursor: default;
+}
+.cs-dot:focus-visible {
+  outline: 3px solid var(--color-ribbon);
+  outline-offset: 3px;
+}
+.cs-note {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 15px;
+  color: rgba(236, 226, 203, 0.82);
+}
+.cs-note button {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+@media (pointer: coarse) {
+  .cs-arrow {
+    width: 56px;
+    height: 56px;
+    margin-top: -28px;
+  }
+  .cs-dot {
+    min-width: 44px;
+    height: 44px;
+  }
+}
+@media (max-width: 480px) {
+  .cs-dots {
+    display: grid;
+    grid-template-columns: repeat(5, 44px);
+    justify-content: center;
+  }
+  .cs-dot {
+    min-width: 44px;
+    height: 44px;
+  }
+  .cs-prev {
+    left: 4px;
+  }
+  .cs-next {
+    right: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mn-breathe,
+  .mn-pop,
+  .mn-aura,
+  .mn-zzz,
+  .mf-eye,
+  .mf-pupil,
+  .cs-swap .cave-boss {
+    animation: none;
+  }
+  .mn-all {
+    transition: none;
+  }
+}

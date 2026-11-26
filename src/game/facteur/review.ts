@@ -9,8 +9,6 @@ import type { FWord } from './words';
 
 const KEY = 'atelier.facteur.review.v1';
 export const REVIEW_MAX = 3;
-/** au plus 3 mots à revoir par séance : le reste reste neuf */
-export const REVIEW_PER_SESSION = 3;
 
 type Store = Record<string, number>;
 

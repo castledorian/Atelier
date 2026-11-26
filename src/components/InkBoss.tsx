@@ -1,4 +1,5 @@
-import type { EnemyMood } from './InkEnemy';
+import { MonsterFace } from './MonsterFace';
+import type { BossMood, FaceGeom } from './MonsterFace';
 
 /**
  * La créature de la grotte, dessinée pour grandir : 7 étapes (de la petite goutte au Grand Pâté), et chacune ajoute
@@ -8,7 +9,7 @@ import type { EnemyMood } from './InkEnemy';
  * Décor seulement (aria-hidden) : le nom et les points de vie sont écrits à côté.
  */
 
-export type BossMood = EnemyMood | 'sleep';
+export type { BossMood };
 
 /** Corps de chaque étape (vue de face, posé sur le sol à y = 214). */
 const BODY = [
@@ -23,86 +24,33 @@ const BODY = [
 /** Haut du corps de chaque étape (pour placer les yeux, les cornes, la couronne). */
 const TOP = [128, 148, 112, 90, 70, 54, 44];
 
-export const BOSS_STAGES = BODY.length;
+const EYE_GAP = [11, 16, 20, 24, 27, 31, 34];
+const EYE_R = [6, 8, 11, 13, 14, 16, 17];
+const MOUTH_W = [6, 9, 14, 18, 22, 26, 28];
+const MOUTH_DY = [12, 16, 24, 30, 34, 38, 40];
+
+/** Le visage de chaque étape : plus il grandit, plus il est large, froncé et lumineux. */
+const faceOf = (stage: number, eyeY: number): FaceGeom => ({
+  eyeY,
+  gap: EYE_GAP[stage],
+  r: EYE_R[stage],
+  mouthY: eyeY + MOUTH_DY[stage],
+  w: MOUTH_W[stage],
+  glow: stage >= 4,
+  angry: stage >= 3,
+  teeth: stage >= 4,
+  line: stage < 2 ? 3 : 4.5,
+});
 
 /** Cadrage de chaque étape : serré pour les petites (on les voit bien), large pour les grandes (cornes et couronne comprises). */
 const VIEW = ['60 96 120 130', '40 110 160 120', '20 80 200 150', '6 52 228 186', '-4 14 248 220', '-12 -12 264 256', '-14 -18 268 262'];
-
-function Eyes({ stage, mood, cy }: { stage: number; mood: BossMood; cy: number }) {
-  const gap = [11, 16, 20, 24, 27, 31, 34][stage];
-  const r = [6, 8, 11, 13, 14, 16, 17][stage];
-  const glow = stage >= 4;
-  if (mood === 'sleep') {
-    return (
-      <g stroke="#e9e2f7" strokeWidth={stage < 2 ? 2.5 : 3.5} strokeLinecap="round" fill="none">
-        <path d={`M${120 - gap - r} ${cy} q${r} ${r * 0.7} ${2 * r} 0`} />
-        <path d={`M${120 + gap - r} ${cy} q${r} ${r * 0.7} ${2 * r} 0`} />
-      </g>
-    );
-  }
-  if (mood === 'dead') {
-    return (
-      <g stroke="#e9e2f7" strokeWidth="4" strokeLinecap="round">
-        {[-1, 1].map((side) => (
-          <g key={side}>
-            <line x1={120 + side * gap - r * 0.7} y1={cy - r * 0.7} x2={120 + side * gap + r * 0.7} y2={cy + r * 0.7} />
-            <line x1={120 + side * gap + r * 0.7} y1={cy - r * 0.7} x2={120 + side * gap - r * 0.7} y2={cy + r * 0.7} />
-          </g>
-        ))}
-      </g>
-    );
-  }
-  const angry = mood === 'angry' || mood === 'attack' || stage >= 3;
-  return (
-    <g>
-      {[-1, 1].map((side) => {
-        const x = 120 + side * gap;
-        return (
-          <g key={side}>
-            <circle cx={x} cy={cy} r={r} fill={glow ? '#ffe9a8' : '#fbf8ff'} />
-            {glow && <circle cx={x} cy={cy} r={r + 5} fill="#ffd34d" opacity="0.18" />}
-            <circle cx={x + side * -1.5} cy={cy + 1.5} r={r * 0.5} fill="#151021" />
-            <circle cx={x + side * -1.5 - r * 0.18} cy={cy + 1.5 - r * 0.2} r={r * 0.16} fill="#fff" />
-            {angry && (
-              <path
-                d={`M${x - side * (r + 3)} ${cy - r - 6} L${x + side * (r + 2)} ${cy - r + 1}`}
-                stroke="#0b0816"
-                strokeWidth={stage >= 4 ? 6 : 4.5}
-                strokeLinecap="round"
-              />
-            )}
-          </g>
-        );
-      })}
-    </g>
-  );
-}
-
-function Mouth({ stage, mood, cy }: { stage: number; mood: BossMood; cy: number }) {
-  const w = [6, 9, 14, 18, 22, 26, 28][stage];
-  if (mood === 'sleep') return <ellipse cx="120" cy={cy} rx={w * 0.35} ry={w * 0.25} fill="#0b0816" />;
-  if (mood === 'attack') return <ellipse cx="120" cy={cy + 2} rx={w} ry={w * 0.65} fill="#0b0816" stroke="#7a2a3a" strokeWidth="3" />;
-  if (mood === 'dead') return <path d={`M${120 - w} ${cy + 4} q${w} -8 ${2 * w} 0`} stroke="#0b0816" strokeWidth="4" fill="none" strokeLinecap="round" />;
-  // un sourire en coin, avec deux petites dents arrondies à partir du Monstre
-  return (
-    <g>
-      <path d={`M${120 - w} ${cy} q${w} ${w * 0.55} ${2 * w} -3`} stroke="#0b0816" strokeWidth={stage < 2 ? 3 : 4.5} fill="none" strokeLinecap="round" />
-      {stage >= 4 && (
-        <g fill="#fbf8ff">
-          <rect x={120 - w * 0.55} y={cy + 1} width="7" height="8" rx="3" />
-          <rect x={120 + w * 0.3} y={cy} width="7" height="8" rx="3" />
-        </g>
-      )}
-    </g>
-  );
-}
 
 export function InkBoss({ stage, grow = 0, mood = 'idle', title }: { stage: number; grow?: number; mood?: BossMood; title?: string }) {
   const s = Math.max(0, Math.min(BODY.length - 1, Math.round(stage)));
   const g = Math.max(0, Math.min(1, grow));
   const top = TOP[s];
   const eyeY = top + (214 - top) * (s <= 1 ? 0.5 : 0.38);
-  const mouthY = eyeY + [12, 16, 24, 30, 34, 38, 40][s];
+  const mouthY = eyeY + MOUTH_DY[s];
   // elle enfle doucement entre deux étapes (au plus 8 %)
   const scale = 1 + 0.08 * g;
   return (
@@ -185,8 +133,7 @@ export function InkBoss({ stage, grow = 0, mood = 'idle', title }: { stage: numb
             </g>
           )}
 
-          <Eyes stage={s} mood={mood} cy={eyeY} />
-          <Mouth stage={s} mood={mood} cy={mouthY} />
+          <MonsterFace g={faceOf(s, eyeY)} mood={mood} />
 
           {/* couronne du Grand Pâté */}
           {s >= 6 && (

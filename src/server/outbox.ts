@@ -23,8 +23,6 @@ const write = (b: Pending[]) => {
   }
 };
 
-export const pendingCount = () => read().length;
-
 export function enqueue(studentId: string, run: RunPayload) {
   const box = read().filter((p) => p.run.clientId !== run.clientId);
   write([...box, { studentId, run }]);

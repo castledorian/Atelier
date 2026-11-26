@@ -1,6 +1,6 @@
 import type { SfxName } from '../audio';
 import type { EnemyMood } from '../../components/InkEnemy';
-import { BOSS_NAMES } from './state';
+import { formName } from './forms';
 
 /**
  * Le grand combat, écrit d'avance. La classe gagne toujours : c'est une fête de fin d'année, pas une évaluation.
@@ -31,7 +31,7 @@ export interface Fight {
   beats: Beat[];
   /** durée totale, fin comprise */
   total: number;
-  /** vrai nom de la créature, d'après sa taille */
+  /** vrai nom de la créature, d'après sa forme */
   name: string;
 }
 
@@ -42,13 +42,13 @@ const say = (b: Beat): Beat => b;
 
 /**
  * Construit le combat.
- * `names` : les prénoms de la classe (au moins un) ; `ink` : taille de la créature (0 à 6) ;
+ * `names` : les prénoms de la classe (au moins un) ; `form` : forme de la créature (0 à 9) ;
  * `power` : force de la classe (0 à 6), qui ne change pas l'issue mais ce que dit le récit.
  */
-export function buildFight(names: readonly string[], ink: number, power: number): Fight {
+export function buildFight(names: readonly string[], form: number, power: number): Fight {
   const list = names.length > 0 ? names : ['La classe'];
   const n = list.length;
-  const name = BOSS_NAMES[Math.max(0, Math.min(BOSS_NAMES.length - 1, ink))];
+  const name = formName(form);
   const beats: Beat[] = [];
 
   beats.push(say({ at: 0, text: 'La grotte est silencieuse. Au fond, quelque chose bouge…', hp: 100, classHp: 100, mood: 'idle' }));
@@ -97,13 +97,6 @@ export function buildFight(names: readonly string[], ink: number, power: number)
   beats.push(say({ at: t, text: 'L’encre est vaincue. La page est blanche : à vous d’écrire dessus.', hp: 0, mood: 'dead' }));
 
   return { beats, total: t + 900, name };
-}
-
-/** Dernier temps fort joué à l'instant `ms` (pour rejouer la scène sans tout recalculer). */
-export function beatAt(fight: Fight, ms: number): number {
-  let k = 0;
-  for (let i = 0; i < fight.beats.length; i++) if (fight.beats[i].at <= ms) k = i;
-  return k;
 }
 
 /** État du combat à un instant donné : ce que l'écran doit montrer. */

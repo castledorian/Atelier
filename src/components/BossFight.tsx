@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { InkBoss } from './InkBoss';
+import { Monster } from './Monster';
+import { LAST_FORM } from '../game/boss/forms';
 import { GoutteArt } from './GoutteArt';
 import type { Fighter } from './CaveParts';
 import { stageOf } from '../game/goutte/rules';
@@ -16,7 +17,7 @@ import { buildFight, stateAt } from '../game/boss/fight';
 export default function BossFight({
   names,
   fighters = [],
-  ink,
+  form,
   grow = 0,
   power,
   sound,
@@ -24,14 +25,15 @@ export default function BossFight({
 }: {
   names: string[];
   fighters?: Fighter[];
-  ink: number;
+  /** forme du monstre (0 à 9) */
+  form: number;
   grow?: number;
   power: number;
   sound: boolean;
   onDone: () => void;
 }) {
   const roster = useMemo(() => (fighters.length ? fighters.map((f) => f.name) : names), [fighters, names]);
-  const fight = useMemo(() => buildFight(roster, ink, power), [roster, ink, power]);
+  const fight = useMemo(() => buildFight(roster, form, power), [roster, form, power]);
   const [ms, setMs] = useState(0);
   const [hit, setHit] = useState<number | null>(null);
   const [all, setAll] = useState(false);
@@ -89,13 +91,13 @@ export default function BossFight({
   };
 
   const over = done || view.hp <= 0;
-  const size = Math.max(0, Math.min(6, ink)) / 6;
+  const size = Math.max(0, Math.min(LAST_FORM, form)) / LAST_FORM;
 
   return (
     <div className={`bf${shake ? ' bf-shake' : ''}`} data-low={view.classHp <= 20 ? 'yes' : 'no'}>
       <div className="bf-stage">
         <div className="bf-boss" style={{ ['--bsize' as string]: String(size) }} data-dead={over ? 'yes' : 'no'}>
-          <InkBoss stage={ink} grow={grow} mood={view.mood} />
+          <Monster form={form} grow={grow} mood={view.mood} />
         </div>
         <ul className="bf-names" data-low={view.classHp <= 20 ? 'yes' : 'no'} aria-hidden="true">
           {fighters.length

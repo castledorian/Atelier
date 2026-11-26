@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { BASE_HP, BOSS_NAMES, INK_STEPS, POWER_STEPS } from '../game/boss/state';
+import { BASE_HP, POWER_STEPS } from '../game/boss/state';
 import { cumulate, lastWeek, shortDate, xOf } from '../game/boss/history';
 import type { DayPoint } from '../game/boss/history';
 
 /**
  * L'évolution de la grotte depuis la rentrée, en deux petits graphiques côte à côte (jamais deux échelles sur un même graphique) :
- * les points de vie de la créature, avec ses étapes, et la force de la classe, avec ses lanternes.
+ * les points de vie de la créature (ils suivent les fautes), et la force de la classe, avec ses lanternes.
  * Survol ou toucher : la date et la valeur du jour. Les chiffres sont aussi dans un tableau (bouton « Voir les chiffres »).
  */
 
@@ -19,8 +19,8 @@ function Panel({
   points,
   value,
   xs,
-  steps,
-  stepNames,
+  steps = [],
+  stepNames = [],
   color,
   unit,
 }: {
@@ -28,8 +28,8 @@ function Panel({
   points: DayPoint[];
   value: (p: DayPoint) => number;
   xs: number[];
-  steps: number[];
-  stepNames: readonly string[];
+  steps?: number[];
+  stepNames?: readonly string[];
   color: string;
   unit: string;
 }) {
@@ -137,7 +137,7 @@ export default function CaveChart({ days, today, ink, power }: { days: ReadonlyA
         L’évolution depuis la rentrée
       </h2>
       <div className="cc-grid">
-        <Panel title="La créature" points={points} value={(p) => p.hp} xs={xs} steps={INK_STEPS.map((s) => s + BASE_HP)} stepNames={BOSS_NAMES} color="#8b72e6" unit="points de vie" />
+        <Panel title="La créature" points={points} value={(p) => p.hp} xs={xs} color="#8b72e6" unit="points de vie" />
         <Panel title="La classe" points={points} value={(p) => p.power} xs={xs} steps={[...POWER_STEPS]} stepNames={LEVEL_NAMES} color="#b98322" unit="réussites" />
       </div>
       <p className="cc-week">

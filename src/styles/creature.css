@@ -99,44 +99,6 @@
   color: #f2c869;
   letter-spacing: 2px;
 }
-.cave-stages {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;
-  margin: 16px 0 0;
-  padding: 0;
-  list-style: none;
-}
-.cave-stages li {
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-  padding: 6px 2px;
-  border: 2px solid rgba(236, 226, 203, 0.2);
-  border-radius: 10px;
-  text-align: center;
-}
-.cave-stages li[data-state='now'] {
-  border-color: #b9a6ff;
-  background: rgba(139, 114, 230, 0.16);
-}
-.cave-stages li[data-state='next'] .cave-stage-art {
-  filter: brightness(0) opacity(0.35);
-}
-.cave-stage-art {
-  width: 100%;
-  max-width: 64px;
-}
-.cave-stage-name {
-  font-size: 12px;
-  line-height: 1.15;
-}
-@media (max-width: 560px) {
-  .cave-stages {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
 /* courbe d'évolution */
 .cc {
   margin-top: 22px;

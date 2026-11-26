@@ -18,7 +18,8 @@ import { GRADES, gradeLabel, isAvailable, loadClassGrade, loadGrade, saveClassGr
 import type { Grade } from '../game/grade';
 import { loadSettings, loadTypingStamps } from '../game/storage';
 import { Ambiance } from '../game/ambiance';
-import { CAVE_ON, bossName, inkLevel, loadBoss, phaseOf } from '../game/boss/state';
+import { CAVE_ON, loadBoss, phaseOf } from '../game/boss/state';
+import { formAt, formName, sceneStageOf } from '../game/boss/forms';
 import type { TeacherSession } from '../server/teacher';
 
 interface HomeProps {
@@ -233,7 +234,7 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
       {CAVE_ON && (student || teacher) && grade !== null && (
         <button type="button" className="cave-door" onClick={onCave}>
           <span className="cave-door-art" aria-hidden="true">
-            <span className="cave-door-drop" data-size={inkLevel(boss)} />
+            <span className="cave-door-drop" data-size={sceneStageOf(formAt().form)} />
           </span>
           <span className="cave-door-txt">
             <span className="cave-door-tag">Fin d’année</span>
@@ -242,9 +243,9 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
               {bossPhase === 'won'
                 ? 'L’encre a été vaincue. Revoir l’exploit de la classe.'
                 : bossPhase === 'final'
-                  ? `${bossName(boss)} vous attend : le grand combat est ouvert.`
+                  ? `${formName(formAt().form)} vous attend : le grand combat est ouvert.`
                   : bossPhase === 'growing'
-                    ? `Quelque chose grossit au fond : on l’appelle déjà ${bossName(boss)}.`
+                    ? `Quelque chose grossit au fond : on l’appelle déjà ${formName(formAt().form)}.`
                     : 'Quelque chose dort au fond. Mieux vaut ne pas s’approcher… pour l’instant.'}
             </span>
           </span>

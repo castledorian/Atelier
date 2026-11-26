@@ -1,58 +1,32 @@
-import { ConfirmButton } from '../components/ConfirmButton';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackButton } from '../components/BackButton';
 import BossFight from '../components/BossFight';
-import CaveClasses from '../components/CaveClasses';
-import CaveScene from '../components/CaveScene';
-import { InkBoss } from '../components/InkBoss';
 import CaveChart from '../components/CaveChart';
-import { CaveTeam, LanternHint, StageStrip, fightersOf } from '../components/CaveParts';
+import CaveStage from '../components/CaveStage';
+import CaveTeacher from '../components/CaveTeacher';
+import CaveVictory from '../components/CaveVictory';
+import { CaveTeam, LanternHint, fightersOf } from '../components/CaveParts';
 import { fetchCaveHistory, fetchTeam } from '../server/goutte';
 import type { CaveDay, Team } from '../server/goutte';
 import { ObserveBar } from '../components/ObserveBar';
 import { Frame } from './Frame';
-import {
-  BOSS_NAMES,
-  INK_STEPS,
-  POWER_STEPS,
-  addName,
-  bossHp,
-  bossSpeech,
-  bossName,
-  fillOf,
-  inkLevel,
-  loadBoss,
-  loadNames,
-  markSeen,
-  monthsToFinal,
-  phaseOf,
-  powerLevel,
-  resetBoss,
-  saveNames,
-  schoolYear,
-  winBoss,
-} from '../game/boss/state';
-import type { BossPhase } from '../game/boss/state';
+import { formAt } from '../game/boss/forms';
+import { addName, bossHp, bossSpeech, loadBoss, loadNames, markSeen, monthsToFinal, phaseOf, powerLevel, resetBoss, saveNames, schoolYear, winBoss } from '../game/boss/state';
+import type { BossPhase, BossState } from '../game/boss/state';
 import { CaveSound } from '../game/caveSound';
 import { loadSettings } from '../game/storage';
 import { fetchCave, sendCaveReset, sendCaveWin } from '../server/cave';
 import type { CaveServer, CaveSource } from '../server/cave';
-import type { BossState } from '../game/boss/state';
 
 /**
  * « La grotte » : la créature d'encre de l'année, et le grand combat de fin d'année.
  *
+ * Le monstre change de FORME avec le calendrier (10 formes, de la rentrée au 1er juin) ; ses points de vie suivent les fautes de la classe.
  * La créature est celle de la CLASSE : le serveur additionne les fautes et les réussites des parties libres (compteurs anonymes,
  * jamais reliés à un élève en particulier) et la page se met à jour toute seule. Sans serveur (ou si la mise à jour SQL « grotte » manque),
  * elle retombe sur les compteurs gardés sur l'appareil. Les prénoms du combat final restent sur l'appareil.
  * En mode observation (administrateur), la page est en lecture seule : ni combat, ni réglage, ni son.
  */
-
-const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-const longDate = (t: number) => {
-  const d = new Date(t);
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-};
 
 interface Props {
   onBack: () => void;
@@ -120,11 +94,12 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
   const fighting = fight !== null;
 
   const phase: BossPhase = phaseOf(boss);
-  const ink = inkLevel(boss);
+  const { form, grow } = formAt();
   const power = powerLevel(boss);
-  const left = monthsToFinal();
   const [dice] = useState(() => Math.random());
-  const speech = bossSpeech(phase, ink, dice);
+  const speech = bossSpeech(phase, form, dice);
+  /** aperçu des formes à venir (enseignant) */
+  const [preview, setPreview] = useState(false);
   const fighters = useMemo(() => fightersOf(team), [team]);
   const days: CaveDay[] = remote && history ? history : remote || readOnly || waiting ? [] : localBoss.log.map(([d, i, p]) => ({ d, ink: i, power: p }));
   const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
@@ -154,8 +129,8 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
         <BossFight
           names={names}
           fighters={fighters}
-          ink={ink}
-          grow={fillOf(boss.ink, INK_STEPS)}
+          form={form}
+          grow={grow}
           power={power}
           sound={sound}
           onDone={() => {
@@ -170,7 +145,6 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
     );
   }
 
-  const hp = bossHp(boss);
   const depth = phase === 'early' ? 0.3 : phase === 'growing' ? 0.65 : 1;
 
   return (
@@ -187,35 +161,14 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
       )}
 
       {phase === 'won' ? (
-        <Victory boss={boss} names={names} onReplay={() => setFight({ real: false })} />
+        <CaveVictory boss={boss} form={form} names={names} onReplay={() => setFight({ real: false })} />
       ) : (
         <>
-          <CaveScene depth={depth} stage={waiting ? 0 : ink} lanterns={waiting ? 0 : power}>
-            <div className="cave-boss" style={{ ['--bsize' as string]: String(ink / 6) }}>
-              <InkBoss stage={ink} grow={fillOf(boss.ink, INK_STEPS)} mood={phase === 'early' ? 'sleep' : 'angry'} />
-            </div>
-          </CaveScene>
-
-          <div className="cave-vitals">
-            <p className="cave-say">
-              <span className="sr-only">{bossName(boss)} dit : </span>
-              « {speech} »
-            </p>
-            <p className="cave-name">{bossName(boss)}</p>
-            <p className="cave-hp" role="status">
-              <span aria-hidden="true">♥</span>
-              <span className="sr-only">Points de vie de {bossName(boss)} : </span>
-              <b>{waiting ? '…' : hp.toLocaleString('fr-FR')}</b>
-              <span className="cave-hp-unit" aria-hidden="true">
-                points de vie
-              </span>
-            </p>
-          </div>
+          <CaveStage today={form} grow={grow} phase={phase} preview={preview && (isTeacher || readOnly)} depth={depth} lanterns={waiting ? 0 : power} waiting={waiting} speech={speech} hp={bossHp(boss)} />
 
           {!waiting && (
             <>
               <LanternHint power={boss.power} level={power} />
-              <StageStrip stage={ink} />
               <CaveChart days={days} today={today} ink={boss.ink} power={boss.power} />
               <CaveTeam fighters={fighters} />
             </>
@@ -231,104 +184,28 @@ export default function Cave({ onBack, studentName, isTeacher = false, token = n
 
           {/* Réservé au compte enseignant : les élèves ne doivent pas voir qu'un combat d'essai existe, ni qu'il est écrit d'avance */}
           {isTeacher && !readOnly && (
-            <details className="fold sec">
-              <summary>Pour l’enseignant</summary>
-              <div className="fold-in">
-                <p className="text-[15px] leading-snug">
-                  {remote
-                    ? 'La créature est celle de la classe : +1 point de vie par faute des parties libres, sur tous les appareils ; elle faiblit quand on retravaille une règle. '
-                    : 'La créature grossit d’un point par faute des parties jouées sur cet appareil et faiblit quand on retravaille une règle. '}
-                  {phase === 'final' ? '' : `Grand combat en juin (dans ${left} mois). `}La classe gagne toujours, après un moment où tout semble perdu. Les compteurs ne sont reliés à aucun élève.
-                </p>
-                <Gauges boss={boss} ink={ink} power={power} />
-                <CaveClasses count={names.length} onNames={(list) => setNames(saveNames(list))} onPick={setPicked} />
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" className="btn btn-ghost" onClick={() => setFight({ real: false })}>
-                    Essayer le combat (sans le compter)
-                  </button>
-                  <ConfirmButton
-                    confirm="Sûr ? Le combat sera à refaire."
-                    onConfirm={() => {
-                      setBoss(resetBoss());
-                      void sendCaveReset(picked).then(() => refresh());
-                    }}
-                  >
-                    Remettre la grotte à zéro
-                  </ConfirmButton>
-                </div>
-              </div>
-            </details>
+            <CaveTeacher
+              boss={boss}
+              form={form}
+              grow={grow}
+              power={power}
+              phase={phase}
+              shared={remote !== null && remote !== undefined}
+              monthsLeft={monthsToFinal()}
+              namesCount={names.length}
+              preview={preview}
+              onPreview={setPreview}
+              onNames={(list) => setNames(saveNames(list))}
+              onPick={setPicked}
+              onTry={() => setFight({ real: false })}
+              onReset={() => {
+                setBoss(resetBoss());
+                void sendCaveReset(picked).then(() => refresh());
+              }}
+            />
           )}
         </>
       )}
     </Frame>
-  );
-}
-
-/** Les deux jauges : ce qu'a avalé la créature, et la force de la classe. */
-function Gauges({ boss, ink, power }: { boss: ReturnType<typeof loadBoss>; ink: number; power: number }) {
-  return (
-    <dl className="cave-gauges">
-      <div>
-        <dt>Encre avalée</dt>
-        <dd>
-          <span className="cave-step">
-            {bossName(boss)} · taille {ink + 1}/{BOSS_NAMES.length}
-          </span>
-          <span className="cave-track" aria-hidden="true">
-            <i data-kind="ink" style={{ width: `${Math.round(fillOf(boss.ink, INK_STEPS) * 100)}%` }} />
-          </span>
-          <span className="cave-num">{boss.ink.toLocaleString('fr-FR')} fautes</span>
-        </dd>
-      </div>
-      <div>
-        <dt>Force de la classe</dt>
-        <dd>
-          <span className="cave-step">
-            Niveau {power + 1}/{POWER_STEPS.length}
-          </span>
-          <span className="cave-track" aria-hidden="true">
-            <i data-kind="power" style={{ width: `${Math.round(fillOf(boss.power, POWER_STEPS) * 100)}%` }} />
-          </span>
-          <span className="cave-num">{boss.power.toLocaleString('fr-FR')} réussites · {boss.games} parties</span>
-        </dd>
-      </div>
-    </dl>
-  );
-}
-
-/** Après la victoire : la trace de l'exploit, imprimable comme un diplôme. */
-function Victory({ boss, names, onReplay }: { boss: ReturnType<typeof loadBoss>; names: string[]; onReplay: () => void }) {
-  return (
-    <section className="cave-win" aria-labelledby="win-h">
-      <p className="cave-win-stamp" aria-hidden="true">
-        ✓
-      </p>
-      <h2 id="win-h" className="title-sm">
-        L’encre est vaincue&nbsp;!
-      </h2>
-      <p className="mt-2 text-[16px] leading-snug">
-        Le {longDate(boss.wonAt ?? Date.now())}, la classe est descendue dans la grotte et a dissous{' '}
-        <strong>{bossName(boss)}</strong>, nourri de {boss.ink.toLocaleString('fr-FR')} fautes. La page est blanche&nbsp;: elle est à vous.
-      </p>
-      {names.length > 0 && (
-        <>
-          <h3 className="subhead mt-[var(--sp)]">Les combattants</h3>
-          <ul className="cave-names cave-names-win">
-            {names.map((n) => (
-              <li key={n}>{n}</li>
-            ))}
-          </ul>
-        </>
-      )}
-      <div className="mt-[var(--sp)] flex flex-wrap gap-2 no-print">
-        <button type="button" className="btn btn-primary" onClick={() => window.print()}>
-          Imprimer le diplôme
-        </button>
-        <button type="button" className="btn btn-ghost" onClick={onReplay}>
-          Revoir le combat
-        </button>
-      </div>
-    </section>
   );
 }

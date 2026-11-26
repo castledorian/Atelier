@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 
 /**
@@ -81,20 +81,4 @@ export function FitCard({
       {children}
     </section>
   );
-}
-
-/**
- * Empêche la page du dessous de défiler pendant qu'une fenêtre (extrait, dialogue) est ouverte :
- * sinon un doigt ou une molette fait glisser l'accueil derrière la fenêtre.
- */
-export function useLockScroll(on = true) {
-  useEffect(() => {
-    if (!on) return;
-    const body = document.body;
-    const before = body.style.overflow;
-    body.style.overflow = 'hidden';
-    return () => {
-      body.style.overflow = before;
-    };
-  }, [on]);
 }

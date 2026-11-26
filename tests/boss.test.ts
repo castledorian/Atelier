@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BASE_HP, BOSS_NAMES, BOSS_SPEECH, bossSpeech, INK_STEPS, bossHp, POWER_STEPS, fillOf, monthsToFinal, parseNames, phaseOf, saveNames, schoolYear, stepOf, feedBoss, calmBoss, loadBoss, CAVE_ON } from '../src/game/boss/state';
+import { BASE_HP, BOSS_SPEECH, bossSpeech, bossHp, POWER_STEPS, fillOf, monthsToFinal, parseNames, phaseOf, saveNames, schoolYear, stepOf, feedBoss, calmBoss, loadBoss, CAVE_ON } from '../src/game/boss/state';
 import type { BossState } from '../src/game/boss/state';
 import { LOW, buildFight, stateAt } from '../src/game/boss/fight';
 import { cumulate, lastWeek, shortDate, xOf } from '../src/game/boss/history';
@@ -14,20 +14,18 @@ test('année scolaire : elle bascule en août', () => {
   assert.equal(schoolYear(new Date('2027-08-01T12:00:00')), '2027-2028', 'août : nouvelle année, tout repart à zéro');
 });
 
-test('taille de la créature : un palier par seuil franchi', () => {
-  assert.equal(stepOf(0, INK_STEPS), 0);
-  assert.equal(stepOf(24, INK_STEPS), 0);
-  assert.equal(stepOf(25, INK_STEPS), 1);
-  assert.equal(stepOf(10000, INK_STEPS), INK_STEPS.length - 1);
-  assert.equal(BOSS_NAMES.length, INK_STEPS.length, 'un nom par taille');
-  assert.equal(POWER_STEPS.length, INK_STEPS.length);
+test('force de la classe : un palier par seuil franchi', () => {
+  assert.equal(stepOf(0, POWER_STEPS), 0);
+  assert.equal(stepOf(59, POWER_STEPS), 0);
+  assert.equal(stepOf(60, POWER_STEPS), 1);
+  assert.equal(stepOf(10000, POWER_STEPS), POWER_STEPS.length - 1);
 });
 
 test('jauge : part du palier en cours, pleine au dernier', () => {
-  assert.equal(fillOf(0, INK_STEPS), 0);
-  assert.equal(fillOf(25, INK_STEPS), 0, 'début du palier suivant');
-  assert.ok(Math.abs(fillOf(47.5, INK_STEPS) - 0.5) < 0.01);
-  assert.equal(fillOf(5000, INK_STEPS), 1);
+  assert.equal(fillOf(0, POWER_STEPS), 0);
+  assert.equal(fillOf(60, POWER_STEPS), 0, 'début du palier suivant');
+  assert.ok(Math.abs(fillOf(120, POWER_STEPS) - 0.5) < 0.01);
+  assert.equal(fillOf(5000, POWER_STEPS), 1);
 });
 
 test('moments de l’année : la créature dort, grossit, puis le combat s’ouvre en juin', () => {
@@ -52,7 +50,7 @@ test('prénoms : nettoyés, sans doublon, limités', () => {
 });
 
 test('combat : la classe gagne toujours, après être passée tout près de la défaite', () => {
-  const f = buildFight(['Léa', 'Tom', 'Sam'], 5, 3);
+  const f = buildFight(['Léa', 'Tom', 'Sam'], 8, 3);
   const fin = stateAt(f, f.total);
   assert.equal(fin.hp, 0, 'la créature finit à zéro');
   assert.ok(fin.classHp > 0, 'la classe ne tombe jamais à zéro');
@@ -64,7 +62,7 @@ test('combat : la classe gagne toujours, après être passée tout près de la d
 
 test('combat : chaque élève frappe, et la durée reste raisonnable même pour une grande classe', () => {
   const noms = Array.from({ length: 30 }, (_, i) => 'E' + i);
-  const f = buildFight(noms, 6, 6);
+  const f = buildFight(noms, 9, 6);
   const frappes = f.beats.filter((b) => b.strike !== undefined).map((b) => b.strike);
   assert.deepEqual(frappes, noms.map((_, i) => i), 'tous les prénoms frappent, dans l’ordre');
   assert.ok(f.total < 22000, `le combat dure ${Math.round(f.total / 1000)} s`);
@@ -90,14 +88,15 @@ test('points de vie : ils montent avec les fautes et redescendent quand on revoi
 
 test('la créature parle : une phrase par phase, jamais vide, indice borné', () => {
   for (const pick of [0, 0.5, 0.999, 1, 7, -3]) {
-    for (const [phase, ink] of [['early', 0], ['growing', 200], ['final', 900]] as const) {
-      const t = bossSpeech(phase, ink, pick);
+    for (const [phase, form] of [['early', 0], ['growing', 5], ['final', 9]] as const) {
+      const t = bossSpeech(phase, form, pick);
       assert.ok(t.length > 5 && t.length < 60, `phrase courte : ${t}`);
     }
   }
   assert.ok(BOSS_SPEECH.final.includes(bossSpeech('final', 0, 0)));
   assert.ok(BOSS_SPEECH.small.includes(bossSpeech('early', 0, 0)));
-  assert.ok(BOSS_SPEECH.big.includes(bossSpeech('growing', 150, 0)));
+  assert.ok(BOSS_SPEECH.big.includes(bossSpeech('growing', 5, 0)));
+  assert.ok(BOSS_SPEECH.small.includes(bossSpeech('growing', 1, 0)), 'les premières formes restent discrètes');
 });
 
 test('journal de la grotte : un point par jour, fautes retirées comptées en négatif', { skip: !CAVE_ON && 'grotte masquée (CAVE_ON = false)' }, () => {
