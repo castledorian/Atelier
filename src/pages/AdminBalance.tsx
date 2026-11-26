@@ -4,7 +4,7 @@ import { adviceOf, asLevels, statsText } from '../game/statsView';
 import { downloadText } from '../game/history';
 import { SortTh, sortRows, useSort } from '../components/SortTable';
 import type { SortValue } from '../components/SortTable';
-import type { AdminItems, BalanceLevel, ClassStat, GameStats, GradeStat, ItemSpreadRow } from '../server/admin';
+import type { AdminItems, BalanceLevel, GameStats, ItemSpreadRow } from '../server/admin';
 import { adviceText, exerciseAdvice } from '../game/exerciseAdvice';
 import { Tip } from '../components/Tip';
 import { Activity, ByGrade, Kpis } from './admin/GameDetail';

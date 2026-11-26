@@ -8,7 +8,6 @@ import { Tip } from '../../components/Tip';
 import type { ClassStat, GameStats, GradeStat } from '../../server/admin';
 import { ALL_GAMES, Meter, ORDER, fmt, num, stamp } from './shared';
 
-const fmt = (n: number) => n.toLocaleString('fr-FR');
 const DAYS = ['', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 
 /** Chiffres clés de la période. */

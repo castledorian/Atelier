@@ -18,7 +18,7 @@ export function Monster({ form, grow = 0, mood = 'idle', title }: { form: number
   const f = Math.max(0, Math.min(LAST_FORM, Math.round(form)));
   const art = FORM_ART[f];
   const [boing, setBoing] = useState(false);
-  const timer = useRef<number>();
+  const timer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   if (!art) return <InkBoss stage={FALLBACK_STAGE[f]} grow={grow} mood={mood} title={title} />;
