@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { GAIN_EVENT } from '../game/goutte/store';
+import { GAIN_EVENT, goutteOwned } from '../game/goutte/store';
 import type { Gain } from '../game/goutte/rules';
 
 /**
@@ -12,7 +12,7 @@ export default function GainToast() {
   useEffect(() => {
     const on = (e: Event) => {
       const g = (e as CustomEvent<Gain>).detail;
-      if (g && g.xp > 0) setGain(g);
+      if (g && g.xp > 0 && goutteOwned()) setGain(g); // sans compte élève, rien n'est annoncé
     };
     window.addEventListener(GAIN_EVENT, on);
     return () => window.removeEventListener(GAIN_EVENT, on);

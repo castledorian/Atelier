@@ -16,6 +16,8 @@ let owner = 'invite';
 export function setGoutteOwner(id: string | null) {
   owner = id && /^[A-Za-z0-9-]{1,60}$/.test(id) ? id : 'invite';
 }
+/** Une goutte n'existe que pour un élève connecté (pas de goutte « invitée » affichée). */
+export const goutteOwned = () => owner !== 'invite';
 const key = () => `atelier.goutte.v1:${owner}`;
 const serverKey = () => `atelier.goutte.server.v1:${owner}`;
 /**

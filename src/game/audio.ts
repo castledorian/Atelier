@@ -22,6 +22,13 @@ export type SfxName =
   | 'impact'
   | 'correct'
   | 'victory'
+  | 'munch'
+  | 'yum'
+  | 'boing'
+  | 'giggle'
+  | 'gift'
+  | 'chime'
+  | 'nope'
   | 'n0'
   | 'n1'
   | 'n2'
@@ -56,6 +63,13 @@ const LENGTH: Record<SfxName, number> = {
   impact: 0.75,
   correct: 0.9,
   victory: 1.6,
+  munch: 0.75,
+  yum: 0.5,
+  boing: 0.4,
+  giggle: 0.45,
+  gift: 0.9,
+  chime: 1,
+  nope: 0.4,
   n0: 0.36,
   n1: 0.36,
   n2: 0.36,
@@ -251,6 +265,57 @@ class Synth {
           this.tone('triangle', f, f, d === 0.42 ? 0.6 : 0.16, 0.2, d);
         this.bell(0.42, 0.18);
         break;
+      // ─── La goutte (Tamagotchi) : sons doux, courts et bas en volume, pensés pour une salle de classe ───
+      case 'munch':
+        // trois petites bouchées feutrées (pas de bruit de bouche réaliste)
+        for (const d of [0, 0.22, 0.44]) {
+          this.burst('lowpass', 1300, 380, 0.07, 0.22, d, 1.2);
+          this.tone('sine', 260, 170, 0.06, 0.1, d);
+        }
+        break;
+      case 'yum':
+        // « miam ! » : deux notes qui montent, rondes
+        this.tone('sine', 587, 587, 0.14, 0.16);
+        this.tone('sine', 880, 880, 0.3, 0.16, 0.12);
+        this.tone('triangle', 1760, 1760, 0.18, 0.03, 0.12);
+        break;
+      case 'boing':
+        // la goutte s'écrase puis rebondit
+        this.tone('sine', 220, 520, 0.22, 0.2);
+        this.tone('sine', 520, 440, 0.14, 0.08, 0.2);
+        break;
+      case 'giggle':
+        // petit rire : quatre notes rapides qui sautillent
+        for (const [f, d] of [
+          [988, 0],
+          [1175, 0.08],
+          [1047, 0.16],
+          [1319, 0.24],
+        ] as const)
+          this.tone('triangle', f, f * 0.96, 0.08, 0.09, d);
+        break;
+      case 'gift':
+        // la boîte s'ouvre : un froissement léger puis une cascade montante
+        this.burst('bandpass', 1800, 4200, 0.18, 0.12, 0, 2);
+        for (const [f, d] of [
+          [784, 0.12],
+          [988, 0.2],
+          [1175, 0.28],
+          [1568, 0.36],
+        ] as const)
+          this.tone('sine', f, f, d === 0.36 ? 0.5 : 0.16, 0.12, d);
+        break;
+      case 'chime':
+        // nouvelle saveur découverte : un carillon clair
+        this.tone('sine', 1319, 1319, 0.5, 0.12);
+        this.tone('sine', 1976, 1976, 0.7, 0.1, 0.1);
+        this.tone('sine', 2637, 2637, 0.35, 0.04, 0.1);
+        break;
+      case 'nope':
+        // « j'ai plus faim » : deux notes graves qui descendent gentiment (jamais un buzz)
+        this.tone('triangle', 392, 392, 0.12, 0.12);
+        this.tone('triangle', 330, 311, 0.2, 0.12, 0.13);
+        break;
     }
   }
 }
@@ -269,9 +334,7 @@ export class Sfx {
   /** À appeler depuis un geste utilisateur (clic, touche) pour débloquer l'audio. */
   unlock() {
     if (!this.ac) {
-      const AC =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AC) return;
       try {
         this.ac = new AC();
@@ -297,7 +360,11 @@ export class Sfx {
   private async bake(rate: number) {
     const OAC =
       window.OfflineAudioContext ||
-      (window as unknown as { webkitOfflineAudioContext?: typeof OfflineAudioContext }).webkitOfflineAudioContext;
+      (
+        window as unknown as {
+          webkitOfflineAudioContext?: typeof OfflineAudioContext;
+        }
+      ).webkitOfflineAudioContext;
     if (!OAC) return;
     for (const name of NAMES) {
       try {

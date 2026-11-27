@@ -24,6 +24,19 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.32',
+    date: '27 novembre 2026',
+    iso: '2026-11-27',
+    title: 'La goutte garde la grotte',
+    changes: [
+      { kind: 'better', text: 'La goutte quitte le haut de l’accueil : elle attend maintenant à côté de la porte de la grotte, et seulement quand un élève est connecté.' },
+      { kind: 'better', text: 'Ma goutte : l’écran principal ne montre plus que la goutte et ses soins ; Habiller, Goûters, Succès et Évolution s’ouvrent chacun dans sa propre vue.' },
+      { kind: 'new', text: 'Sons doux quand on nourrit, caresse ou déballe un cadeau, avec un bouton pour couper le son (le même réglage que dans les jeux).' },
+      { kind: 'fix', text: 'Le cadre de la goutte garde la même taille quand elle parle, mange ou réagit : plus rien ne bouge sur la page.' },
+      { kind: 'better', text: 'Le choix du nom de la goutte est retiré pour l’instant.' },
+    ],
+  },
+  {
     version: '1.31',
     date: '27 novembre 2026',
     iso: '2026-11-27',

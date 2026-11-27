@@ -170,7 +170,7 @@ function Pages() {
     return <Admin email={teacher.email} onHome={home} onSignOut={teacherLost} />;
   }
 
-  if (view === 'goutte' && GOUTTE_ON && !teacher) return <MaGoutte token={student?.token ?? null} onBack={home} />;
+  if (view === 'goutte' && GOUTTE_ON && student && !teacher) return <MaGoutte token={student?.token ?? null} onBack={home} />;
   if (view === 'cave' && CAVE_ON && (student || teacher)) return <Cave onBack={home} studentName={student?.student.name ?? null} isTeacher={teacher !== null} token={student?.token ?? null} />;
 
   if (view === 'sessions' && student) {
@@ -219,7 +219,7 @@ function Pages() {
       onDashboard={() => setView('dashboard')}
       onAdmin={admin ? () => setView('admin') : undefined}
       onCave={() => CAVE_ON && (student || teacher) && setView('cave')}
-      onGoutte={() => GOUTTE_ON && setView('goutte')}
+      onGoutte={() => GOUTTE_ON && student && setView('goutte')}
       onInfo={setView}
       onLogout={logout}
       install={install}

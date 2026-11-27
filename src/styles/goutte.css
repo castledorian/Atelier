@@ -31,99 +31,6 @@
   animation: cave-vein 2.4s ease-in-out infinite;
 }
 
-/* barre du joueur (accueil) */
-.pbar {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  margin-top: 12px;
-  padding: 8px 14px 8px 8px;
-  border: 2px solid var(--color-ink);
-  border-radius: 14px;
-  background: var(--color-paper-hi);
-  box-shadow: 3px 3px 0 var(--color-ink);
-  text-align: left;
-  cursor: pointer;
-}
-.pbar:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0 var(--color-ink);
-}
-.pbar-art {
-  position: relative;
-  width: 64px;
-  height: 64px;
-}
-.pbar-dot {
-  position: absolute;
-  top: -2px;
-  right: -4px;
-  min-width: 24px;
-  padding: 1px 6px;
-  border: 2px solid var(--color-ink);
-  border-radius: 999px;
-  background: #d9415a;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  text-align: center;
-}
-.pbar-main {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-.pbar-name {
-  font-family: var(--font-display);
-  font-size: 20px;
-  line-height: 1.1;
-}
-.pbar-lv {
-  font-size: 14px;
-}
-.pbar-xp,
-.mg-xp {
-  display: block;
-  height: 10px;
-  border: 2px solid var(--color-ink);
-  border-radius: 999px;
-  background: var(--color-paper);
-  overflow: hidden;
-}
-.pbar-xp i,
-.mg-xp i {
-  display: block;
-  height: 100%;
-  /* 60-30-10 : les jauges sont à l'encre ; le rouge reste réservé à l'action principale */
-  background: var(--color-ink);
-  transition: width 0.6s ease-out;
-}
-.pbar-side {
-  display: grid;
-  gap: 2px;
-  font-size: 14px;
-  text-align: right;
-}
-.pbar-go {
-  font-weight: 700;
-}
-@media (max-width: 560px) {
-  .pbar {
-    grid-template-columns: auto 1fr;
-  }
-  .pbar-side {
-    grid-column: 2;
-    display: flex;
-    gap: 12px;
-    text-align: left;
-  }
-  .pbar-go {
-    display: none;
-  }
-}
-
 /* annonce des gains */
 .gain-live {
   position: fixed;
@@ -196,8 +103,20 @@
   font-size: 16px;
 }
 .mg-xp {
+  display: block;
   height: 14px;
   margin-top: 8px;
+  border: 2px solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-paper);
+  overflow: hidden;
+}
+.mg-xp i {
+  display: block;
+  height: 100%;
+  /* 60-30-10 : les jauges sont à l'encre ; le rouge reste réservé à l'action principale */
+  background: var(--color-ink);
+  transition: width 0.6s ease-out;
 }
 .mg-xp-txt {
   margin-top: 4px;
@@ -982,10 +901,6 @@
   justify-content: center;
   gap: 8px;
 }
-.pbar-hungry {
-  color: var(--color-ribbon);
-  font-weight: 700;
-}
 
 @media (max-width: 640px) {
   .mg-hero {
@@ -993,5 +908,336 @@
   }
   .mg-habitat {
     width: 100%;
+  }
+}
+
+/* ═════════════ Accueil : la goutte garde l'entrée de la grotte ═════════════
+   Les deux cadres ont une hauteur FIXE : aucun texte ni aucune humeur ne les fait grandir, rétrécir ou bouger. */
+.lair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 232px;
+  gap: 12px;
+  margin-top: var(--sp);
+}
+.lair[data-solo='yes'] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.lair > .cave-door {
+  height: 112px;
+  margin-top: 0;
+  overflow: hidden;
+}
+.lair .cave-door-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.nook {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  height: 112px;
+  padding: 10px 12px 10px 8px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+  box-shadow: 4px 4px 0 var(--color-ink);
+  color: var(--color-ink);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+.nook:hover {
+  background: var(--color-paper);
+}
+.nook:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--color-ink);
+}
+.nook:focus-visible {
+  outline: 3px solid var(--color-ribbon);
+  outline-offset: 3px;
+}
+.nook-art {
+  display: block;
+  width: 84px;
+  height: 84px;
+}
+.nook-art .gt {
+  width: 100%;
+  height: 100%;
+  animation: nook-bob 3.2s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+@keyframes nook-bob {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  50% {
+    transform: translateY(-3px) scale(0.98, 1.02);
+  }
+}
+.nook-txt {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.nook-name {
+  font-family: var(--font-display);
+  font-size: 20px;
+  line-height: 1.05;
+}
+.nook-lv {
+  font-size: 14px;
+}
+.nook-xp {
+  display: block;
+  height: 8px;
+  border: 2px solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-paper);
+  overflow: hidden;
+}
+.nook-xp i {
+  display: block;
+  height: 100%;
+  background: var(--color-ink);
+}
+.nook-state {
+  overflow: hidden;
+  font-size: 14px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.nook-state[data-alert='yes'] {
+  color: var(--color-ribbon);
+  font-weight: 700;
+}
+@media (max-width: 560px) {
+  .lair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .nook {
+    height: 96px;
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+  .nook-art {
+    width: 72px;
+    height: 72px;
+  }
+}
+
+/* ═════════════ Ma goutte : cadre fixe ═════════════
+   La scène a une taille fixe ; la bulle a toujours la même hauteur (2 lignes) ; la goutte est posée au même endroit.
+   Rien ne pousse la mise en page quand elle parle, mange ou réagit. */
+.mg-habitat {
+  display: block;
+  width: 100%;
+  height: 340px;
+  padding: 0;
+  contain: layout paint;
+}
+.mg-say {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(2 * 1.35em + 16px);
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  overflow: hidden;
+  text-align: center;
+}
+.mg-pet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  width: 250px;
+  height: 250px;
+  max-width: none;
+  margin: 0 auto;
+}
+.mg-pet .gt {
+  width: 100%;
+  height: 100%;
+}
+.mg-shake {
+  animation: mg-shake 0.5s ease-in-out;
+}
+@keyframes mg-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px) rotate(-3deg);
+  }
+  75% {
+    transform: translateX(6px) rotate(3deg);
+  }
+}
+.mg-feed-art {
+  flex: none;
+}
+/* le nombre de friandises, sur le bouton lui-même : largeur fixe, le bouton ne bouge pas quand il diminue */
+.mg-feed-n {
+  min-width: 3.2ch;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--color-paper-hi);
+  color: var(--color-ink);
+  font-size: 14px;
+  text-align: center;
+}
+.mg-meta,
+.mg-next-how {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.mg-meta {
+  min-width: 0;
+}
+.mg-actions {
+  flex-wrap: nowrap;
+}
+.mg-card {
+  min-width: 0;
+}
+
+/* les rubriques : quatre tuiles, chacune ouvre sa vue */
+.mg-menu {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: var(--sp);
+}
+.mg-tile {
+  display: grid;
+  gap: 2px;
+  height: 68px;
+  padding: 8px 12px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+  box-shadow: 0 3px 0 var(--color-ink);
+  color: var(--color-ink);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+.mg-tile:hover {
+  background: var(--color-paper);
+}
+.mg-tile:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--color-ink);
+}
+.mg-tile:focus-visible {
+  outline: 3px solid var(--color-ribbon);
+  outline-offset: 3px;
+}
+.mg-tile-k {
+  font-family: var(--font-display);
+  font-size: 18px;
+  line-height: 1.1;
+}
+.mg-tile-v {
+  overflow: hidden;
+  font-size: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* interrupteur du son, en haut à droite */
+.mg-sound {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 2px 12px 0;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+  box-shadow: 0 3px 0 var(--color-ink);
+  color: var(--color-ink);
+  font-size: 14px;
+  cursor: pointer;
+}
+.mg-sound[aria-pressed='false'] {
+  border-style: dashed;
+}
+.mg-sound:focus-visible {
+  outline: 3px solid var(--color-ribbon);
+  outline-offset: 3px;
+}
+
+/* vue « Habiller » : un miroir fixe à gauche, les objets à droite */
+.mg-title {
+  margin-top: 0;
+}
+.mg-dress {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  margin-top: 8px;
+}
+.mg-mirror {
+  position: sticky;
+  top: 12px;
+  width: 200px;
+  height: 200px;
+  border: 2px solid var(--color-ink);
+  background:
+    radial-gradient(70% 26% at 50% 92%, color-mix(in srgb, var(--gc, #2f3a8f) 22%, transparent), transparent 70%),
+    var(--color-paper-hi);
+}
+.mg-mirror .gt {
+  width: 100%;
+  height: 100%;
+}
+.mg-dress-main .mg-items {
+  margin-top: 10px;
+}
+
+@media (max-width: 640px) {
+  .mg-habitat {
+    width: min(320px, 100%);
+    height: 300px;
+  }
+  .mg-pet {
+    width: 200px;
+    height: 200px;
+  }
+  .mg-actions {
+    justify-content: center;
+  }
+  .mg-menu {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mg-dress {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+  .mg-dress-main {
+    width: 100%;
+  }
+  .mg-mirror {
+    position: static;
+    width: 160px;
+    height: 160px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nook-art .gt,
+  .mg-shake {
+    animation: none !important;
   }
 }

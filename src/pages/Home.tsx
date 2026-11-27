@@ -1,5 +1,5 @@
 import { GOUTTE_ON } from '../game/goutte/store';
-import PlayerBar from '../components/PlayerBar';
+import GoutteNook from '../components/GoutteNook';
 import { useEffect, useState } from 'react';
 import { Frame } from './Frame';
 import { SiteFooter } from './Info';
@@ -163,8 +163,6 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
       </div>
       <div className="rule" aria-hidden="true" />
 
-      {GOUTTE_ON && !teacher && <PlayerBar token={token} onOpen={onGoutte} />}
-
       {student && (
         <div className="home-cta">
           <button type="button" className="btn btn-primary" onClick={onSessions}>
@@ -225,28 +223,33 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
         })}
       </div>}
 
-      {CAVE_ON && (student || teacher) && grade !== null && (
-        <button type="button" className="cave-door" onClick={onCave}>
-          <span className="cave-door-art" aria-hidden="true">
-            <span className="cave-door-drop" data-size={sceneStageOf(formAt().form)} />
-          </span>
-          <span className="cave-door-txt">
-            <span className="cave-door-tag">Fin d’année</span>
-            <span className="cave-door-name">La grotte</span>
-            <span className="cave-door-text">
-              {bossPhase === 'won'
-                ? 'L’encre a été vaincue. Revoir l’exploit de la classe.'
-                : bossPhase === 'final'
-                  ? `${formName(formAt().form)} vous attend : le grand combat est ouvert.`
-                  : bossPhase === 'growing'
-                    ? `Quelque chose grossit au fond : on l’appelle déjà ${formName(formAt().form)}.`
-                    : 'Quelque chose dort au fond. Mieux vaut ne pas s’approcher… pour l’instant.'}
-            </span>
-          </span>
-          <span className="cave-door-go" aria-hidden="true">
-            →
-          </span>
-        </button>
+      {grade !== null && ((CAVE_ON && (student || teacher)) || (GOUTTE_ON && student)) && (
+        <div className="lair" data-solo={CAVE_ON && GOUTTE_ON && student ? 'no' : 'yes'}>
+          {CAVE_ON && (student || teacher) && (
+            <button type="button" className="cave-door" onClick={onCave}>
+              <span className="cave-door-art" aria-hidden="true">
+                <span className="cave-door-drop" data-size={sceneStageOf(formAt().form)} />
+              </span>
+              <span className="cave-door-txt">
+                <span className="cave-door-tag">Fin d’année</span>
+                <span className="cave-door-name">La grotte</span>
+                <span className="cave-door-text">
+                  {bossPhase === 'won'
+                    ? 'L’encre a été vaincue. Revoir l’exploit de la classe.'
+                    : bossPhase === 'final'
+                      ? `${formName(formAt().form)} vous attend : le grand combat est ouvert.`
+                      : bossPhase === 'growing'
+                        ? `Quelque chose grossit au fond : on l’appelle déjà ${formName(formAt().form)}.`
+                        : 'Quelque chose dort au fond. Mieux vaut ne pas s’approcher… pour l’instant.'}
+                </span>
+              </span>
+              <span className="cave-door-go" aria-hidden="true">
+                →
+              </span>
+            </button>
+          )}
+          {GOUTTE_ON && student && <GoutteNook token={token} onOpen={onGoutte} />}
+        </div>
       )}
 
       {(install.mode === 'prompt' || install.mode === 'ios') && (

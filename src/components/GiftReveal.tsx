@@ -12,7 +12,22 @@ import type { Look } from '../game/goutte/rules';
  * Ouvrir le cadeau de ses propres mains (au lieu de le recevoir tout fait) rend le moment plus fort : c'est l'élève qui le provoque.
  * Rien n'est payant ni tiré au sort : l'objet est déjà gagné, la boîte ne fait que le révéler.
  */
-export default function GiftReveal({ itemId, look, stage, left, onClose }: { itemId: string; look: Look; stage: number; left: number; onClose: (wear: boolean) => void }) {
+export default function GiftReveal({
+  itemId,
+  look,
+  stage,
+  left,
+  onOpen,
+  onClose,
+}: {
+  itemId: string;
+  look: Look;
+  stage: number;
+  left: number;
+  /** au moment où la boîte s'ouvre (le son du déballage) */
+  onOpen?: () => void;
+  onClose: (wear: boolean) => void;
+}) {
   const [open, setOpen] = useState(false);
   const item = itemById(itemId);
   if (!item) return null;
@@ -40,7 +55,12 @@ export default function GiftReveal({ itemId, look, stage, left, onClose }: { ite
           </>
         ) : (
           <>
-            <button type="button" className="gift-box" autoFocus onClick={() => setOpen(true)} aria-label="Ouvrir le cadeau">
+            <button type="button" className="gift-box" autoFocus onClick={() => {
+                setOpen(true);
+                onOpen?.();
+              }}
+              aria-label="Ouvrir le cadeau"
+            >
               <svg viewBox="0 0 120 120" aria-hidden="true" focusable="false">
                 <g stroke="#1b1915" strokeWidth="4" strokeLinejoin="round">
                   <rect x="18" y="52" width="84" height="56" fill="#efe6d2" />
