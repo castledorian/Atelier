@@ -7,12 +7,12 @@ import { submitRun } from '../server/student';
 import type { ItemEntry } from '../game/itemstats';
 import type { RunPayload, SessionInfo, StudentAccount } from '../server/types';
 import { BackButton } from './BackButton';
+import { fmt } from '../game/format';
 
 /** Séances de classe : un jeu réglé par l'enseignant, avec un nombre d'essais limité ; seul le meilleur score compte. */
 
 export type SessionState = 'idle' | 'sending' | 'saved' | 'queued' | 'refused';
 
-const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
 /** Suit les essais de l'élève dans une séance et envoie chaque partie terminée. */
 /** Ce que l'élève a réussi et raté pendant l'essai : envoyé à son enseignant pour sa fiche, une fois l'essai enregistré. */

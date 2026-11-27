@@ -4,6 +4,7 @@ import { streakAfterLoss } from '../scoring';
 import { edgeDistance, multFor, reachDistance, spreadAngles, winPoints } from './geometry';
 import { LEX_TUNE, buildRound, enemyCount, lossNote, travelTime } from './rounds';
 import type { LexDiff, LexLevel, LexWord, Rel, Round } from './rounds';
+import { fmt } from '../format';
 
 /**
  * « Mots en orbite » — moteur de jeu (canvas 2D) : un mot au centre, des mots ennemis qui arrivent de toutes les directions.
@@ -106,7 +107,6 @@ const F_WORD = '"Courier Prime", "Courier New", monospace';
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
 const backOut = (x: number) => 1 + 2.70158 * Math.pow(x - 1, 3) + 1.70158 * Math.pow(x - 1, 2);
-const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
 function rr(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   if (w < 0) w = 0;

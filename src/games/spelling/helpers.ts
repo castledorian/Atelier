@@ -2,7 +2,7 @@ import type { CourseDiff, Level } from '../../game/course/questions';
 import { hpFor, isTyped } from '../../game/spelling/engine';
 
 export const isWord = (w: string) => /[\p{L}\p{N}]/u.test(w);
-export const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+export { fmt } from '../../game/format';
 export const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 /** Durées des animations (ms), alignées sur la feuille de style. */

@@ -13,7 +13,7 @@ import type { Settings } from '../../game/storage';
 import type { StudentAccount } from '../../server/types';
 import type { MenuView } from './types';
 import { fmt, levelLabel } from './helpers';
-import { SettingsRow } from './SettingsRow';
+import { SettingsRow } from '../../components/MenuParts';
 import { Board, LocalTable } from './Tables';
 
 // ───────────────────────── Menu ─────────────────────────
@@ -86,7 +86,7 @@ export function MenuScreen({ view, setView, level, diff, setDiff, settings, acco
     } else if (view === 'progress') {
       body = <GameProgress game="math" onTrain={onTrain} />;
     } else {
-      body = <SettingsRow settings={settings} onChange={onChange} />;
+      body = <SettingsRow settings={settings} onChange={onChange} shake />;
     }
     return (
       <div className="overlay">

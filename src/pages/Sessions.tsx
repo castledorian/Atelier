@@ -6,8 +6,7 @@ import { fetchClassWeek, fetchSessions } from '../server/student';
 import type { ClassWeek, SessionInfo, StudentAccount } from '../server/types';
 import { Frame, Notice } from './Frame';
 import { Tip } from '../components/Tip';
-
-const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+import { fmt } from '../game/format';
 
 /** Espace de l'élève : les séances de sa classe, avec ses essais restants. */
 export default function Sessions({ account, onBack, onPlay, onSessionLost }: { account: StudentAccount; onBack: () => void; onPlay: (s: SessionInfo) => void; onSessionLost: () => void }) {

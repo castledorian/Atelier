@@ -21,6 +21,7 @@ import * as T from '../server/teacher';
 import { Tip } from '../components/Tip';
 import { WeakPoints } from '../components/WeakPoints';
 import type { WeakRow } from '../components/WeakPoints';
+import { fmt } from '../game/format';
 
 /** Détail de chaque jeu, montré dans la bulle « i » du formulaire (la page reste courte). */
 const GAME_HELP: Record<string, string> = {
@@ -33,7 +34,6 @@ const GAME_HELP: Record<string, string> = {
 };
 import type { ClassRow, ClassSession, SessionResultRow } from '../server/types';
 
-const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 type Act = <R>(f: () => Promise<R>) => Promise<R | undefined>;
 
 const GAMES: GameKind[] = ['typing', 'math', 'spelling', 'memory', 'lexique', 'facteur'];

@@ -24,7 +24,7 @@ import { enqueue, flush, queueStudentItems } from '../server/outbox';
 import { dropCave, sendItemStats, sendRun } from '../server/student';
 import type { RunPayload, SessionInfo, StudentAccount } from '../server/types';
 import type { Cloud, MenuView, Phase, Run } from './course/types';
-import { SettingsRow } from './course/SettingsRow';
+import { SettingsRow } from '../components/MenuParts';
 import { MenuScreen } from './course/MenuScreen';
 import { OverScreen } from './course/OverScreen';
 
@@ -483,7 +483,7 @@ export default function Course({ account, onHome, onSessionLost, session, onSess
                 </div>
               </div>
               <div className="mt-[var(--sp)] border-t-2 border-dashed border-ink/25 pt-2">
-                <SettingsRow settings={settings} onChange={change} />
+                <SettingsRow settings={settings} onChange={change} shake />
               </div>
             </Dialog>
           </div>
