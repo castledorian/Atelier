@@ -54,11 +54,6 @@ export function renameRun(id: string, name: string): RunRecord[] {
   return list;
 }
 
-export function clearHistory(): RunRecord[] {
-  write([]);
-  return [];
-}
-
 export const newRunId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 
 // ───────────────────────── Export CSV (ouvre directement dans Excel / LibreOffice) ─────────────────────────
@@ -78,27 +73,6 @@ function cell(v: string | number): string {
 
 export function toCsv(header: string[], rows: (string | number)[][]): string {
   return '\ufeff' + [header, ...rows].map((r) => r.map(cell).join(';')).join('\r\n') + '\r\n';
-}
-
-const DIFF_LABEL: Record<Difficulty, string> = { apprenti: 'Apprenti', standard: 'Standard', expert: 'Expert', perso: 'Perso' };
-export const diffLabel = (d: Difficulty) => DIFF_LABEL[d] ?? d;
-
-export function historyCsv(runs: RunRecord[]): string {
-  return toCsv(
-    ['Date', 'Prénom', 'Mode', 'Type', 'Score', 'Vague', 'Mots/min', 'Précision %', 'Touches justes', 'Durée (s)'],
-    runs.map((r) => [
-      fmtDate(r.date),
-      r.name || 'ANONYME',
-      diffLabel(r.diff),
-      r.kind === 'drill' ? 'Entraînement' : 'Partie',
-      r.score,
-      r.wave,
-      r.wpm,
-      r.acc,
-      r.correct,
-      Math.round(r.time),
-    ]),
-  );
 }
 
 export function downloadText(filename: string, text: string, mime = 'text/csv;charset=utf-8') {

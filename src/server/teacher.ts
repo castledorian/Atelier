@@ -185,9 +185,6 @@ export const setClassGrade = (cls: string, grade: string | null) =>
 export const createClass = (school: string, name: string) =>
   authed((t) => rpc<ClassRow>('create_class', { p_school: school, p_name: name }, t));
 
-export const saveClassSession = (cls: string, config: Record<string, unknown> | null) =>
-  authed((t) => patch('classes', `id=eq.${cls}`, { session_config: config }, t));
-
 export const deleteClass = (cls: string) => authed((t) => remove('classes', `id=eq.${cls}`, t));
 
 export const addStudents = (cls: string, names: string[]) =>
@@ -259,8 +256,6 @@ export const resetCode = (student: string) => authed((t) => rpc<string>('reset_s
 export const clearClassRuns = (cls: string) => authed((t) => remove('runs', `class_id=eq.${cls}`, t));
 
 export const deleteStudent = (id: string) => authed((t) => remove('students', `id=eq.${id}`, t));
-
-export const renameStudent = (id: string, name: string) => authed((t) => patch('students', `id=eq.${id}`, { name }, t));
 
 /** Toutes les parties d'une classe, pour l'export CSV. */
 export const classRuns = (cls: string) =>

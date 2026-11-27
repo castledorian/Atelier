@@ -20,7 +20,7 @@ export const BEAT = 60 / BPM;
 /** Une boucle = 4 mesures de 4 temps (≈ 13 s) ; la mélodie change à chaque tour. */
 export const BARS = 4;
 /** Gamme pentatonique majeure de Do (demi-tons au-dessus du Do). */
-export const PENTATONIC = [0, 2, 4, 7, 9];
+const PENTATONIC = [0, 2, 4, 7, 9];
 /** Notes MIDI de la mélodie : de sol 4 à la 5 (jamais aiguë ni grave). */
 export const MELODY_LOW = 67;
 export const MELODY_HIGH = 81;

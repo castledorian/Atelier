@@ -54,8 +54,8 @@ export const memBoard = (mode: Mode, diff: MemDiff): MemBoard => (diff === 'stan
 /** Première manche d'une partie : le début de la page choisie, ou plus loin en Expert (La Suite). */
 export const firstRound = (mode: Mode, startPage: number, diff: MemDiff) =>
   Math.max(startPage * perPage(mode), mode === 'suite' ? MEMORY_DIFF[diff].start : 0);
-export const SUITE_PER_PAGE = 5;
-export const CASES_PER_PAGE = 4;
+const SUITE_PER_PAGE = 5;
+const CASES_PER_PAGE = 4;
 
 /** Nombre de manches par page. */
 export const perPage = (m: Mode) => (m === 'suite' ? SUITE_PER_PAGE : CASES_PER_PAGE);

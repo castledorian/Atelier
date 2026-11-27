@@ -16,7 +16,7 @@ export type Rng = () => number;
 
 /** Mots (images) différents par séance, et nombre de colis par mot. */
 export const WORDS_PER_SESSION = 8;
-export const PARCELS_PER_WORD = 2;
+const PARCELS_PER_WORD = 2;
 /** Boîtes aux lettres par colis. */
 export const CHOICES = 3;
 /** Nombre de colis d'une séance sans erreur. */

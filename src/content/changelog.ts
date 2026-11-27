@@ -24,6 +24,16 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.33',
+    date: '27 novembre 2026',
+    iso: '2026-11-27',
+    title: 'Code allégé, images gardées en mémoire',
+    changes: [
+      { kind: 'better', text: 'Les images du monstre et les voix du facteur restent en mémoire sur l’appareil : elles ne sont plus retéléchargées à chaque nouvelle version du site (utile sur un réseau d’école lent).' },
+      { kind: 'better', text: 'Code interne nettoyé : fonctions inutilisées retirées, pages d’information et d’administration découpées en fichiers plus courts. Rien ne change à l’écran.' },
+    ],
+  },
+  {
     version: '1.32',
     date: '27 novembre 2026',
     iso: '2026-11-27',
