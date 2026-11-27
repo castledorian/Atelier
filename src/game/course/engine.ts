@@ -7,6 +7,7 @@ import type { RuleId } from '../encre/rules';
 import { shouldSummon } from '../encre/tracker';
 import { COURSE_TUNING, LEVEL_TUNING, PAGES, PAGE_TITLES, PER_PAGE, TOTAL, fmtNum, fromMissed, makeChoices, makeQuestion, questionsMatching, stageOf, travelTime } from './questions';
 import type { CourseDiff, Level, Missed, Question } from './questions';
+import { clamp, F_DISP, INK, PAPER, PAPER_HI, rand, RED, rr, TAU } from '../canvas';
 
 /**
  * Moteur de « Course à l'encre » (canvas 2D).
@@ -82,25 +83,17 @@ interface Txt {
   life: number;
 }
 
-const TAU = Math.PI * 2;
-const INK = '#1b1915';
 const INK_HI = '#2d2a24';
-const PAPER = '#efe6d2';
-const PAPER_HI = '#faf5e8';
-const RED = '#b02a18';
 const GREEN = '#1f6b3f';
 const GOLD = '#d49a1a';
 /** doré foncé pour le texte : lisible sur le papier (contraste ≥ 4,5:1) */
 const GOLD_D = '#8a5a00';
-const F_DISP = '"Special Elite", "Courier New", monospace';
 const F_NUM = '"Courier Prime", "Courier New", monospace';
 const PART_COLORS = [INK, RED, GREEN, GOLD, PAPER_HI];
 const MAX_PARTS = 260;
 const MAX_BONUS = speedBonus(ANSWER_POINTS, 1);
 const SURFACE_STEPS = 18;
 
-const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
-const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 const WIN_BONUS = FINISH_BONUS;
@@ -110,17 +103,6 @@ function backOut(p: number) {
   const s = 1.7;
   const q = p - 1;
   return q * q * ((s + 1) * q + s) + 1;
-}
-
-function rr(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  r = Math.min(r, w / 2, h / 2);
-  c.beginPath();
-  c.moveTo(x + r, y);
-  c.arcTo(x + w, y, x + w, y + h, r);
-  c.arcTo(x + w, y + h, x, y + h, r);
-  c.arcTo(x, y + h, x, y, r);
-  c.arcTo(x, y, x + w, y, r);
-  c.closePath();
 }
 
 export interface StartOptions {

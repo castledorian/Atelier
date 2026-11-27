@@ -5,6 +5,7 @@ import { edgeDistance, multFor, reachDistance, spreadAngles, winPoints } from '.
 import { LEX_TUNE, buildRound, enemyCount, lossNote, travelTime } from './rounds';
 import type { LexDiff, LexLevel, LexWord, Rel, Round } from './rounds';
 import { fmt } from '../format';
+import { clamp, F_DISP, F_WORD, HEAD, INK, PAPER, PAPER_HI, rand, RED, rr, TAU } from '../canvas';
 
 /**
  * « Mots en orbite » — moteur de jeu (canvas 2D) : un mot au centre, des mots ennemis qui arrivent de toutes les directions.
@@ -92,33 +93,11 @@ interface Ring {
   w: number;
 }
 
-const TAU = Math.PI * 2;
-const INK = '#1b1915';
-const PAPER = '#efe6d2';
-const PAPER_HI = '#faf5e8';
-const HEAD = '#e4d9bf';
-const RED = '#b02a18';
 const BLUE = '#2f4f86';
 const GREEN = '#2f6b3a';
 const MAX_PARTS = 520;
-const F_DISP = '"Special Elite", "Courier New", monospace';
-const F_WORD = '"Courier Prime", "Courier New", monospace';
 
-const rand = (a: number, b: number) => a + Math.random() * (b - a);
-const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
 const backOut = (x: number) => 1 + 2.70158 * Math.pow(x - 1, 3) + 1.70158 * Math.pow(x - 1, 2);
-
-function rr(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  if (w < 0) w = 0;
-  r = Math.min(r, w / 2, h / 2);
-  c.beginPath();
-  c.moveTo(x + r, y);
-  c.arcTo(x + w, y, x + w, y + h, r);
-  c.arcTo(x + w, y + h, x, y + h, r);
-  c.arcTo(x, y + h, x, y, r);
-  c.arcTo(x, y, x + w, y, r);
-  c.closePath();
-}
 
 export class LexiqueGame {
   private readonly canvas: HTMLCanvasElement;

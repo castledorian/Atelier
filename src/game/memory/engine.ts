@@ -19,6 +19,7 @@ import {
   totalOf,
 } from './rounds';
 import type { MemDiff, Mode } from './rounds';
+import { clamp, F_DISP, INK, PAPER_HI, rand, RED, TAU } from '../canvas';
 
 /**
  * Moteur de « Mémoire d'encre » (canvas 2D).
@@ -103,15 +104,10 @@ interface Mote {
   a: number;
 }
 
-const TAU = Math.PI * 2;
-const INK = '#1b1915';
 const INK_HI = '#2d2a24';
-const PAPER_HI = '#faf5e8';
-const RED = '#b02a18';
 const GREEN = '#1f6b3f';
 const GOLD = '#d49a1a';
 const GOLD_D = '#8a5a00';
-const F_DISP = '"Special Elite", "Courier New", monospace';
 const PART_COLORS = [INK, RED, GREEN, GOLD, PAPER_HI];
 const MAX_PARTS = 200;
 const LEAD = 0.6; // pause avant la première tache de la suite
@@ -123,8 +119,6 @@ const WIN_BONUS = FINISH_BONUS;
 const PERFECT_PAGE = PAGE_BONUS;
 const OK_WORDS = ['Bravo !', 'Bien joué !', 'Super !', 'Excellent !'];
 
-const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
-const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 const smooth = (t: number) => t * t * (3 - 2 * t);
 const backOut = (t: number) => 1 + 2.4 * Math.pow(t - 1, 3) + 1.4 * Math.pow(t - 1, 2);

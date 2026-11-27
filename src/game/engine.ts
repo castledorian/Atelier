@@ -6,6 +6,7 @@ import type { CustomConfig, DiffConfig, Difficulty, Penalty } from './difficulty
 import { letterPool } from './layouts';
 import type { Layout } from './storage';
 import { pickLetter, pickWord } from './words';
+import { clamp, F_DISP, F_WORD, HEAD, INK, PAPER, PAPER_HI, rand, RED, RED_HI, rr, TAU } from './canvas';
 
 export interface RunStats {
   score: number;
@@ -100,17 +101,8 @@ interface Ring {
   c: string;
 }
 
-const TAU = Math.PI * 2;
-const INK = '#1b1915';
-const PAPER = '#efe6d2';
-const PAPER_HI = '#faf5e8';
-const HEAD = '#e4d9bf';
-const RED = '#b02a18';
-const RED_HI = '#f2603f';
 const COMBO_STEP = 15;
 const MAX_PARTS = 520;
-const F_DISP = '"Special Elite", "Courier New", monospace';
-const F_WORD = '"Courier Prime", "Courier New", monospace';
 const FLAVOR = [
   'Gardez la cadence',
   'Encore plus d’encre',
@@ -120,8 +112,6 @@ const FLAVOR = [
   'Plus vite, dactylo',
 ];
 
-const rand = (a: number, b: number) => a + Math.random() * (b - a);
-const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
 const byY = (a: Enemy, b: Enemy) => a.y - b.y;
 const multFor = (combo: number) => Math.min(6, 1 + Math.floor(combo / COMBO_STEP));
 const fmt = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -130,18 +120,6 @@ function backOut(p: number) {
   const s = 1.9;
   const q = p - 1;
   return q * q * ((s + 1) * q + s) + 1;
-}
-
-function rr(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  if (w < 0) w = 0;
-  r = Math.min(r, w / 2, h / 2);
-  c.beginPath();
-  c.moveTo(x + r, y);
-  c.arcTo(x + w, y, x + w, y + h, r);
-  c.arcTo(x + w, y + h, x, y + h, r);
-  c.arcTo(x, y + h, x, y, r);
-  c.arcTo(x, y, x + w, y, r);
-  c.closePath();
 }
 
 export class Game {
