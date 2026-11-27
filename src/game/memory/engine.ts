@@ -1,248 +1,18 @@
-import { FINISH_BONUS, MEMORY_ITEM_POINTS, PAGE_BONUS, SURVIVE_BONUS, multFor, speedBonus, streakAfterLoss } from '../scoring';
+import { MEMORY_ITEM_POINTS, multFor, speedBonus, streakAfterLoss, SURVIVE_BONUS } from '../scoring';
 import type { Sfx, SfxName } from '../audio';
 import type { Grade } from '../grade';
-import {
-  MAX_LIVES,
-  MEMORY_DIFF,
-  firstRound,
-  PAGES,
-  PAGE_TITLES,
-  casesShow,
-  digitToCell,
-  extendSuite,
-  makeCases,
-  perPage,
-  spanOf,
-  stageOf,
-  suiteLen,
-  suiteStep,
-  totalOf,
-} from './rounds';
+import { casesShow, digitToCell, extendSuite, firstRound, makeCases, MEMORY_DIFF, PAGE_TITLES, PAGES, perPage, spanOf, stageOf, suiteLen, suiteStep } from './rounds';
 import type { MemDiff, Mode } from './rounds';
-import { clamp, F_DISP, INK, PAPER_HI, rand, RED, TAU } from '../canvas';
+import { clamp, INK, rand, RED, TAU } from '../canvas';
+import { BAD, BLOT, FLIP, FRONT, GOLD, GOLD_D, GREEN, HINT, INK_HI, LEAD, MAX_PARTS, OK, OK_WORDS, PERFECT_PAGE, TINTS, VARIANTS, WIN_BONUS } from './parts';
+import type { MemoryCallbacks } from './parts';
+import { MemoryRender } from './render';
+export * from './parts';
 
-/**
- * Moteur de « Mémoire d'encre » (canvas 2D).
- * Une grille de TACHES D'ENCRE. Au repos, chaque tache est pâle et dort (yeux fermés) ; quand elle doit être retenue,
- * elle se retourne, se réveille, noircit et ouvre des yeux vivants (ils regardent partout, clignent, suivent le doigt).
- * Le joueur refait la suite (La Suite, qui s'allonge d'une tache à chaque réussite) ou retrouve les places (Les Cases).
- */
 
-export interface MemoryResult {
-  mode: Mode;
-  score: number;
-  /** manches réussies */
-  correct: number;
-  /** manches ratées (une vie perdue chacune) */
-  wrong: number;
-  /** meilleure série de manches réussies d'affilée */
-  bestStreak: number;
-  /** plus longue suite (ou plus grand nombre de cases) retenue */
-  maxSpan: number;
-  /** difficulté jouée */
-  diff: MemDiff;
-  /** page de départ (0 = début du cahier) */
-  startPage: number;
-  /** par page : manches jouées (a) et ratées (e) — sert à régler la difficulté */
-  pages: Array<{ a: number; e: number }>;
-  /** secondes réellement jouées */
-  time: number;
-  won: boolean;
-  /** dernière page atteinte (1 à 6) */
-  page: number;
-  lives: number;
-}
-
-export interface MemoryCallbacks {
-  onOver: (r: MemoryResult) => void;
-}
-
-type St = 'banner' | 'show' | 'input' | 'ok' | 'bad';
-
-/** Faces d'une pièce */
-const FRONT = 0;
-const BLOT = 1;
-const OK = 2;
-const BAD = 3;
-const HINT = 4;
-
-interface Part {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  r: number;
-  life: number;
-  max: number;
-  c: number;
-}
-
-interface Txt {
-  x: number;
-  y: number;
-  s: string;
-  c: string;
-  size: number;
-  age: number;
-  life: number;
-}
-
-interface Ring {
-  x: number;
-  y: number;
-  r: number;
-  age: number;
-  c: string;
-}
-
-interface Mote {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  r: number;
-  a: number;
-}
-
-const INK_HI = '#2d2a24';
-const GREEN = '#1f6b3f';
-const GOLD = '#d49a1a';
-const GOLD_D = '#8a5a00';
-const PART_COLORS = [INK, RED, GREEN, GOLD, PAPER_HI];
-const MAX_PARTS = 200;
-const LEAD = 0.6; // pause avant la première tache de la suite
-const FLIP = 0.22; // durée du réveil / de l'endormissement d'une tache (s)
-const VARIANTS = 6; // formes de taches différentes
-/** Teinte du papier : elle change très doucement à chaque page, pour sentir qu'on avance. */
-const TINTS = ['#efe6d2', '#ece8d3', '#e8eadb', '#e6e9e2', '#ebe6e2', '#f2e6cf'];
-const WIN_BONUS = FINISH_BONUS;
-const PERFECT_PAGE = PAGE_BONUS;
-const OK_WORDS = ['Bravo !', 'Bien joué !', 'Super !', 'Excellent !'];
-
-const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-const smooth = (t: number) => t * t * (3 - 2 * t);
-const backOut = (t: number) => 1 + 2.4 * Math.pow(t - 1, 3) + 1.4 * Math.pow(t - 1, 2);
-
-function heart(c: CanvasRenderingContext2D, x: number, y: number, s: number) {
-  c.beginPath();
-  c.moveTo(x, y + s * 0.9);
-  c.bezierCurveTo(x - s * 1.3, y + s * 0.1, x - s * 0.75, y - s * 0.85, x, y - s * 0.3);
-  c.bezierCurveTo(x + s * 0.75, y - s * 0.85, x + s * 1.3, y + s * 0.1, x, y + s * 0.9);
-  c.closePath();
-}
-
-export class MemoryGame {
-  private readonly canvas: HTMLCanvasElement;
-  private readonly ctx: CanvasRenderingContext2D;
-  private readonly sfx: Sfx;
-  private readonly cb: MemoryCallbacks;
-  private readonly bg = document.createElement('canvas');
-  private ro: ResizeObserver | null = null;
-  private raf = 0;
-  private last = 0;
-
-  private W = 0;
-  private H = 0;
-  private dpr = 1;
-  private quality = 2;
-  private slowAvg = 16.7;
-  private slowFrames = 0;
-  private demoStill = false;
-  /** extrait ouvert depuis l'accueil : la démonstration est jouée avec le son */
-  private demoSound = false;
-  private grade: Grade = 'cm1';
-  private dirty = true;
-  private u = 1;
-  private compact = false;
-  private hudH = 56;
-  private qH = 52;
-  private gx = 0;
-  private gy = 0;
-  private gs = 300;
-
-  private shakeOn = true;
-  private reduced = false;
-  private ts = 1;
-  private shake = 0;
-  private run: 'demo' | 'play' = 'demo';
-  private paused = false;
-  private mode: Mode = 'suite';
-
-  // état de partie
-  private t = 0;
-  private n = 0; // manche en cours (0 à 23)
-  private diff: MemDiff = 'standard';
-  private lives = MAX_LIVES;
-  private score = 0;
-  private streak = 0;
-  private best = 0;
-  private correct = 0;
-  private wrong = 0;
-  private maxSpan = 0;
-  private pageLost = 0;
-  private startPage = 0;
-  private pageA: number[] = [0, 0, 0, 0, 0, 0];
-  private pageE: number[] = [0, 0, 0, 0, 0, 0];
-  private record = 0; // meilleure suite déjà réussie sur cet appareil (La Suite)
-  private recordShown = false;
-  private nearMiss = false;
-  private scoreDisp = 0;
-  private scorePop = 0;
-  private bgStage = -1;
-  private over = false;
-  private won = false;
-  private overT = 0;
-  private reported = false;
-  private st: St = 'banner';
-  private tt = 0;
-  private bannerText = '';
-  private bannerSub = '';
-  private bannerDur = 1.7;
-  private first = true;
-
-  // manche
-  private size = 3;
-  private seq: number[] = [];
-  private targets: number[] = [];
-  private rankOf: number[] = [];
-  private showT = 1.5;
-  private k = 0; // suite : prochaine tache attendue
-  private found = new Set<number>();
-  private lastLit = -1;
-  private cursor = 4;
-  private showCursor = false;
-  private lookT = -99; // dernier moment où le doigt / la souris a bougé
-  private lookX = -1;
-  private lookY = -1;
-  private flash = 0;
-  private flashC = RED;
-  private okWord = OK_WORDS[0];
-  private parts: Part[] = [];
-  private texts: Txt[] = [];
-  private rings: Ring[] = [];
-  private motes: Mote[] = [];
-  private pulse = 0;
-  private botT = 0;
-  private botK = 0;
-  private promptKey = '';
-  private promptT = 0;
-
-  // pièces
-  private shown = new Uint8Array(9); // face actuellement visible
-  private flipTo = new Uint8Array(9); // face de départ pendant une transition (fondu)
-  private flipT = new Float32Array(9).fill(-1); // -1 = au repos, sinon 0 → 1
-  private land = new Float32Array(9); // petit rebond à l'atterrissage
-  private born = new Float32Array(9); // apparition de la grille
-  private ph = new Float32Array(9); // phase propre à chaque pièce (yeux, flottement)
-  private hold = new Float32Array(9); // pièce retenue face visible un instant après un bon choix
-  private mark = new Uint8Array(9); // 0 rien · 1 juste · 2 faux · 3 indice
-  private gz = { lx: 0, ly: 0, blink: 0 };
-  private halo: HTMLCanvasElement | null = null;
-  private faces: HTMLCanvasElement[] = [];
-  private faceR = 0;
-  private faceDpr = 0;
-
+export class MemoryGame extends MemoryRender {
   constructor(canvas: HTMLCanvasElement, sfx: Sfx, cb: MemoryCallbacks) {
+    super();
     this.canvas = canvas;
     const c = canvas.getContext('2d', { alpha: false });
     if (!c) throw new Error('canvas indisponible');
@@ -405,7 +175,7 @@ export class MemoryGame {
     };
   }
 
-  private reset() {
+  protected reset() {
     this.t = 0;
     this.n = 0;
     this.lives = MEMORY_DIFF[this.diff].lives;
@@ -444,7 +214,7 @@ export class MemoryGame {
   }
 
   /** (Ré)initialise les pièces. Si la taille ne change pas, elles gardent leur face (elles se retourneront en douceur). */
-  private setGrid(size: number, force = false) {
+  protected setGrid(size: number, force = false) {
     const len = size * size;
     const changed = this.shown.length !== len || size !== this.size;
     this.size = size;
@@ -476,7 +246,7 @@ export class MemoryGame {
   // ───────────────────────── Déroulement ─────────────────────────
 
   /** Change la teinte du papier quand on change de page. */
-  private tintBg() {
+  protected tintBg() {
     if (this.W <= 0) return;
     if (stageOf(this.mode, this.n) !== this.bgStage) {
       this.buildBg();
@@ -484,7 +254,7 @@ export class MemoryGame {
     }
   }
 
-  private pageBanner() {
+  protected pageBanner() {
     const p = stageOf(this.mode, this.n);
     this.tintBg();
     this.st = 'banner';
@@ -495,7 +265,7 @@ export class MemoryGame {
   }
 
   /** Prépare une nouvelle manche (ou rejoue la même après une erreur : La Suite garde sa suite, Les Cases en tirent une nouvelle). */
-  private beginRound() {
+  protected beginRound() {
     this.found.clear();
     this.k = 0;
     this.lastLit = -1;
@@ -521,12 +291,12 @@ export class MemoryGame {
     this.dirty = true;
   }
 
-  private note(i: number) {
+  protected note(i: number) {
     if (this.run === 'play' || this.demoSound) this.sfx.play(`n${i % 9}` as SfxName);
   }
 
   /** Petite vibration sur téléphone / tablette (retour tactile), désactivée avec les secousses ou si l'appareil demande moins de mouvement. */
-  private buzz(pattern: number | number[]) {
+  protected buzz(pattern: number | number[]) {
     if (!this.shakeOn || this.reduced || this.run !== 'play') return;
     try {
       navigator.vibrate?.(pattern);
@@ -536,7 +306,7 @@ export class MemoryGame {
   }
 
   /** Changement de face immédiat (réponse à un toucher) : pas de retournement, la réaction doit être instantanée. */
-  private snap(i: number, face: number) {
+  protected snap(i: number, face: number) {
     if (this.shown[i] === face && this.flipT[i] < 0) return;
     this.shown[i] = face;
     this.flipT[i] = -1;
@@ -544,7 +314,7 @@ export class MemoryGame {
     this.landed(i);
   }
 
-  private tap(i: number) {
+  protected tap(i: number) {
     if (this.st !== 'input') return;
     if (this.mode === 'suite') {
       if (i === this.seq[this.k]) {
@@ -573,7 +343,7 @@ export class MemoryGame {
     this.dirty = true;
   }
 
-  private roundOk() {
+  protected roundOk() {
     const span = spanOf(this.mode, this.n, this.grade, this.diff);
     this.correct++;
     this.pageA[stageOf(this.mode, this.n)]++;
@@ -618,7 +388,7 @@ export class MemoryGame {
     }
   }
 
-  private bad(i: number) {
+  protected bad(i: number) {
     this.wrong++;
     this.pageA[stageOf(this.mode, this.n)]++;
     this.pageE[stageOf(this.mode, this.n)]++;
@@ -651,7 +421,7 @@ export class MemoryGame {
     }
   }
 
-  private nextRound() {
+  protected nextRound() {
     this.n++;
     const per = perPage(this.mode);
     if (this.n % per === 0) {
@@ -678,7 +448,7 @@ export class MemoryGame {
     this.beginRound();
   }
 
-  private victory() {
+  protected victory() {
     if (this.run !== 'play') return;
     const bonus = WIN_BONUS + this.lives * SURVIVE_BONUS;
     this.score += bonus;
@@ -699,7 +469,7 @@ export class MemoryGame {
 
   // ───────────────────────── Boucle ─────────────────────────
 
-  private frame = (now: number) => {
+  protected frame = (now: number) => {
     this.raf = requestAnimationFrame(this.frame);
     const ms = now - this.last;
     const dt = Math.min(0.05, Math.max(0, ms / 1000)) * this.ts;
@@ -718,7 +488,7 @@ export class MemoryGame {
   };
 
   /** Images trop lentes pendant ~1,5 s → résolution plus basse (jamais remontée pendant la session). */
-  private watchSpeed(ms: number) {
+  protected watchSpeed(ms: number) {
     if (ms <= 0 || ms > 200) return;
     this.slowAvg += (ms - this.slowAvg) * 0.05;
     if (this.slowAvg > 21) this.slowFrames++;
@@ -736,7 +506,7 @@ export class MemoryGame {
     this.resize();
   }
 
-  private resize = () => {
+  protected resize = () => {
     const rect = this.canvas.getBoundingClientRect();
     const W = Math.max(240, Math.round(rect.width));
     const H = Math.max(200, Math.round(rect.height));
@@ -771,7 +541,7 @@ export class MemoryGame {
     this.render();
   };
 
-  private buildBg() {
+  protected buildBg() {
     const { W, H, dpr } = this;
     const stage = stageOf(this.mode, this.n);
     this.bgStage = stage;
@@ -804,7 +574,7 @@ export class MemoryGame {
   }
 
   /** Dessins prêts à l'emploi des taches (6 formes × 5 faces) et de leur halo d'encre — recalculés seulement si la taille change. */
-  private layoutGrid() {
+  protected layoutGrid() {
     if (this.W <= 0) return;
     const R = this.coinR();
     if (Math.abs(R - this.faceR) < 0.5 && this.dpr === this.faceDpr && this.faces.length === 6 * VARIANTS) return;
@@ -967,7 +737,7 @@ export class MemoryGame {
 
   // ───────────────────────── Mise à jour ─────────────────────────
 
-  private update(dt: number) {
+  protected update(dt: number) {
     this.pulse += dt;
     this.promptT += dt;
     this.fx(dt);
@@ -1026,7 +796,7 @@ export class MemoryGame {
   }
 
   /** Quelle face doit montrer la pièce i en ce moment ? */
-  private desired(i: number, litNow: number): number {
+  protected desired(i: number, litNow: number): number {
     const m = this.mark[i];
     if (m === 2) return BAD;
     if (m === 1) return BLOT; // case trouvée : la tache d'encre noire apparaît, comme dans La Suite
@@ -1042,7 +812,7 @@ export class MemoryGame {
   }
 
   /** Pièce allumée dans la suite à cet instant (−1 si aucune). */
-  private litNow(): number {
+  protected litNow(): number {
     if (this.st !== 'show' || this.mode !== 'suite') return -1;
     const step = suiteStep(this.n, this.grade, this.diff);
     const rel = this.tt - LEAD;
@@ -1053,7 +823,7 @@ export class MemoryGame {
   }
 
   /** Une pièce vient de se poser : éclaboussure et onde. */
-  private landed(i: number) {
+  protected landed(i: number) {
     const r = this.tileRect(i);
     if (!r) return;
     const s = this.shown[i];
@@ -1068,7 +838,7 @@ export class MemoryGame {
     if (s === BAD) this.burst(cx, cy, 6, 1);
   }
 
-  private cheer(dt: number) {
+  protected cheer(dt: number) {
     if (this.overT < 2.2 && Math.random() < dt * 9) {
       const i = Math.floor(rand(0, this.size * this.size));
       const r = this.tileRect(i);
@@ -1076,7 +846,7 @@ export class MemoryGame {
     }
   }
 
-  private stepState(dt: number) {
+  protected stepState(dt: number) {
     if (this.st === 'banner') {
       if (this.over) return;
       if (this.tt >= this.bannerDur) this.beginRound();
@@ -1114,7 +884,7 @@ export class MemoryGame {
     }
   }
 
-  private toInput() {
+  protected toInput() {
     this.st = 'input';
     this.tt = 0;
     this.botT = 0;
@@ -1123,7 +893,7 @@ export class MemoryGame {
   }
 
   /** Mode démonstration (derrière le menu) : un joueur automatique refait la suite, posément. */
-  private botStep(dt: number) {
+  protected botStep(dt: number) {
     this.botT += dt;
     if (this.botT < 0.7) return;
     this.botT = 0;
@@ -1138,7 +908,7 @@ export class MemoryGame {
     }
   }
 
-  private fx(dt: number) {
+  protected fx(dt: number) {
     this.shake = Math.max(0, this.shake - 26 * dt);
     this.flash = Math.max(0, this.flash - dt * 2.2);
     this.scorePop = Math.max(0, this.scorePop - dt * 3.2);
@@ -1179,7 +949,7 @@ export class MemoryGame {
     }
   }
 
-  private text(x: number, y: number, s: string, c: string, size: number) {
+  protected text(x: number, y: number, s: string, c: string, size: number) {
     if (this.texts.length > 8) this.texts.shift();
     const half = s.length * size * 0.32;
     const cx = half * 2 > this.W - 16 ? this.W / 2 : clamp(x, half + 8, this.W - half - 8);
@@ -1187,7 +957,7 @@ export class MemoryGame {
   }
 
   /** Gouttes d'encre qui giclent. */
-  private burst(cx: number, cy: number, n: number, color = 0) {
+  protected burst(cx: number, cy: number, n: number, color = 0) {
     for (let k = 0; k < n && this.parts.length < MAX_PARTS; k++) {
       const a = rand(0, TAU);
       const sp = rand(70, 270);
@@ -1202,504 +972,5 @@ export class MemoryGame {
         c: color || (Math.random() < 0.75 ? 0 : 1 + Math.floor(Math.random() * 3)),
       });
     }
-  }
-
-  // ───────────────────────── Géométrie ─────────────────────────
-
-  private gap() {
-    return clamp((this.gs / this.size) * 0.1, 5, 14);
-  }
-
-  private tileSize() {
-    return (this.gs - this.gap() * (this.size - 1)) / this.size;
-  }
-
-  private coinR() {
-    return this.tileSize() * 0.47;
-  }
-
-  private tileRect(i: number): { x: number; y: number; s: number } | null {
-    const n = this.size;
-    if (i < 0 || i >= n * n) return null;
-    const gap = this.gap();
-    const s = this.tileSize();
-    return { x: this.gx + (i % n) * (s + gap), y: this.gy + Math.floor(i / n) * (s + gap), s };
-  }
-
-  private tileAt(x: number, y: number): number {
-    const n = this.size;
-    const gap = this.gap();
-    const s = this.tileSize();
-    const pad = gap / 2;
-    for (let i = 0; i < n * n; i++) {
-      const tx = this.gx + (i % n) * (s + gap);
-      const ty = this.gy + Math.floor(i / n) * (s + gap);
-      if (x >= tx - pad && x <= tx + s + pad && y >= ty - pad && y <= ty + s + pad) return i;
-    }
-    return -1;
-  }
-
-  // ───────────────────────── Dessin ─────────────────────────
-
-  private render() {
-    this.dirty = false;
-    const c = this.ctx;
-    const { W, H, dpr } = this;
-    let ox = 0;
-    let oy = 0;
-    if (this.shakeOn && !this.reduced && this.shake > 0.5) {
-      ox = Math.round(rand(-1, 1) * this.shake);
-      oy = Math.round(rand(-1, 1) * this.shake);
-    }
-    c.setTransform(1, 0, 0, 1, 0, 0);
-    c.drawImage(this.bg, 0, 0);
-    c.setTransform(dpr, 0, 0, dpr, Math.round(ox * dpr), Math.round(oy * dpr));
-    this.drawMotes(c);
-    this.drawBlots(c);
-    this.drawRings(c);
-    this.drawParts(c);
-    c.setTransform(dpr, 0, 0, dpr, 0, 0);
-    this.drawHud(c);
-    this.drawPrompt(c);
-    this.drawTexts(c);
-    this.drawBanner(c);
-    if (this.flash > 0.02) {
-      c.globalAlpha = this.flash * (this.reduced ? 0.07 : 0.12);
-      c.fillStyle = this.flashC;
-      c.fillRect(0, 0, W, H);
-      c.globalAlpha = 1;
-    }
-  }
-
-  private drawMotes(c: CanvasRenderingContext2D) {
-    c.fillStyle = INK;
-    for (const m of this.motes) {
-      c.globalAlpha = m.a;
-      c.beginPath();
-      c.arc(m.x, m.y, m.r, 0, TAU);
-      c.fill();
-    }
-    c.globalAlpha = 1;
-  }
-
-  private drawBlots(c: CanvasRenderingContext2D) {
-    const n = this.size;
-    const R = this.coinR();
-    const faces = this.faces;
-    const halo = this.halo;
-    if (faces.length < 6 * VARIANTS || !halo) return;
-    const fw = faces[0].width / this.dpr;
-    const hw = halo.width / this.dpr;
-    const playing = this.run === 'play' && !this.over;
-    const recent = this.pulse - this.lookT < 1.2;
-    for (let i = 0; i < n * n; i++) {
-      const r = this.tileRect(i)!;
-      const cx = r.x + r.s / 2;
-      let cy = r.y + r.s / 2;
-      // apparition de la grille : les taches « poussent » l'une après l'autre
-      const b = this.born[i];
-      if (b <= 0) continue;
-      const appear = backOut(clamp(b / 0.32, 0, 1));
-      const ph = this.ph[i];
-      const flipping = this.flipT[i] >= 0;
-      // réveil : fondu de la tache pâle vers l'encre noire (ou l'inverse), avec un petit bond, SANS retournement
-      const p = flipping ? smooth(clamp(this.flipT[i], 0, 1)) : 1;
-      const bump = flipping ? Math.sin(Math.PI * p) : 0;
-      const face = this.shown[i];
-      const from = this.flipTo[i];
-      const dark = face === BLOT || face === HINT;
-      const v = (i * 5 + 2) % VARIANTS;
-      // survol : la tache se soulève un peu (seulement tant que la souris ou le doigt bouge, ou au curseur clavier)
-      const hovered =
-        playing &&
-        this.st === 'input' &&
-        ((recent && this.lookX >= 0 && Math.hypot(this.lookX - cx, this.lookY - cy) < R) || (this.showCursor && i === this.cursor));
-      const lift = bump * R * 0.1 + (hovered ? R * 0.06 : 0);
-      cy += dark ? 0 : Math.sin(this.pulse * 1.5 + ph) * 1.4;
-      // rebond à l'atterrissage (écrasement puis étirement)
-      const lk = this.land[i] / 0.22;
-      const squash = lk > 0 ? Math.sin(lk * Math.PI) * 0.1 : 0;
-      const jelly = dark && !flipping ? 0.02 * Math.sin(this.pulse * 8 + ph) : 0;
-      const sc = appear * (1 + bump * 0.08 + (hovered ? 0.05 : 0));
-      const tilt = dark && !flipping ? 0.035 * Math.sin(this.pulse * 4.5 + ph) : 0;
-      let y = cy - lift;
-      // au repos, on pose la tache sur un pixel entier : l'image est recopiée telle quelle (beaucoup plus rapide sur les vieux ordinateurs)
-      const rest = !flipping && !dark && lk <= 0 && appear >= 0.999 && !hovered;
-      if (rest) y = Math.round(y * this.dpr) / this.dpr;
-      // à quel point la tache est « noire » en ce moment (0 pâle · 1 encre) : ombre et halo suivent
-      const fromDark = from === BLOT || from === HINT;
-      const ink = flipping ? (dark ? p : 0) + (fromDark ? 1 - p : 0) : dark ? 1 : 0;
-
-      // ombre au sol
-      c.fillStyle = INK;
-      c.globalAlpha = (0.16 + 0.1 * ink) * Math.min(1, appear);
-      c.beginPath();
-      c.ellipse(cx, r.y + r.s / 2 + R * 0.92 + 2, R * 0.78 * (1 - 0.1 * bump) * sc, R * 0.2 * sc, 0, 0, TAU);
-      c.fill();
-      // halo d'encre
-      if (ink > 0.01) {
-        const hs = hw * sc;
-        c.globalAlpha = (0.8 + 0.1 * Math.sin(this.pulse * 3 + ph)) * Math.min(1, appear) * ink;
-        c.drawImage(halo, cx - hs / 2, y - hs / 2, hs, hs);
-      }
-      c.globalAlpha = 1;
-
-      c.save();
-      c.translate(rest ? Math.round(cx * this.dpr) / this.dpr : cx, y);
-      if (tilt !== 0) c.rotate(tilt);
-      c.scale(sc * (1 + squash + jelly), sc * (1 - squash - jelly));
-      const spr = (f: number) => faces[(f === FRONT ? 5 : f) * VARIANTS + v];
-      if (flipping) {
-        c.globalAlpha = 1 - p;
-        c.drawImage(spr(from), -fw / 2, -fw / 2, fw, fw);
-        c.globalAlpha = p;
-        c.drawImage(spr(face), -fw / 2, -fw / 2, fw, fw);
-        c.globalAlpha = 1;
-        // les yeux s'ouvrent (réveil) ou se ferment (endormissement)
-        if (dark) this.drawEyes(c, R, ph, cx, y, face === HINT, p, p);
-        else if (fromDark) this.drawEyes(c, R, ph, cx, y, from === HINT, 1 - p, 1 - p);
-      } else {
-        c.drawImage(spr(face), -fw / 2, -fw / 2, fw, fw);
-        if (dark) this.drawEyes(c, R, ph, cx, y, face === HINT, 1, 1);
-      }
-      c.restore();
-
-      // petites gouttes qui flottent autour d'une tache réveillée, et jaillissent quand elle se pose
-      if (face === BLOT && !flipping) {
-        c.fillStyle = INK;
-        for (let k = 0; k < 3; k++) {
-          const a = ph + k * 2.1 + Math.sin(this.pulse * 1.4 + k + ph) * 0.3;
-          const d = R * (1.1 + 0.04 * Math.sin(this.pulse * 2.2 + k * 1.7 + ph)) + R * 0.35 * Math.max(0, lk);
-          c.beginPath();
-          c.arc(cx + Math.cos(a) * d * sc, y + Math.sin(a) * d * sc, R * (0.05 + 0.022 * k) * sc, 0, TAU);
-          c.fill();
-        }
-      }
-
-      // curseur clavier : anneau doré qui tourne
-      if (this.showCursor && i === this.cursor && playing) {
-        c.strokeStyle = GOLD;
-        c.lineWidth = 4;
-        c.setLineDash([10, 7]);
-        c.lineDashOffset = -this.pulse * 26;
-        c.beginPath();
-        c.arc(cx, y, R + 6, 0, TAU);
-        c.stroke();
-        c.setLineDash([]);
-      }
-    }
-  }
-
-  /** Regard d'une tache : balade lente, attiré par le doigt / la souris, avec des clignements. Résultat dans this.gz. */
-  private gaze(R: number, ph: number, wx: number, wy: number) {
-    const t = this.pulse;
-    let lx = Math.sin(t * 1.7 + ph * 3) * 0.55 + Math.sin(t * 0.55 + ph) * 0.35;
-    let ly = Math.cos(t * 1.3 + ph * 2) * 0.45;
-    if (this.lookX >= 0) {
-      const dx = this.lookX - wx;
-      const dy = this.lookY - wy;
-      const d = Math.hypot(dx, dy) || 1;
-      const k = clamp(d / (R * 2.5), 0.4, 1);
-      lx = lx * 0.25 + (dx / d) * k;
-      ly = ly * 0.25 + (dy / d) * k;
-    }
-    const bt = (t * 0.85 + ph) % 3.6;
-    this.gz.lx = lx;
-    this.gz.ly = ly;
-    this.gz.blink = bt < 0.14 ? Math.sin((bt / 0.14) * Math.PI) : 0;
-  }
-
-  /** Deux yeux vivants : ils regardent autour d'eux, suivent le doigt, clignent et froncent les sourcils. */
-  private drawEyes(c: CanvasRenderingContext2D, R: number, ph: number, wx: number, wy: number, dim: boolean, open: number, alpha: number) {
-    const er = R * 0.2;
-    const t = this.pulse;
-    this.gaze(R, ph, wx, wy);
-    const { lx, ly } = this.gz;
-    const blink = Math.max(this.gz.blink, 1 - open);
-    c.globalAlpha = (dim ? 0.8 : 1) * alpha;
-    for (const sx of [-1, 1]) {
-      const ex = sx * R * 0.3;
-      const ey = -R * 0.04;
-      c.fillStyle = PAPER_HI;
-      c.beginPath();
-      c.ellipse(ex, ey, er, Math.max(er * 0.08, er * (1 - 0.92 * blink)), 0, 0, TAU);
-      c.fill();
-      if (blink < 0.7) {
-        c.fillStyle = INK;
-        c.beginPath();
-        c.arc(ex + lx * er * 0.42, ey + ly * er * 0.42, er * 0.5, 0, TAU);
-        c.fill();
-        c.fillStyle = PAPER_HI;
-        c.beginPath();
-        c.arc(ex + lx * er * 0.42 - er * 0.14, ey + ly * er * 0.42 - er * 0.16, er * 0.13, 0, TAU);
-        c.fill();
-      }
-      // sourcil froncé qui bouge un peu
-      const tw = Math.sin(t * 3 + ph + sx) * 0.05;
-      c.strokeStyle = PAPER_HI;
-      c.lineWidth = Math.max(2.5, R * 0.055);
-      c.lineCap = 'round';
-      c.beginPath();
-      c.moveTo(ex + sx * er * 1.05, ey - er * (1.6 + tw));
-      c.lineTo(ex - sx * er * 1.0, ey - er * (1.1 - tw));
-      c.stroke();
-    }
-    c.globalAlpha = 1;
-  }
-
-  private drawRings(c: CanvasRenderingContext2D) {
-    for (const r of this.rings) {
-      const p = r.age / 0.5;
-      c.globalAlpha = (1 - p) * 0.55;
-      c.strokeStyle = r.c;
-      c.lineWidth = 3 * (1 - p) + 1;
-      c.beginPath();
-      c.arc(r.x, r.y, r.r * (0.95 + p * 0.55), 0, TAU);
-      c.stroke();
-    }
-    c.globalAlpha = 1;
-  }
-
-  private drawParts(c: CanvasRenderingContext2D) {
-    for (const p of this.parts) {
-      c.globalAlpha = clamp(p.life / (p.max * 0.5), 0, 1);
-      c.fillStyle = PART_COLORS[p.c];
-      c.beginPath();
-      c.arc(p.x, p.y, p.r, 0, TAU);
-      c.fill();
-    }
-    c.globalAlpha = 1;
-  }
-
-  /** En-tête sobre : libellé au-dessus d'un grand chiffre, cœurs, progression vers la page (ou le palier) suivant. */
-  private drawHud(c: CanvasRenderingContext2D) {
-    const { W, hudH, u } = this;
-    c.textBaseline = 'middle';
-    if (this.run !== 'play') return;
-    const right = W - 62;
-    const suite = this.mode === 'suite';
-    const per = perPage(this.mode);
-    const maxLen = totalOf('suite');
-    const page = `${Math.min(PAGES, stageOf(this.mode, this.n) + 1)}/${PAGES}`;
-    const len = Math.min(maxLen, this.n + 1);
-    const midLabel = suite ? (this.record > 0 ? `SUITE · RECORD ${this.record}` : 'SUITE') : 'PAGE';
-    const midValue = suite ? String(len) : page;
-    const label = (txt: string, x: number, y: number, al: CanvasTextAlign) => {
-      c.textAlign = al;
-      c.font = `${Math.round(clamp(hudH * 0.2, 9, 11))}px ${F_DISP}`;
-      c.fillStyle = 'rgba(27,25,21,0.62)';
-      c.fillText(txt, x, y);
-    };
-    const value = (txt: string, x: number, y: number, al: CanvasTextAlign, k = 1) => {
-      c.textAlign = al;
-      c.font = `${Math.round(clamp(hudH * 0.4, 16, 24) * k)}px ${F_DISP}`;
-      c.fillStyle = INK;
-      c.fillText(txt, x, y);
-    };
-    const mult = multFor(this.streak);
-    const scoreTxt = fmt(this.scoreDisp);
-    const pop = 1 + 0.2 * this.scorePop;
-    if (this.compact) {
-      c.font = `${Math.round(clamp(hudH * 0.42, 14, 18) * pop)}px ${F_DISP}`;
-      c.fillStyle = INK;
-      c.textAlign = 'left';
-      c.fillText(`SCORE ${scoreTxt}`, 14, hudH / 2 - 2);
-      c.textAlign = 'center';
-      c.font = `${Math.round(clamp(hudH * 0.42, 14, 18))}px ${F_DISP}`;
-      c.fillText(suite ? `SUITE ${midValue}` : `PAGE ${page}`, W / 2, hudH / 2 - 2);
-    } else {
-      label('SCORE', 14, hudH * 0.28, 'left');
-      value(scoreTxt, 14, hudH * 0.62, 'left', pop);
-      label(midLabel, W / 2, hudH * 0.28, 'center');
-      value(midValue, W / 2, hudH * 0.62, 'center');
-    }
-    // série en cours : un badge doré qui bat doucement
-    if (mult > 1) {
-      c.font = `${Math.round(clamp(hudH * 0.4, 16, 24))}px ${F_DISP}`;
-      const bx = 14 + c.measureText(this.compact ? `SCORE ${scoreTxt}` : scoreTxt).width + 12;
-      c.font = `${Math.round(clamp(hudH * 0.36, 14, 20) * (1 + 0.08 * Math.sin(this.pulse * 6)))}px ${F_DISP}`;
-      c.textAlign = 'left';
-      c.fillStyle = GOLD_D;
-      c.fillText(`×${mult}`, bx, this.compact ? hudH / 2 - 2 : hudH * 0.62);
-    }
-    // vies : la dernière bat comme un cœur
-    const maxL = MEMORY_DIFF[this.diff].lives;
-    const hz = maxL > MAX_LIVES ? 0.78 : 1; // cinq cœurs tiennent dans la même largeur que trois
-    for (let i = 0; i < maxL; i++) {
-      const beat = this.lives === 1 && i === 0 ? 1 + 0.16 * Math.max(0, Math.sin(this.pulse * 7)) : 1;
-      const hs = 8 * u * beat * hz;
-      const hx = right - (maxL - 1 - i) * (8 * u * 2.7 * hz) - 8 * u * hz;
-      const hy = this.compact ? hudH / 2 - 2 : hudH * 0.45;
-      heart(c, hx, hy, hs);
-      if (i < this.lives) {
-        c.fillStyle = RED;
-        c.fill();
-      }
-      c.strokeStyle = INK;
-      c.lineWidth = 2;
-      c.stroke();
-    }
-    // progression : une case par page, qui se remplit au fil des manches (la dernière manche d'une page fait clignoter la case)
-    const gap = 4;
-    const x0 = 14;
-    const x1 = right + 6;
-    const bw = (x1 - x0 - gap * (PAGES - 1)) / PAGES;
-    const done = this.over && !this.won ? this.n : this.n + (this.st === 'ok' ? 1 : 0);
-    for (let i = 0; i < PAGES; i++) {
-      const x = x0 + i * (bw + gap);
-      const f = clamp((done - i * per) / per, 0, 1);
-      c.fillStyle = 'rgba(27,25,21,0.14)';
-      c.fillRect(x, hudH - 9, bw, 4);
-      if (f > 0) {
-        const last = f < 1 && (1 - f) * per < 1.5;
-        c.globalAlpha = last ? 0.65 + 0.35 * Math.sin(this.pulse * 7) : 1;
-        c.fillStyle = f >= 1 ? INK : GOLD;
-        c.fillRect(x, hudH - 9, bw * f, last ? 5 : 4);
-        c.globalAlpha = 1;
-      }
-    }
-    c.textAlign = 'left';
-  }
-
-  /** Consigne : grand texte sur le papier (pas de boîte), souligné à la plume, avec des pastilles de progression. */
-  private drawPrompt(c: CanvasRenderingContext2D) {
-    const { W, qH } = this;
-    if (this.run === 'demo') return;
-    let s = '';
-    if (this.st === 'banner') s = this.first ? 'Prêt ?' : '';
-    else if (this.st === 'show') s = 'Regarde bien…';
-    else if (this.st === 'input') s = 'À toi !';
-    else if (this.st === 'ok') s = this.okWord;
-    else if (this.st === 'bad') s = this.nearMiss ? 'Presque\u00a0!' : this.mode === 'suite' ? 'Réécoute…' : 'Pas de panique !';
-    if (s !== this.promptKey) {
-      this.promptKey = s;
-      this.promptT = 0;
-    }
-    if (!s) return;
-    const y0 = this.hudH + 8;
-    const fs = Math.round(clamp(qH * 0.46, 20, 32));
-    const pop = 1 + 0.22 * Math.max(0, 1 - this.promptT / 0.22);
-    const ty = y0 + qH * 0.3;
-    c.textAlign = 'center';
-    c.textBaseline = 'middle';
-    c.font = `${Math.round(fs * pop)}px ${F_DISP}`;
-    c.fillStyle = INK;
-    c.fillText(s, W / 2, ty);
-    // soulignement à la plume qui se dessine
-    const tw = c.measureText(s).width;
-    const prog = clamp(this.promptT / 0.28, 0, 1);
-    c.strokeStyle = this.st === 'bad' ? RED : this.st === 'ok' ? GREEN : GOLD;
-    c.lineWidth = 3;
-    c.lineCap = 'round';
-    c.beginPath();
-    const x0 = W / 2 - tw / 2;
-    const uy = ty + fs * 0.62;
-    for (let x = 0; x <= tw * prog; x += 5) {
-      const y = uy + Math.sin(x * 0.18) * 2;
-      if (x === 0) c.moveTo(x0 + x, y);
-      else c.lineTo(x0 + x, y);
-    }
-    c.stroke();
-
-    // pastilles : une par tache à retenir
-    const total = this.mode === 'suite' ? this.seq.length : this.targets.length;
-    if (total > 0 && (this.st === 'show' || this.st === 'input' || this.st === 'ok')) {
-      let filled = 0;
-      let col = INK;
-      if (this.st === 'input') filled = this.mode === 'suite' ? this.k : this.found.size;
-      else if (this.st === 'ok') {
-        filled = total;
-        col = GREEN;
-      } else if (this.mode === 'suite') {
-        filled = clamp(Math.floor((this.tt - LEAD) / suiteStep(this.n, this.grade, this.diff)) + 1, 0, total);
-        col = GOLD_D;
-      }
-      const sp = Math.min(clamp(qH * 0.075, 3.5, 6) * 3.3, (W - 48) / total);
-      const pr = Math.min(clamp(qH * 0.075, 3.5, 6), sp * 0.38);
-      const py = ty + fs * 1.18;
-      const x00 = W / 2 - ((total - 1) * sp) / 2;
-      for (let i = 0; i < total; i++) {
-        const on = i < filled;
-        const popK = on && i === filled - 1 ? 1 + 0.35 * Math.max(0, 1 - (this.tt % 0.4) / 0.2) : 1;
-        c.beginPath();
-        c.arc(x00 + i * sp, py, pr * popK, 0, TAU);
-        if (on) {
-          c.fillStyle = col;
-          c.fill();
-        } else {
-          c.strokeStyle = 'rgba(27,25,21,0.4)';
-          c.lineWidth = 2;
-          c.stroke();
-        }
-      }
-      // Les Cases : le temps d'observation fond sous les pastilles
-      if (this.st === 'show' && this.mode === 'cases' && this.tt >= 0.5) {
-        const p = clamp((this.tt - 0.5) / (this.showT + this.targets.length * 0.06), 0, 1);
-        const bw = Math.max(total * sp, 120);
-        c.fillStyle = 'rgba(27,25,21,0.14)';
-        c.fillRect(W / 2 - bw / 2, py + pr + 5, bw, 3);
-        c.fillStyle = GOLD;
-        c.fillRect(W / 2 - bw / 2, py + pr + 5, bw * (1 - p), 3);
-      }
-    }
-    c.textAlign = 'left';
-  }
-
-  private drawTexts(c: CanvasRenderingContext2D) {
-    c.textAlign = 'center';
-    c.textBaseline = 'middle';
-    for (const t of this.texts) {
-      const p = t.age / t.life;
-      const pop = p < 0.15 ? 0.6 + (p / 0.15) * 0.5 : 1.1 - Math.min(0.1, (p - 0.15) * 0.3);
-      c.globalAlpha = p > 0.7 ? 1 - (p - 0.7) / 0.3 : 1;
-      c.font = `${Math.round(t.size * pop)}px ${F_DISP}`;
-      const y = t.y - p * 36;
-      c.lineWidth = 6;
-      c.lineJoin = 'round';
-      c.strokeStyle = PAPER_HI;
-      c.strokeText(t.s, t.x, y);
-      c.fillStyle = t.c;
-      c.fillText(t.s, t.x, y);
-    }
-    c.globalAlpha = 1;
-    c.textAlign = 'left';
-  }
-
-  private drawBanner(c: CanvasRenderingContext2D) {
-    if (this.st !== 'banner' || this.run !== 'play') return;
-    if (this.tt > this.bannerDur) return;
-    const p = clamp(this.tt / this.bannerDur, 0, 1);
-    const a = p < 0.12 ? p / 0.12 : p > 0.78 ? (1 - p) / 0.22 : 1;
-    const pop = p < 0.12 ? 0.7 + (p / 0.12) * 0.3 : 1;
-    c.globalAlpha = clamp(a, 0, 1);
-    c.textAlign = 'center';
-    c.textBaseline = 'middle';
-    c.lineJoin = 'round';
-    const y = this.gy + this.gs * 0.5;
-    let fs = Math.round(Math.min((this.won ? 50 : 38) * this.u, this.W * (this.won ? 0.12 : 0.1)) * pop);
-    c.font = `${fs}px ${F_DISP}`;
-    while (c.measureText(this.bannerText).width > this.W - 24 && fs > 16) {
-      fs -= 2;
-      c.font = `${fs}px ${F_DISP}`;
-    }
-    c.lineWidth = 9;
-    c.strokeStyle = PAPER_HI;
-    c.strokeText(this.bannerText, this.W / 2, y);
-    c.fillStyle = this.won ? GOLD_D : RED;
-    c.fillText(this.bannerText, this.W / 2, y);
-    if (this.bannerSub) {
-      let sf = Math.round(clamp(fs * 0.5, 15, 26));
-      c.font = `${sf}px ${F_DISP}`;
-      while (c.measureText(this.bannerSub).width > this.W - 28 && sf > 12) {
-        sf -= 1;
-        c.font = `${sf}px ${F_DISP}`;
-      }
-      c.lineWidth = 6;
-      c.strokeText(this.bannerSub, this.W / 2, y + fs * 0.8);
-      c.fillStyle = INK;
-      c.fillText(this.bannerSub, this.W / 2, y + fs * 0.8);
-    }
-    c.globalAlpha = 1;
-    c.textAlign = 'left';
   }
 }

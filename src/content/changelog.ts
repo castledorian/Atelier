@@ -30,7 +30,7 @@ export const RELEASES: Release[] = [
     title: 'Code allégé, images gardées en mémoire',
     changes: [
       { kind: 'better', text: 'Les images du monstre et les voix du facteur restent en mémoire sur l’appareil : elles ne sont plus retéléchargées à chaque nouvelle version du site (utile sur un réseau d’école lent).' },
-      { kind: 'better', text: 'Code interne nettoyé : fonctions inutilisées retirées, pages d’information, d’administration et quatre jeux (Chasse aux fautes, Course, Mémoire, Lexique) découpés en fichiers plus courts ; couleurs et polices du dessin regroupées en un seul endroit. Rien ne change à l’écran.' },
+      { kind: 'better', text: 'Code interne nettoyé : fonctions inutilisées retirées, pages d’information, d’administration et quatre jeux (Chasse aux fautes, Course, Mémoire, Lexique) et leurs moteurs de dessin découpés en fichiers plus courts ; couleurs et polices du dessin regroupées en un seul endroit. Rien ne change à l’écran.' },
     ],
   },
   {
