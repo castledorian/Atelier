@@ -92,7 +92,6 @@ export function PrintSheet({ d, name, opts, comment, now }: { d: StudentDetail; 
           </p>
         </div>
         <div className="ps-site">
-          <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width={40} height={40} />
           <p>
             <strong>Atelier</strong>
             <br />

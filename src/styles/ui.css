@@ -768,10 +768,6 @@
     font-family: var(--font-display);
     font-size: 12pt;
   }
-  .ps-site img {
-    order: 2;
-    border: 1px solid #000;
-  }
   .ps-figs {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
