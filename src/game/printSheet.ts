@@ -8,6 +8,8 @@ export type Period = 'all' | '90' | '30';
 
 export interface PrintOpts {
   period: Period;
+  /** phrase de synthèse en tête */
+  summary: boolean;
   /** repères chiffrés en tête */
   figures: boolean;
   /** un graphique d'évolution par jeu */
@@ -23,7 +25,12 @@ export interface PrintOpts {
   hidden: string[];
 }
 
-export const DEFAULT_OPTS: PrintOpts = { period: 'all', figures: true, charts: true, weak: true, strong: true, missed: true, weeks: true, recent: false, note: true, hidden: [] };
+/**
+ * Réglage conseillé : ce qu'attendent les familles et l'équipe éducative — où en est l'élève (synthèse, repères),
+ * comment il progresse (graphique par jeu), ce qui est acquis et ce qui reste à travailler, dit sans jugement.
+ * Le détail (exercices ratés, régularité, parties une à une) et l'appréciation restent à cocher : à chacun selon l'usage.
+ */
+export const DEFAULT_OPTS: PrintOpts = { period: 'all', summary: true, figures: true, charts: true, weak: true, strong: true, missed: false, weeks: false, recent: false, note: false, hidden: [] };
 
 export const PERIODS: Array<{ id: Period; label: string; days: number | null }> = [
   { id: 'all', label: 'Tout', days: null },
@@ -33,7 +40,7 @@ export const PERIODS: Array<{ id: Period; label: string; days: number | null }> 
 
 export const periodLabel = (p: Period) => (p === 'all' ? 'Toutes les parties' : `${p} derniers jours`);
 
-const KEY = 'atelier.print.v1';
+const KEY = 'atelier.print.v2';
 const DAY = 86_400_000;
 
 /** Valeurs lues du stockage, vérifiées une à une : une valeur abîmée retombe sur la valeur par défaut. */
@@ -42,6 +49,7 @@ export function sanitizeOpts(v: unknown): PrintOpts {
   const bool = (k: keyof PrintOpts) => (typeof o[k] === 'boolean' ? (o[k] as boolean) : (DEFAULT_OPTS[k] as boolean));
   return {
     period: o.period === '30' || o.period === '90' || o.period === 'all' ? o.period : DEFAULT_OPTS.period,
+    summary: bool('summary'),
     figures: bool('figures'),
     charts: bool('charts'),
     weak: bool('weak'),

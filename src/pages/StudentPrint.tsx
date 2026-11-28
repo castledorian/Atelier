@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { PrintChart } from '../components/PrintChart';
 import { Check } from '../components/Screens';
 import { diffName, gameName, levelName, picksText } from '../game/balanceView';
-import { PERIODS, periodLabel, runsInPeriod } from '../game/printSheet';
+import { DEFAULT_OPTS, PERIODS, periodLabel, runsInPeriod } from '../game/printSheet';
 import type { Period, PrintOpts } from '../game/printSheet';
 import { gameSummaries, metricOf, missedItems, progressSeries, strengthsAndWeaknesses, summarySentence, trendOf, weeklyActivity } from '../game/studentView';
 import type { RuleStat, StudentDetail } from '../game/studentView';
@@ -62,17 +62,43 @@ export function PrintSheet({ d, name, opts, comment, now }: { d: StudentDetail; 
   const leadTrend = useMemo(() => trendOf(lead ? progressSeries(runs, lead.game) : []), [runs, lead]);
 
   return (
-    <article className="ps" aria-label={`Fiche de ${name}`}>
+    <div className="ps">
+      <table className="ps-frame" role="presentation">
+        <thead>
+          <tr>
+            <td>
+              <div className="ps-edge" />
+            </td>
+          </tr>
+        </thead>
+        <tfoot>
+          <tr>
+            <td>
+              <div className="ps-edge" />
+            </td>
+          </tr>
+        </tfoot>
+        <tbody>
+          <tr>
+            <td className="ps-body">
+              <article aria-label={`Fiche de ${name}`}>
       <header className="ps-head">
         <div>
-          <p className="ps-eyebrow">Atelier · Bilan de l’élève</p>
+          <p className="ps-eyebrow">Bilan de l’élève</p>
           <h1>{name}</h1>
+          <p className="ps-class">
+            {d.student.class_name}
+            {opts.period !== 'all' ? ` · ${periodLabel(opts.period)}` : ''}
+          </p>
         </div>
-        <p className="ps-meta">
-          {d.student.class_name}
-          <br />
-          {periodLabel(opts.period)} · imprimé le {new Date(now).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-        </p>
+        <div className="ps-site">
+          <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width={40} height={40} />
+          <p>
+            <strong>Atelier</strong>
+            <br />
+            Jeux pour apprendre
+          </p>
+        </div>
       </header>
 
       {opts.figures && (
@@ -91,12 +117,12 @@ export function PrintSheet({ d, name, opts, comment, now }: { d: StudentDetail; 
           </div>
           <div>
             <dt>Dernière partie</dt>
-            <dd>{runs.length ? when(Math.max(...runs.map((r) => r.at))) : '—'}</dd>
+            <dd>{runs.length ? day(Math.max(...runs.map((r) => r.at))) : '—'}</dd>
           </div>
         </dl>
       )}
 
-      <p className="ps-lead">{summarySentence(d.student.name, runs, weak, strong, leadTrend, lead ? { label: gameName(lead.game), metric: metricOf(lead.game) } : undefined)}</p>
+      {opts.summary && <p className="ps-lead">{summarySentence(d.student.name, runs, weak, strong, leadTrend, lead ? { label: gameName(lead.game), metric: metricOf(lead.game) } : undefined)}</p>}
 
       {opts.charts && games.length > 0 && (
         <section className="ps-block">
@@ -210,15 +236,7 @@ export function PrintSheet({ d, name, opts, comment, now }: { d: StudentDetail; 
       {opts.note && (
         <section className="ps-block ps-note">
           <h2>Appréciation de l’enseignant</h2>
-          {comment.trim() ? (
-            <p className="ps-comment">{comment.trim()}</p>
-          ) : (
-            <div className="ps-lines" aria-hidden="true">
-              <span />
-              <span />
-              <span />
-            </div>
-          )}
+          <div className="ps-box">{comment.trim() ? <p className="ps-comment">{comment.trim()}</p> : null}</div>
           <div className="ps-sign">
             <span>Date :</span>
             <span>Signature de l’enseignant :</span>
@@ -226,7 +244,12 @@ export function PrintSheet({ d, name, opts, comment, now }: { d: StudentDetail; 
           </div>
         </section>
       )}
-    </article>
+              </article>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -267,6 +290,9 @@ export function PrintPanel({
         </div>
       </div>
       <div className="u-printbox-grid">
+        <Check on={opts.summary} onClick={() => onChange({ summary: !opts.summary })}>
+          Résumé en une phrase
+        </Check>
         <Check on={opts.figures} onClick={() => onChange({ figures: !opts.figures })}>
           Repères chiffrés
         </Check>
@@ -318,6 +344,9 @@ export function PrintPanel({
       <div className="flex flex-wrap gap-2">
         <button type="button" className="btn btn-primary" onClick={onPrint}>
           Imprimer
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={() => onChange({ ...DEFAULT_OPTS })}>
+          Réglage conseillé
         </button>
         <button type="button" className="btn btn-ghost" onClick={onClose}>
           Fermer

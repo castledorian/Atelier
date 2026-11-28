@@ -21,6 +21,7 @@ export function PrintChart({ points, title }: { points: PrintPoint[]; title: str
   const last = points.length - 1;
   return (
     <svg className="ps-chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${title} : de ${Math.round(points[0].smooth)} % à ${Math.round(points[last].smooth)} % en ${points.length} partie${points.length > 1 ? 's' : ''}`}>
+      <rect x={L} y={T} width={W - L - R} height={H - T - B} className="ps-plot" />
       {[0, 50, 100].map((g) => (
         <g key={g}>
           <line x1={L} x2={W - R} y1={ys(g)} y2={ys(g)} className="ps-grid" />

@@ -24,6 +24,17 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.38',
+    date: '28 novembre 2026',
+    iso: '2026-11-28',
+    title: 'Fiche élève imprimée, plus claire',
+    changes: [
+      { kind: 'better', text: 'Fiche à imprimer : sans date ni adresse du site dans les coins, graphiques encadrés, mise en page plus aérée sur une ou plusieurs feuilles.' },
+      { kind: 'better', text: 'Réglage conseillé : résumé, repères, graphique par jeu, acquis et à travailler. Détails, régularité et appréciation se cochent au besoin.' },
+      { kind: 'better', text: 'Appréciation : saisie possible avant l’impression ; laissée vide, elle laisse un grand cadre vierge à remplir à la main.' },
+    ],
+  },
+  {
     version: '1.37',
     date: '28 novembre 2026',
     iso: '2026-11-28',

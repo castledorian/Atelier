@@ -25,6 +25,11 @@ export default function StudentProfile({ id, name, onBack, act, onScreen }: { id
   const [failed, setFailed] = useState(false);
   const [game, setGame] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
+  // la feuille imprimée prend toute la largeur de la page A4 (Ctrl+P comme bouton) : voir `.print-fiche` dans ui.css
+  useEffect(() => {
+    document.body.classList.add('print-fiche');
+    return () => document.body.classList.remove('print-fiche');
+  }, []);
   const [opts, setOpts] = useState<PrintOpts>(loadOpts);
   const [comment, setComment] = useState('');
   const change = (patch: Partial<PrintOpts>) =>

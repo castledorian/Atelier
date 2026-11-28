@@ -31,3 +31,15 @@ test('fiche : les choix valides sont gardés', () => {
   assert.equal(o.note, false);
   assert.equal(o.figures, true);
 });
+
+test('fiche : réglage conseillé — synthèse, repères, graphiques, acquis et à travailler ; le reste se coche', () => {
+  assert.equal(DEFAULT_OPTS.summary, true);
+  assert.equal(DEFAULT_OPTS.figures, true);
+  assert.equal(DEFAULT_OPTS.charts, true);
+  assert.equal(DEFAULT_OPTS.weak, true);
+  assert.equal(DEFAULT_OPTS.strong, true);
+  assert.equal(DEFAULT_OPTS.missed, false);
+  assert.equal(DEFAULT_OPTS.weeks, false);
+  assert.equal(DEFAULT_OPTS.recent, false);
+  assert.equal(DEFAULT_OPTS.note, false);
+});
