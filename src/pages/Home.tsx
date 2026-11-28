@@ -207,7 +207,7 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
       )}
 
       {grade !== null && <h2 className="subhead hm-sub">Choisis un jeu</h2>}
-      {grade !== null && <ul className="hm-games" aria-label="Les jeux">
+      {grade !== null && <ul key={grade} className="hm-games" aria-label="Les jeux">
         {CARDS.filter((c) => isAvailable(c.id, grade)).map((c) => {
           const stamps = c.stamps?.() ?? 0;
           return (

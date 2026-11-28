@@ -181,7 +181,7 @@ body {
   max-width: 100%;
   min-width: 2em;
   padding: 2px 7px 0;
-  border: 1.5px solid var(--color-ink);
+  border: 2px solid var(--color-ink);
   border-radius: 5px;
   box-shadow: 0 2px 0 var(--color-ink);
   background: #fff;
@@ -308,7 +308,7 @@ body {
 }
 .scores td {
   padding: 5px 5px 4px;
-  border-bottom: 1px dashed rgba(27, 25, 21, 0.28);
+  border-bottom: 1px solid rgba(27, 25, 21, 0.22);
 }
 .scores .num {
   text-align: right;
@@ -630,7 +630,7 @@ html[data-text='xlarge'] .card .title-sm {
 .sec {
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 2px dashed rgba(27, 25, 21, 0.25);
+  border-top: 1px solid rgba(27, 25, 21, 0.22);
 }
 .menu-links {
   display: flex;
@@ -670,7 +670,7 @@ html[data-text='xlarge'] .card .title-sm {
 /* Séance personnalisée */
 .cfg {
   padding: 12px;
-  border: 2px dashed rgba(27, 25, 21, 0.35);
+  border: 1px solid rgba(27, 25, 21, 0.3);
 }
 .cfg-row {
   display: flex;
@@ -679,7 +679,7 @@ html[data-text='xlarge'] .card .title-sm {
   justify-content: space-between;
   gap: 6px 12px;
   padding: 7px 0;
-  border-top: 1px dashed rgba(27, 25, 21, 0.2);
+  border-top: 1px solid rgba(27, 25, 21, 0.16);
 }
 .cfg-row:first-of-type {
   border-top: 0;

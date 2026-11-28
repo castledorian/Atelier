@@ -2,7 +2,7 @@
 .site-foot {
   margin-top: 20px;
   padding-top: 12px;
-  border-top: 2px dashed rgba(27, 25, 21, 0.25);
+  border-top: 1px solid rgba(27, 25, 21, 0.22);
   container-type: inline-size;
 }
 /* Une seule ligne, liens répartis régulièrement et séparés par des points ; la taille suit la largeur de la feuille */

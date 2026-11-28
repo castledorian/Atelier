@@ -138,7 +138,7 @@
   .over-b {
     margin-top: 0;
     padding-left: 24px;
-    border-left: 2px dashed rgba(27, 25, 21, 0.25);
+    border-left: 1px solid rgba(27, 25, 21, 0.22);
   }
 }
 .over-a {
@@ -509,7 +509,7 @@ html[data-text='xlarge'] .card .title {
 .sess-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px 14px; border: 2px solid var(--color-ink); background: rgba(255, 255, 255, 0.35); }
 .sess-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 260px; }
 .sess-title { font-size: 18px; line-height: 1.2; }
-.sess-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 8px 0; border-top: 1px dashed rgba(27, 25, 21, 0.35); }
+.sess-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 8px 0; border-top: 1px solid rgba(27, 25, 21, 0.22); }
 .sess-runs { margin: 0; padding-left: 18px; font-size: 14px; }
 
 /* Lecture confortable : lettres plus espacées, interligne large, titres sans texture */
@@ -578,7 +578,7 @@ html[data-comfort='on'] .title-sm {
   gap: 10px;
   align-items: flex-start;
   padding: 8px 10px;
-  border: 2px dashed var(--color-ink);
+  border: 1px solid var(--color-ink);
   border-radius: 6px;
 }
 

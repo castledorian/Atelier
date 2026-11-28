@@ -90,6 +90,15 @@
   position: relative;
   display: flex;
 }
+.hm-item {
+  transition: transform 0.16s ease;
+}
+.hm-item:hover {
+  transform: translate(-1px, -1px);
+}
+.hm-item:active {
+  transform: translate(1px, 1px);
+}
 .hm-card {
   flex: 1;
   min-width: 0;
@@ -105,22 +114,22 @@
   text-align: left;
   cursor: pointer;
   touch-action: manipulation;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+  transition: box-shadow 0.16s ease, background-color 0.16s ease;
 }
-.hm-card:hover {
+/* le survol vaut pour toute la carte, « i » compris : le tout se soulève d'un bloc */
+.hm-item:hover .hm-card {
   background: #fff;
-  transform: translate(-1px, -1px);
   box-shadow: 4px 4px 0 var(--color-ink);
 }
-.hm-card:active {
-  transform: translate(1px, 1px);
-  box-shadow: 0 0 0 var(--color-ink);
+.hm-item:active .hm-card {
+  box-shadow: 1px 1px 0 var(--color-ink);
 }
 .hm-card:focus-visible {
   outline: 3px solid var(--color-ribbon);
   outline-offset: 3px;
 }
 .hm-tag {
+  padding-right: 36px;
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -128,7 +137,6 @@
   color: var(--color-ribbon);
 }
 .hm-name {
-  padding-right: 34px;
   font-family: var(--font-display);
   font-size: 24px;
   line-height: 1.1;
@@ -165,7 +173,7 @@
   width: 28px;
   height: 28px;
   margin: 0;
-  border-width: 1.5px;
+  border-width: 2px;
   box-shadow: none;
   background: transparent;
   font-size: 16px;
@@ -241,12 +249,58 @@
     flex-basis: 10.5rem;
   }
 }
+
+/* Niveau : un petit panneau posé sur la page, qui ne pousse rien. Ouvert, il apparaît en fondu. */
+.grade-pop {
+  position: relative;
+}
+.grade-pop .grade-in {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  min-width: 270px;
+  max-width: calc(100vw - 32px);
+  padding: 12px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+  box-shadow: 2px 2px 0 var(--color-ink);
+  animation: hm-pop 0.16s ease-out;
+}
+@keyframes hm-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* Changer de niveau : les jeux apparaissent en fondu, sans à-coup */
+.hm-games {
+  animation: hm-fade 0.22s ease-out;
+}
+@keyframes hm-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
+  .hm-item,
   .hm-card,
   .hm-go span {
     transition: none;
   }
-  .hm-card:hover {
+  .hm-item:hover,
+  .hm-item:active {
     transform: none;
+  }
+  .grade-pop .grade-in,
+  .hm-games {
+    animation: none;
   }
 }

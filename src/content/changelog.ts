@@ -24,6 +24,17 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.37',
+    date: '28 novembre 2026',
+    iso: '2026-11-28',
+    title: 'Confort visuel',
+    changes: [
+      { kind: 'better', text: 'Accueil : le « i » se soulève avec sa carte au survol.' },
+      { kind: 'better', text: 'Le choix du niveau s’ouvre en petit panneau qui ne pousse plus la page ; les jeux apparaissent en fondu.' },
+      { kind: 'better', text: 'Traits plus nets : les séparateurs en pointillés deviennent des filets pleins, les épaisseurs fractionnaires sont arrondies.' },
+    ],
+  },
+  {
     version: '1.36',
     date: '28 novembre 2026',
     iso: '2026-11-28',
