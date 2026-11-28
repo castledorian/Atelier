@@ -29,6 +29,7 @@ export type SfxName =
   | 'gift'
   | 'chime'
   | 'nope'
+  | 'page'
   | 'n0'
   | 'n1'
   | 'n2'
@@ -70,6 +71,7 @@ const LENGTH: Record<SfxName, number> = {
   gift: 0.9,
   chime: 1,
   nope: 0.4,
+  page: 0.62,
   n0: 0.36,
   n1: 0.36,
   n2: 0.36,
@@ -316,6 +318,20 @@ class Synth {
         this.tone('triangle', 392, 392, 0.12, 0.12);
         this.tone('triangle', 330, 311, 0.2, 0.12, 0.13);
         break;
+      case 'page':
+        // page de papier qu'on tourne : le souffle de la feuille qui se lève, un froissement qui s'éteint, puis elle se pose
+        this.burst('bandpass', 900, 3400, 0.2, 0.2, 0, 1.4);
+        for (const [d, v] of [
+          [0.06, 0.1],
+          [0.11, 0.085],
+          [0.17, 0.07],
+          [0.23, 0.05],
+          [0.3, 0.035],
+        ] as const)
+          this.burst('highpass', 5600 - d * 5000, 2200, 0.05, v, d);
+        this.burst('lowpass', 1100, 220, 0.12, 0.2, 0.36);
+        this.tone('sine', 150, 72, 0.12, 0.1, 0.36);
+        break;
     }
   }
 }
@@ -389,7 +405,7 @@ export class Sfx {
     const src = this.ac.createBufferSource();
     src.buffer = buf;
     // légère variation de hauteur : deux frappes ne sonnent jamais exactement pareil
-    if (name === 'key' || name === 'hit' || name === 'kill' || name === 'scribble' || name === 'select') src.playbackRate.value = 0.94 + Math.random() * 0.12;
+    if (name === 'key' || name === 'hit' || name === 'kill' || name === 'scribble' || name === 'select' || name === 'page') src.playbackRate.value = 0.94 + Math.random() * 0.12;
     src.connect(this.out);
     src.start();
   }

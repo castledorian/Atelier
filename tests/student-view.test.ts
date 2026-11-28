@@ -107,8 +107,12 @@ test('un serveur qui ne connaît pas encore la fiche élève réclame sa mise à
   assert.ok(second.some((t) => t.file === 'mise-a-jour-eleves.sql'));
   const third = todoFor({ version: 21, features: { goutte: true, eleves: true, eleves_fiable: true, eleves_classe: true }, missing: [] });
   assert.ok(third.some((t) => t.file === 'mise-a-jour-eleves.sql'));
-  const ok = todoFor({ version: 22, features: { goutte: true, eleves: true, eleves_fiable: true, eleves_classe: true, eleves_seance: true }, missing: [] });
+  const ok = todoFor({ version: 22, features: { goutte: true, eleves: true, eleves_fiable: true, eleves_classe: true, eleves_seance: true, niveaux: true }, missing: [] });
   assert.ok(!ok.some((t) => t.file === 'mise-a-jour-eleves.sql'));
+  assert.ok(!ok.some((t) => t.file === 'mise-a-jour-niveaux.sql'));
+  // un serveur à jour jusqu'à la fiche élève, sans l'indicateur « niveaux », doit recevoir la mise à jour des classes mixtes
+  const mixed = todoFor({ version: 22, features: { goutte: true, eleves: true, eleves_fiable: true, eleves_classe: true, eleves_seance: true }, missing: [] });
+  assert.ok(mixed.some((t) => t.file === 'mise-a-jour-niveaux.sql'));
 });
 
 import { classIsActive } from '../src/game/studentView';

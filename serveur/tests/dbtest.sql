@@ -778,7 +778,7 @@ select pg_temp.as_user('bbbbbbbb-0000-0000-0000-000000000002');
 select pg_temp.fails($$select public.class_items('$$||(select v from ctx where k='classX')||$$'::uuid)$$, 'forbidden');
 select pg_temp.as_admin();
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
-select pg_temp.eq('serveur en version 22, tout est à jour', (select public.server_version()->>'version'), '22');
+select pg_temp.eq('serveur en version 23, tout est à jour', (select public.server_version()->>'version'), '23');
 select pg_temp.eq('aucune fonctionnalité « fiche élève » manquante', (select count(*)::int from jsonb_array_elements_text(public.server_version()->'missing') m where m like 'eleves%'), 0);
 select pg_temp.as_admin();
 

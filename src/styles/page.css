@@ -1,0 +1,88 @@
+/* Page qui se tourne entre deux écrans : une feuille de papier pivote autour de sa tranche et dévoile le nouvel écran.
+   Seuls transform et opacity bougent : rien à recalculer, fluide même sur un vieil ordinateur. */
+.pt {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  overflow: hidden;
+  pointer-events: none;
+  perspective: 1600px;
+  animation: pt-life 0.62s linear forwards;
+}
+.pt-leaf {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 50%;
+  background:
+    linear-gradient(90deg, rgba(27, 25, 21, 0.16), rgba(27, 25, 21, 0) 14%),
+    repeating-linear-gradient(180deg, transparent 0 31px, rgba(27, 25, 21, 0.07) 31px 32px),
+    var(--color-paper-hi);
+  box-shadow: 4px 0 18px rgba(27, 25, 21, 0.28);
+  backface-visibility: hidden;
+  will-change: transform;
+  animation: pt-turn 0.62s cubic-bezier(0.55, 0.05, 0.3, 1) forwards;
+}
+/* l'ombre portée sur la page d'en dessous accompagne la feuille qui se lève */
+.pt-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(27, 25, 21, 0.34), rgba(27, 25, 21, 0) 55%);
+  opacity: 0;
+  will-change: opacity;
+  animation: pt-shade 0.62s ease-out forwards;
+}
+.pt-back .pt-leaf {
+  transform-origin: 100% 50%;
+  background:
+    linear-gradient(270deg, rgba(27, 25, 21, 0.16), rgba(27, 25, 21, 0) 14%),
+    repeating-linear-gradient(180deg, transparent 0 31px, rgba(27, 25, 21, 0.07) 31px 32px),
+    var(--color-paper-hi);
+  box-shadow: -4px 0 18px rgba(27, 25, 21, 0.28);
+  animation-name: pt-turn-back;
+}
+.pt-back .pt-shade {
+  background: linear-gradient(270deg, rgba(27, 25, 21, 0.34), rgba(27, 25, 21, 0) 55%);
+}
+@keyframes pt-turn {
+  0% {
+    transform: rotateY(0);
+  }
+  100% {
+    transform: rotateY(-112deg);
+  }
+}
+@keyframes pt-turn-back {
+  0% {
+    transform: rotateY(0);
+  }
+  100% {
+    transform: rotateY(112deg);
+  }
+}
+@keyframes pt-shade {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes pt-life {
+  0%,
+  92% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pt {
+    display: none;
+  }
+}
+@media print {
+  .pt {
+    display: none;
+  }
+}

@@ -36,3 +36,73 @@ end $$;
 
 revoke all on function public.my_sessions(text) from public;
 grant execute on function public.my_sessions(text) to anon, authenticated;
+
+-- Indicateur de version : le site prévient l'administrateur tant que cette mise à jour manque.
+create or replace function public.server_version() returns jsonb
+language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare
+  v_run  text := coalesce((select pg_get_functiondef(p.oid) from pg_proc p
+                           where p.pronamespace = 'public'::regnamespace and p.proname = 'submit_run' and p.pronargs = 13), '');
+  v_ses  text := coalesce((select pg_get_functiondef(p.oid) from pg_proc p
+                           where p.pronamespace = 'public'::regnamespace and p.proname = 'submit_session_run' and p.pronargs = 11), '');
+  v_ov   text := coalesce((select pg_get_functiondef(p.oid) from pg_proc p
+                           where p.pronamespace = 'public'::regnamespace and p.proname = 'class_overview'), '');
+  v_login text := coalesce((select pg_get_functiondef(p.oid) from pg_proc p
+                            where p.pronamespace = 'public'::regnamespace and p.proname = 'student_login'), '');
+  v_rv   text := coalesce((select pg_get_functiondef(p.oid) from pg_proc p
+                           where p.pronamespace = 'private'::regnamespace and p.proname = 'run_violation'), '');
+  v_ins  text := coalesce((select pg_get_functiondef(p.oid) from pg_proc p
+                           where p.pronamespace = 'public'::regnamespace and p.proname = 'class_insights'), '');
+  v_cron boolean := false;
+  f      jsonb;
+begin
+  if auth.uid() is null then raise exception 'not_authenticated' using errcode = '28000'; end if;
+  if to_regclass('cron.job') is not null then
+    execute 'select exists (select 1 from cron.job where jobname = ''atelier-purge'')' into v_cron;
+  end if;
+  f := jsonb_build_object(
+    'seances',     to_regclass('public.class_sessions') is not null and v_run <> '' and v_ses <> '',
+    'securite',    to_regprocedure('private.run_violation(text,integer,integer,numeric,numeric,integer,integer)') is not null
+                   and v_run like '%check_run%' and v_ses like '%check_run%',
+    'fiabilite',   exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'runs' and column_name = 'received_at')
+                   and v_run like '%too_many_runs%' and v_ses like '%too_many_runs%',
+    'exercices',   to_regclass('public.item_stats') is not null,
+    'admin',       to_regclass('public.site_admins') is not null,
+    'classement',  exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'classes' and column_name = 'hide_board'),
+    'compte',      to_regprocedure('public.delete_my_account(text)') is not null,
+    'niveau',      exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'classes' and column_name = 'grade'),
+    'orthographe', exists (select 1 from pg_constraint where conname = 'class_sessions_game_check' and pg_get_constraintdef(oid) like '%spelling%'),
+    'memoire',     v_ov like '%best_memory%',
+    'invitations', to_regclass('private.invitations') is not null and to_regprocedure('public.redeem_invitation(text)') is not null,
+    'nettoyage',   to_regprocedure('private.purge_old_data()') is not null,
+    'sessions',    v_login like '%30 days%' and v_run like '%student_sessions%' and v_ses like '%student_sessions%',
+    'codes',       exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'students' and column_name = 'code_hash')
+                   and v_login like '%code_hash%',
+    'grotte',      to_regprocedure('public.cave_get(text)') is not null and to_regprocedure('public.cave_drop(text,text,integer,integer)') is not null and to_regprocedure('public.admin_observe(text,uuid)') is not null,
+    'lexique',     v_ov like '%best_lexique%' and exists (select 1 from pg_constraint where conname = 'class_sessions_game_check' and pg_get_constraintdef(oid) like '%lexique%'),
+    'bareme',      v_rv like '%840 * c%',
+    'facteur',     v_rv like '%facteur%' and v_ov like '%best_facteur%' and exists (select 1 from pg_constraint where conname = 'class_sessions_game_check' and pg_get_constraintdef(oid) like '%facteur%'),
+    'stats',       to_regprocedure('public.admin_game_stats(integer)') is not null
+                   and coalesce((select pg_get_functiondef(p.oid) from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'submit_item_stats'), '') like '%facteur%'
+                   and exists (select 1 from pg_constraint where conname = 'item_stats_game_check' and pg_get_constraintdef(oid) like '%facteur%'),
+    'goutte',      to_regprocedure('public.goutte_get(text)') is not null and to_regprocedure('public.cave_history(text)') is not null,
+    'eleves',      to_regprocedure('public.student_detail(uuid,integer)') is not null and to_regprocedure('public.class_insights(uuid)') is not null,
+    'eleves_fiable', to_regprocedure('public.submit_student_items(text,text,text,text,text,jsonb)') is not null
+                   and to_regprocedure('public.admin_item_spread()') is not null and v_ins like '%n_prev%',
+    'eleves_classe', to_regprocedure('public.class_items(uuid)') is not null,
+    'eleves_seance', to_regprocedure('public.session_items(uuid)') is not null,
+    'niveaux',     exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'classes' and column_name = 'grades'),
+    'nettoyage_auto', v_cron
+  );
+  return jsonb_build_object(
+    'version', 23,
+    'features', f,
+    'migrations', coalesce((select jsonb_agg(id order by id) from private.schema_migrations), '[]'::jsonb),
+    'plain_codes', (select count(*) from public.students where access_code is not null),
+    'missing', coalesce((select jsonb_agg(k order by k) from jsonb_each(f) as e(k, v) where v = 'false'::jsonb), '[]'::jsonb));
+end $$;
+
+revoke all on function public.server_version() from public, anon;
+grant execute on function public.server_version() to authenticated;
+
+insert into private.schema_migrations (id) values ('2026-11-niveaux') on conflict (id) do nothing;

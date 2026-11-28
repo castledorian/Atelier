@@ -2700,10 +2700,11 @@ begin
                    and to_regprocedure('public.admin_item_spread()') is not null and v_ins like '%n_prev%',
     'eleves_classe', to_regprocedure('public.class_items(uuid)') is not null,
     'eleves_seance', to_regprocedure('public.session_items(uuid)') is not null,
+    'niveaux',     exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'classes' and column_name = 'grades'),
     'nettoyage_auto', v_cron
   );
   return jsonb_build_object(
-    'version', 22,
+    'version', 23,
     'features', f,
     'migrations', coalesce((select jsonb_agg(id order by id) from private.schema_migrations), '[]'::jsonb),
     'plain_codes', (select count(*) from public.students where access_code is not null),
