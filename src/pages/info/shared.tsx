@@ -73,6 +73,41 @@ export function Section({ id, title, children }: { id: string; title: string; ch
   );
 }
 
+/** Section repliable : le titre reste un vrai titre (h2) pour les lecteurs d'écran, le contenu s'ouvre au clic ou à la touche Entrée. */
+export function Fold({ id, title, open, children }: { id: string; title: string; open?: boolean; children: ReactNode }) {
+  return (
+    <details className="fold sec info-fold" open={open}>
+      <summary>
+        <h2 id={id} className="info-h">
+          {title}
+        </h2>
+      </summary>
+      <div className="info-in">{children}</div>
+    </details>
+  );
+}
+
+/** Trois repères chiffrés en tête de page : l'essentiel d'un coup d'œil. */
+export function Facts({ items }: { items: Array<{ big: string; small: string }> }) {
+  return (
+    <ul className="facts">
+      {items.map((f) => (
+        <li key={f.small}>
+          <span className="fact-big">{f.big}</span>
+          <span className="fact-small">{f.small}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Ouvre ou ferme toutes les sections repliables de la page (impression, lecture d'un bloc). */
+export function setAllFolds(open: boolean) {
+  document.querySelectorAll<HTMLDetailsElement>('details.info-fold').forEach((d) => {
+    d.open = open;
+  });
+}
+
 export const ul = 'list-disc space-y-1 pl-5';
 
 export interface PageProps {

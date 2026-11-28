@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { APP_VERSION } from '../../content/changelog';
 import { LEGAL } from '../../legal';
-import { Page, Section } from './shared';
+import { Fold, Page, Section } from './shared';
 import type { PageProps } from './shared';
 
 const TOPICS = [
@@ -49,23 +49,23 @@ export function Contact({ onBack, onNav }: PageProps) {
       id="contact"
       eyebrow="Écrire à l’éditeur"
       title="Contact"
-      intro="Une erreur dans une phrase, un calcul qui ne tombe pas juste, un bouton qui ne répond pas, une question&nbsp;: écrivez-nous."
+      intro="Une erreur, un bug, une question&nbsp;: écrivez-nous."
       onBack={onBack}
       onNav={onNav}
     >
       <Section id="k-adresse" title="Par e-mail">
         <p>
-          Adresse&nbsp;: <a className="inline-link" href={`mailto:${LEGAL.contact}`}>{LEGAL.contact}</a>
+          <a className="inline-link" href={`mailto:${LEGAL.contact}`}>
+            {LEGAL.contact}
+          </a>
         </p>
         <p className="notice notice-info">
-          N’écrivez <strong>jamais le nom d’un élève, son code ou une information personnelle</strong> : décrivez la situation sans l’identifier.
+          N’écrivez <strong>jamais le nom d’un élève, son code ou une information personnelle</strong>.
         </p>
       </Section>
 
       <Section id="k-form" title="Préparer mon message">
-        <p>
-          Ce formulaire n’envoie rien par lui-même : il prépare un e-mail que vous relisez, puis envoyez depuis votre messagerie.
-        </p>
+        <p>Prépare un e-mail que vous relisez puis envoyez vous-même : rien n’est envoyé d’ici.</p>
         <div className="contact-form">
           <label htmlFor="k-topic">Sujet</label>
           <select id="k-topic" className="field" value={topic} onChange={(e) => setTopic(e.target.value as typeof topic)}>
@@ -126,22 +126,19 @@ export function Contact({ onBack, onNav }: PageProps) {
         </p>
       </Section>
 
-      <Section id="k-secu" title="Problème de sécurité">
-        <p>
-          Si vous pensez avoir trouvé une faille, choisissez le sujet « Problème de sécurité » et décrivez-la sans la publier ailleurs avant que l’éditeur ait pu la corriger.
-        </p>
-      </Section>
+      <Fold id="k-secu" title="Problème de sécurité">
+        <p>Choisissez le sujet « Problème de sécurité » et décrivez la faille sans la publier avant qu’elle soit corrigée.</p>
+      </Fold>
 
-      <Section id="k-donnees" title="Données des élèves">
+      <Fold id="k-donnees" title="Données des élèves">
         <p>
-          Pour voir, corriger ou supprimer les données d’un élève, adressez-vous d’abord à son enseignant, qui peut le faire lui-même. À défaut, écrivez à l’adresse ci-dessus ; les droits sont
-          détaillés dans la page{' '}
+          Voir, corriger ou supprimer : demandez d’abord à l’enseignant, qui peut le faire lui-même. À défaut, écrivez ici ; détails dans{' '}
           <button type="button" className="link inline-link" onClick={() => onNav('privacy')}>
             Confidentialité
           </button>
           .
         </p>
-      </Section>
+      </Fold>
     </Page>
   );
 }

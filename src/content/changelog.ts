@@ -24,6 +24,17 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.34',
+    date: '28 novembre 2026',
+    iso: '2026-11-28',
+    title: 'Pages d’information plus claires',
+    changes: [
+      { kind: 'better', text: 'À propos, Accessibilité, Confidentialité, Crédits, Contact : textes raccourcis, repères chiffrés en tête, détails dans des sections qui se déplient.' },
+      { kind: 'better', text: 'Nouveautés : les trois dernières versions restent visibles, les autres sont repliées.' },
+      { kind: 'better', text: 'Confidentialité : bouton « Tout déplier » ; l’impression déplie tout.' },
+    ],
+  },
+  {
     version: '1.33',
     date: '27 novembre 2026',
     iso: '2026-11-27',
@@ -129,7 +140,7 @@ export const RELEASES: Release[] = [
       { kind: 'better', text: 'Boutons, listes et champs d’au moins 44 px, pour les doigts sur tablette.' },
       { kind: 'better', text: 'La musique d’accueil respecte le réglage « Son ».' },
       { kind: 'better', text: 'Tapis du facteur plus léger pour les vieux ordinateurs.' },
-      { kind: 'fix', text: 'Crédits : mention des images générées par IA du facteur ; « À propos » présente bien tous les jeux.' },
+      { kind: 'fix', text: '« À propos » présente bien tous les jeux.' },
       { kind: 'fix', text: 'Administrateurs : lancer serveur/mise-a-jour-facteur.sql en dernier.' },
     ],
   },

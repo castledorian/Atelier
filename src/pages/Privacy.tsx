@@ -1,9 +1,7 @@
 import type { ReactNode } from 'react';
-import { BackButton } from '../components/BackButton';
 import { LEGAL } from '../legal';
-import { Frame } from './Frame';
-import { SiteFooter } from './Info';
-import type { InfoView } from './Info';
+import { Fold, Page, setAllFolds, ul } from './info/shared';
+import type { InfoView } from './info/shared';
 
 /** À compléter par l'éditeur : affiché en évidence tant que l'information manque (voir src/legal.ts). */
 function Todo({ value, what }: { value: string; what: string }) {
@@ -11,32 +9,26 @@ function Todo({ value, what }: { value: string; what: string }) {
   return <mark className="rounded bg-[#ffe9a8] px-1 font-bold text-ink">[à compléter : {what}]</mark>;
 }
 
-function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+/** « En bref » et « Vos droits » restent ouverts ; le détail se déplie à la demande. */
+function Section({ id, title, open, children }: { id: string; title: string; open?: boolean; children: ReactNode }) {
   return (
-    <section className="sec" aria-labelledby={id}>
-      <h2 id={id} className="subhead mb-2">
-        {title}
-      </h2>
-      <div className="space-y-2 text-[15px] leading-snug">{children}</div>
-    </section>
+    <Fold id={id} title={title} open={open}>
+      {children}
+    </Fold>
   );
 }
-
-const ul = 'list-disc space-y-1 pl-5';
 
 /** Page de confidentialité : ce que le site enregistre, où, pendant combien de temps, et les droits de chacun. */
 export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: (v: InfoView) => void }) {
   return (
-    <Frame wide>
-      <div className="card-top no-print">
-        <BackButton onClick={onBack} label="Retour" autoFocus />
+    <Page id="privacy" eyebrow="Données personnelles" title="Confidentialité" intro={`Mise à jour le ${LEGAL.updated}`} onBack={onBack} onNav={onNav}>
+      <div className="info-more no-print">
+        <button type="button" className="btn btn-ghost" onClick={() => setAllFolds(true)}>
+          Tout déplier
+        </button>
       </div>
-      <p className="eyebrow">Données personnelles</p>
-      <h1 className="title-sm">Confidentialité</h1>
-      <div className="rule" aria-hidden="true" />
-      <p className="text-[14px] text-ink/70">Mise à jour le {LEGAL.updated}</p>
 
-      <Section id="p-bref" title="En bref">
+      <Section id="p-bref" title="En bref" open>
         <ul className={ul}>
           <li>
             <strong>Aucune publicité, aucun cookie, aucun traceur</strong>, aucune statistique d’audience, aucun outil d’un autre site.
@@ -161,7 +153,7 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
         </p>
       </Section>
 
-      <Section id="p-droits" title="Vos droits">
+      <Section id="p-droits" title="Vos droits" open>
         <p>
           Élèves et parents peuvent demander à l’enseignant, au délégué à la protection des données de l’académie, ou à <Todo value={LEGAL.contact} what="adresse e-mail de contact" />,
           de voir, corriger ou supprimer les données, et s’opposer à leur utilisation (l’élève joue alors sans code : rien n’est envoyé). En cas de difficulté, on peut saisir la CNIL (<span className="font-bold">cnil.fr</span>).
@@ -180,13 +172,15 @@ export default function Privacy({ onBack, onNav }: { onBack: () => void; onNav: 
           pseudo), ses résultats et ses erreurs aux exercices, pour aider l’enseignant à voir ce qu’il faut retravailler. Pas de publicité, pas de cookie, pas de suivi, rien n’est vendu. Vous pouvez demander à l’enseignant de voir ou supprimer ces données.
         </p>
         <p className="no-print">
-          <button type="button" className="btn btn-ghost" onClick={() => window.print()}>
+          <button type="button" className="btn btn-ghost" onClick={() => {
+              setAllFolds(true);
+              window.print();
+            }}>
             Imprimer cette page
           </button>
         </p>
       </Section>
 
-      <SiteFooter current="privacy" onNav={onNav} />
-    </Frame>
+    </Page>
   );
 }
