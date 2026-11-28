@@ -1,0 +1,252 @@
+/* ───────── Accueil : en-tête, grille des jeux, cartes ─────────
+   Portrait : une colonne. Tablette et paysage : 2 puis 3 colonnes (les 6 jeux tiennent sur 2 rangées).
+   60-30-10 : papier (fonds), encre (texte, traits), ruban rouge (le petit tag de chaque jeu, rien d'autre).
+   Les cartes des menus de jeux gardent leurs styles (.gcard) : tout ce qui suit est propre à l'accueil. */
+
+.hm-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+}
+.hm-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.hm-logo {
+  flex: none;
+  width: clamp(44px, 9vw, 64px);
+  height: auto;
+  border: 2px solid var(--color-ink);
+}
+.hm-brand .eyebrow {
+  font-size: 13px;
+}
+.hm-brand .title,
+.page .hm-brand .title {
+  margin-top: 4px;
+  font-size: clamp(32px, 7.4vw, 56px);
+}
+.hm-head .acct-in {
+  flex: 0 1 18rem;
+  margin-left: auto;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.hm-head .acct-who strong {
+  font-family: var(--font-display);
+  font-size: 16px;
+}
+.hm-head .acct-link {
+  min-height: 32px;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+.hm-head .acct {
+  align-items: flex-end;
+}
+.hm-rule {
+  height: 2px;
+  margin: clamp(14px, 2.6vh, 22px) 0 0;
+  background: var(--color-ink);
+  opacity: 0.85;
+}
+
+/* Bande d'actions : l'action principale, puis le niveau */
+.hm-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin-top: clamp(16px, 3vh, 24px);
+}
+.hm-bar .grade-fold {
+  margin-top: 0;
+  flex: 1 1 260px;
+}
+.hm-note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.35;
+  color: rgba(27, 25, 21, 0.78);
+}
+
+.hm-sub {
+  margin: clamp(22px, 4vh, 34px) 0 12px;
+}
+
+/* Grille des jeux */
+.hm-games {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr));
+  gap: clamp(14px, 2.2vw, 22px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.hm-item {
+  position: relative;
+  display: flex;
+}
+.hm-card {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 18px 20px 16px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-hi);
+  box-shadow: 2px 2px 0 var(--color-ink);
+  color: var(--color-ink);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+}
+.hm-card:hover {
+  background: #fff;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--color-ink);
+}
+.hm-card:active {
+  transform: translate(1px, 1px);
+  box-shadow: 0 0 0 var(--color-ink);
+}
+.hm-card:focus-visible {
+  outline: 3px solid var(--color-ribbon);
+  outline-offset: 3px;
+}
+.hm-tag {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ribbon);
+}
+.hm-name {
+  padding-right: 34px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1.1;
+}
+.hm-text {
+  flex: 1;
+  font-size: 15px;
+  line-height: 1.4;
+  color: rgba(27, 25, 21, 0.88);
+}
+.hm-stamps {
+  font-size: 14px;
+  letter-spacing: 0.08em;
+}
+.hm-go {
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.hm-go span {
+  display: inline-block;
+  transition: transform 0.12s ease;
+}
+.hm-card:hover .hm-go span {
+  transform: translateX(3px);
+}
+
+/* « i » discret : 28 px visibles, zone tactile de 44 px */
+.info-btn.info-btn-sm {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  border-width: 1.5px;
+  box-shadow: none;
+  background: transparent;
+  font-size: 16px;
+}
+.info-btn.info-btn-sm::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+}
+.info-btn.info-btn-sm:hover {
+  background: var(--color-ink);
+  color: var(--color-paper-hi);
+}
+.info-btn.info-btn-sm:active {
+  transform: none;
+}
+.info-btn.info-btn-sm:focus-visible {
+  outline: 3px solid var(--color-ribbon);
+  outline-offset: 2px;
+}
+
+/* Grotte et goutte : un bloc à part, sur la même grille */
+.lair {
+  margin-top: clamp(24px, 4.4vh, 38px);
+  gap: clamp(14px, 2.2vw, 22px);
+}
+.lair > .cave-door,
+.nook {
+  box-shadow: 2px 2px 0 var(--color-ink);
+}
+.lair > .cave-door:hover,
+.nook:hover {
+  box-shadow: 4px 4px 0 var(--color-ink);
+}
+
+@media (min-width: 561px) {
+  .lair:not([data-solo='yes']) {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+}
+/* Boutons de connexion : côte à côte */
+.hm-head nav.acct {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Petits écrans en hauteur (téléphone en paysage) : moins de marges, les cartes restent lisibles */
+@media (max-height: 520px) {
+  .hm-card {
+    padding: 12px 16px 12px;
+    gap: 3px;
+  }
+  .hm-name {
+    font-size: 20px;
+  }
+  .hm-sub {
+    margin-top: 16px;
+  }
+  .hm-logo {
+    display: none;
+  }
+}
+/* Téléphone en portrait : marges un peu réduites, texte inchangé (14 px mini) */
+@media (max-width: 480px) {
+  .hm-card {
+    padding: 16px 18px 14px;
+  }
+  .hm-logo {
+    width: 44px;
+  }
+  .hm-head .acct-in {
+    flex-basis: 10.5rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hm-card,
+  .hm-go span {
+    transition: none;
+  }
+  .hm-card:hover {
+    transform: none;
+  }
+}

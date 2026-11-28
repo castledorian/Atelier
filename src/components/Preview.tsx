@@ -1,9 +1,10 @@
 import type { SfxName } from '../game/audio';
 
 /** Petit « i » : ouvre l'extrait animé d'un jeu (fenêtre d'aperçu, voir PreviewWindow). */
-export function InfoButton({ onClick, label = 'Voir un extrait du jeu' }: { onClick: () => void; label?: string }) {
+/** `small` : version discrète (accueil) — 28 px visibles, zone tactile de 44 px. */
+export function InfoButton({ onClick, label = 'Voir un extrait du jeu', small = false }: { onClick: () => void; label?: string; small?: boolean }) {
   return (
-    <button type="button" className="info-btn" onClick={onClick} aria-label={label} title={label}>
+    <button type="button" className={small ? 'info-btn info-btn-sm' : 'info-btn'} onClick={onClick} aria-label={label} title={label}>
       <span aria-hidden="true">i</span>
     </button>
   );

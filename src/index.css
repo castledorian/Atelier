@@ -17,6 +17,7 @@
 @import "./styles/creature.css"; /* La créature de la grotte (InkBoss) */
 @import "./styles/monster.css"; /* Le monstre animé et le carrousel des formes */
 @import "./styles/goutte.css"; /* La goutte de l’élève */
+@import "./styles/accueil.css"; /* Accueil : en-tête, grille des jeux (portrait et paysage), cartes aérées */
 @import "./styles/ui.css"; /* Pièces des pages de données : fiche élève, conseils, bulles « i », impression */
 
 @font-face {

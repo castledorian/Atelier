@@ -24,6 +24,17 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.36',
+    date: '28 novembre 2026',
+    iso: '2026-11-28',
+    title: 'Accueil plus aéré',
+    changes: [
+      { kind: 'better', text: 'Accueil refait : les jeux se rangent sur 1, 2 ou 3 colonnes selon l’écran (téléphone, tablette, ordinateur, en portrait comme en paysage).' },
+      { kind: 'better', text: 'Cartes de jeux plus aérées, boutons « i » plus discrets, en-tête avec le nouveau logo et le compte sur une ligne.' },
+      { kind: 'better', text: 'La grotte et la goutte forment un bloc à part, sous les jeux.' },
+    ],
+  },
+  {
     version: '1.35',
     date: '28 novembre 2026',
     iso: '2026-11-28',

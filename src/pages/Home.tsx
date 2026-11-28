@@ -121,9 +121,11 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
     };
   }, [token, studentId]);
   return (
-    <Frame>
-      <div className="home-head">
-        <div className="home-brand">
+    <Frame wide>
+      <header className="hm-head">
+        <div className="hm-brand">
+          <img className="hm-logo" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width={56} height={56} />
+          <div>
           <p className="eyebrow">Jeux pour apprendre</p>
           <h1 className="title" aria-label="L’atelier">
             {'ATELIER'.split('').map((ch, i) => (
@@ -132,15 +134,14 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
               </span>
             ))}
           </h1>
+          </div>
         </div>
         {student ? (
           <div className="acct acct-in" role="group" aria-label="Compte élève">
             <p className="acct-who">
-              Connecté&nbsp;: <strong>{student.student.name}</strong>
+              <strong>{student.student.name}</strong> · {student.class.name}
             </p>
-            <p className="acct-sub">
-              {student.class.name} · {student.school.name}
-            </p>
+            <p className="acct-sub">{student.school.name}</p>
             <button type="button" className="acct-link" onClick={onLogout}>
               Changer d’élève
             </button>
@@ -166,35 +167,34 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
             </nav>
           )
         )}
-      </div>
-      <div className="rule" aria-hidden="true" />
+      </header>
+      <div className="hm-rule" aria-hidden="true" />
 
-      {student && (
-        <div className="home-cta">
+      <div className="hm-bar">
+        {student && (
           <button type="button" className="btn btn-primary" onClick={onSessions}>
             Mes séances{todo ? ` (${todo} à faire)` : ''}
           </button>
-        </div>
-      )}
-      {teacher && (
-        <div className="home-cta">
-          <button type="button" className="btn btn-primary" onClick={onDashboard}>
-            Mon espace école
-          </button>
-          {onAdmin && (
-            <button type="button" className="btn btn-ghost" onClick={onAdmin}>
-              Administration
+        )}
+        {teacher && (
+          <>
+            <button type="button" className="btn btn-primary" onClick={onDashboard}>
+              Mon espace école
             </button>
-          )}
-        </div>
-      )}
-      {!student && !teacher && !online && <p className="mt-3 text-[14px] leading-snug text-ink/75">Tes scores restent sur cet appareil.</p>}
-
-      <GradePicker grade={grade} homes={classGrades} ask={classGrades.length > 1 && practice === null} onPick={pick} />
+            {onAdmin && (
+              <button type="button" className="btn btn-ghost" onClick={onAdmin}>
+                Administration
+              </button>
+            )}
+          </>
+        )}
+        {!student && !teacher && !online && <p className="hm-note">Tes scores restent sur cet appareil.</p>}
+        <GradePicker grade={grade} homes={classGrades} ask={classGrades.length > 1 && practice === null} onPick={pick} />
+      </div>
       {grade === null && (
         <>
           <p className="mt-2 text-[15px] leading-snug">Choisis ton niveau pour voir tes jeux.</p>
-          <h2 className="subhead mt-[var(--sp)]">Les jeux</h2>
+          <h2 className="subhead hm-sub">Les jeux</h2>
           <ul className="intro-games" aria-label="Les jeux d’Atelier">
             {GAMES.map((g) => (
               <li key={g.name}>
@@ -206,28 +206,30 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
         </>
       )}
 
-      {grade !== null && <h2 className="subhead mt-[var(--sp)]">Choisis un jeu</h2>}
-      {grade !== null && <div className="games">
+      {grade !== null && <h2 className="subhead hm-sub">Choisis un jeu</h2>}
+      {grade !== null && <ul className="hm-games" aria-label="Les jeux">
         {CARDS.filter((c) => isAvailable(c.id, grade)).map((c) => {
           const stamps = c.stamps?.() ?? 0;
           return (
-            <div key={c.id} className="gwrap">
-              <button type="button" className="gcard" onClick={() => onPlay(c.id)}>
-                <span className="gcard-tag">{c.tag}</span>
-                <span className="gcard-name">{c.name}</span>
-                <span className="gcard-text">{c.text}</span>
+            <li key={c.id} className="hm-item">
+              <button type="button" className="hm-card" onClick={() => onPlay(c.id)}>
+                <span className="hm-tag">{c.tag}</span>
+                <span className="hm-name">{c.name}</span>
+                <span className="hm-text">{c.text}</span>
                 {stamps > 0 && (
-                  <span className="gcard-stamps" role="img" aria-label={`Tampons : ${stamps} sur 6`}>
+                  <span className="hm-stamps" role="img" aria-label={`Tampons : ${stamps} sur 6`}>
                     {Array.from({ length: 6 }, (_, k) => (k < stamps ? '●' : '○')).join(' ')}
                   </span>
                 )}
-                <span className="gcard-go">Jouer →</span>
+                <span className="hm-go">
+                  Jouer <span aria-hidden="true">→</span>
+                </span>
               </button>
-              <InfoButton onClick={() => setPreview(c.id)} label={`Voir un extrait : ${c.name}`} />
-            </div>
+              <InfoButton small onClick={() => setPreview(c.id)} label={`Voir un extrait : ${c.name}`} />
+            </li>
           );
         })}
-      </div>}
+      </ul>}
 
       {grade !== null && ((CAVE_ON && (student || teacher)) || (GOUTTE_ON && student)) && (
         <div className="lair" data-solo={CAVE_ON && GOUTTE_ON && student ? 'no' : 'yes'}>
