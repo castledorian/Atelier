@@ -12,7 +12,7 @@
 const CACHE = 'atelier-__BUILD__';
 const MEDIA = 'atelier-media';
 const isMedia = (url) => /\/(cave|facteur)\//.test(url.pathname);
-const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './favicon.svg'];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
