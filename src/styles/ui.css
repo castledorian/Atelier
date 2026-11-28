@@ -646,11 +646,29 @@
   white-space: nowrap;
 }
 
-/* ───────── Fiche élève imprimée (réunion de parents, équipe éducative) ───────── */
-.u-print-date {
+/* ───────── Fiche élève imprimée (notation, retours aux parents, équipe éducative) ─────────
+   À l'écran : seul le panneau de choix (.u-printbox) apparaît. Sur le papier : la feuille compacte (.ps), en noir et blanc, une page A4. */
+.u-printbox {
+  display: grid;
+  gap: 12px;
+}
+.u-printbox-row {
+  display: grid;
+  gap: 6px;
+}
+.u-printbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 4px 12px;
+}
+.ps {
   display: none;
 }
 @media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
   /* l'espace enseignant n'imprime d'ordinaire que les fiches de codes : la fiche élève fait exception */
   .page-in > .u-print,
   .page-in > .observe-lock:has(.u-print) {
@@ -659,54 +677,242 @@
   .observe-lock:has(.u-print) > :not(.u-print) {
     display: none !important;
   }
-  .u-print {
-    color: #000;
-    font-size: 12pt;
-  }
-  .u-print .no-print,
-  .u-print .tip-i,
-  .u-print .seg,
-  .u-print .u-table,
-  .u-print .u-back {
-    display: none !important;
-  }
-  .u-print-date {
-    display: inline;
-  }
   body {
     background: #fff !important;
   }
-  /* les barres et courbes portent l'information : elles s'impriment même si le navigateur retire les fonds */
-  .u-print .u-bar,
-  .u-print .u-bar-fill,
-  .u-print .u-range,
-  .u-print .u-range *,
-  .u-print .u-week-bar,
-  .u-print .u-key,
-  .u-print .u-lead {
+  .u-print .no-print {
+    display: none !important;
+  }
+  .u-print {
+    padding: 0;
+  }
+  .ps {
+    display: block;
+    color: #000;
+    font-family: var(--font-body);
+    font-size: 9.5pt;
+    line-height: 1.3;
+  }
+  .ps h1 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 20pt;
+    line-height: 1.1;
+  }
+  .ps h2 {
+    margin: 0 0 3px;
+    padding-bottom: 1px;
+    border-bottom: 1px solid #000;
+    font-family: var(--font-display);
+    font-size: 9.5pt;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .ps p {
+    margin: 0;
+  }
+  .ps-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 6px;
+    border-bottom: 3px double #000;
+  }
+  .ps-eyebrow {
+    font-size: 8.5pt;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .ps-meta {
+    text-align: right;
+    font-size: 9pt;
+  }
+  .ps-figs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    margin: 6px 0 0;
+    border: 1px solid #000;
+  }
+  .ps-figs > div {
+    padding: 3px 6px;
+  }
+  .ps-figs > div + div {
+    border-left: 1px solid #000;
+  }
+  .ps-figs dt {
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .ps-figs dd {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 12pt;
+  }
+  .ps-lead {
+    margin: 6px 0 0;
+    padding: 4px 8px;
+    border-left: 4px solid #000;
+    font-size: 10pt;
+  }
+  .ps-block {
+    margin-top: 8px;
+    break-inside: avoid;
+  }
+  .ps-dim {
+    font-size: 8pt;
+    color: #333;
+  }
+  .ps-charts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 14px;
+  }
+  .ps-fig {
+    margin: 0;
+    break-inside: avoid;
+  }
+  .ps-fig figcaption {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0 8px;
+    font-size: 8.5pt;
+  }
+  .ps-chart {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .ps-grid {
+    stroke: #999;
+    stroke-width: 0.6;
+    stroke-dasharray: 2 2;
+  }
+  .ps-axis {
+    font-size: 8px;
+    fill: #222;
+  }
+  .ps-line {
+    fill: none;
+    stroke: #000;
+    stroke-width: 2;
+    stroke-linejoin: round;
+  }
+  .ps-raw {
+    fill: #fff;
+    stroke: #000;
+    stroke-width: 1;
+  }
+  .ps-end {
+    fill: #000;
+  }
+  .ps-legend {
+    margin-top: 2px;
+  }
+  .ps-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 14px;
+  }
+  .ps-rows {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .ps-rows li {
+    display: grid;
+    grid-template-columns: 1fr 44px auto;
+    align-items: center;
+    gap: 6px;
+    padding: 1px 0;
+    break-inside: avoid;
+  }
+  .ps-rows strong {
+    font-size: 8.5pt;
+    white-space: nowrap;
+  }
+  .ps-meter {
+    display: block;
+    height: 6px;
+    border: 1px solid #000;
+  }
+  .ps-meter i {
+    display: block;
+    height: 100%;
+    background: #000;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .u-print .u-card,
-  .u-print .u-stat,
-  .u-print .u-lead,
-  .u-print li {
-    break-inside: avoid;
+  .ps-tbl {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.5pt;
   }
-  .u-print .u-card,
-  .u-print .u-stat,
-  .u-print .u-lead {
-    background: #fff;
+  .ps-tbl th,
+  .ps-tbl td {
+    padding: 1.5px 5px;
+    border-bottom: 1px solid #999;
+    text-align: left;
+    vertical-align: top;
   }
-  .u-print .u-cols {
-    grid-template-columns: 1fr 1fr;
+  .ps-tbl th {
+    border-bottom: 1px solid #000;
+    font-size: 8pt;
+    text-transform: uppercase;
   }
-  /* la liste des dernières parties n'apporte rien sur papier : la fiche tient sur deux pages */
-  .u-print .u-card.print-skip {
-    display: none !important;
+  .ps-wk {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
-  .u-print .u-grid-stats {
-    grid-template-columns: repeat(4, 1fr);
+  .ps-wk li {
+    display: grid;
+    grid-template-rows: 34px auto auto;
+    justify-items: center;
+    align-items: end;
+    text-align: center;
+  }
+  .ps-wk i {
+    display: block;
+    width: 100%;
+    background: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .ps-wk small {
+    font-size: 7pt;
+    color: #333;
+  }
+  .ps-lines {
+    display: grid;
+    gap: 14px;
+    margin-top: 10px;
+  }
+  .ps-lines span {
+    display: block;
+    border-bottom: 1px solid #000;
+  }
+  .ps-comment {
+    margin-top: 4px;
+    white-space: pre-wrap;
+  }
+  .ps-sign {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr 1.4fr;
+    gap: 14px;
+    margin-top: 6px;
+    padding-top: 28px;
+    font-size: 8.5pt;
+  }
+  .ps-sign span {
+    border-top: 1px solid #000;
+    padding-top: 2px;
   }
 }
 

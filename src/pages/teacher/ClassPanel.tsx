@@ -4,7 +4,6 @@ import type { FormEvent } from 'react';
 import { Notice } from '../Frame';
 import { SessionsPanel } from '../SessionsTeacher';
 import { downloadText, fmtDate, toCsv } from '../../game/history';
-import { GRADES } from '../../game/grade';
 import * as T from '../../server/teacher';
 import { Check } from '../../components/Screens';
 import StudentProfile from '../StudentProfile';
@@ -18,6 +17,7 @@ import { endOfYearReminder, RETENTION_MONTHS } from '../../server/retention';
 import { SortTh, useSort, useSorted } from '../../components/SortTable';
 import type { SortValue } from '../../components/SortTable';
 import type { ClassRow, NewStudent, Overview } from '../../server/types';
+import { GradeSetting } from './GradeSetting';
 import { nice } from './shared';
 import type { Act } from './shared';
 
@@ -92,7 +92,6 @@ export function ClassPanel({
   /** une seule partie de la classe à la fois : la page reste courte */
   const [part, setPart] = useState<'results' | 'add' | 'session' | 'danger'>('results');
   const [boardHidden, setBoardHidden] = useState(cls.hide_board === true);
-  const [grade, setGrade] = useState<string | null>(cls.grade ?? null);
 
   const reload = useCallback(async () => {
     const [r, ins, ci] = await Promise.all([act(() => T.classOverview(cls.id)), act(() => T.classInsights(cls.id)), act(() => T.classItems(cls.id))]);
@@ -272,35 +271,7 @@ export function ClassPanel({
             <details className="fold fold-flat">
               <summary>Réglages de la classe</summary>
               <div className="fold-in">
-                {cls.grade !== undefined && (
-                  <div>
-                    <span className="subhead" id={`grade-${cls.id}`}>
-                      Niveau de la classe
-                    </span>
-                    <Tip label="À propos du niveau">Tes élèves ne voient que les jeux de leur niveau, sans rien avoir à choisir.</Tip>
-                    <div className="seg mt-1" role="radiogroup" aria-labelledby={`grade-${cls.id}`}>
-                      {GRADES.map((g) => (
-                        <button
-                          key={g.id}
-                          type="button"
-                          role="radio"
-                          aria-checked={grade === g.id}
-                          className="seg-b"
-                          onClick={async () => {
-                            const ok = await act(async () => {
-                              await T.setClassGrade(cls.id, g.id);
-                              return true;
-                            });
-                            if (ok) setGrade(g.id);
-                          }}
-                        >
-                          {g.label}
-                        </button>
-                      ))}
-                    </div>
-                    {grade === null && <p className="mt-1 text-[14px]">Non fixé : chaque élève choisit.</p>}
-                  </div>
-                )}
+                {cls.grade !== undefined && <GradeSetting cls={cls} act={act} />}
                 {cls.hide_board !== undefined && (
                   <Check
                     on={boardHidden}

@@ -99,6 +99,8 @@ export interface ClassRow {
   hide_board?: boolean;
   /** niveau de la classe fixé par l'enseignant (absent si la base n'est pas à jour) */
   grade?: 'cp' | 'ce1' | 'ce2' | 'cm1' | 'cm2' | null;
+  /** classe mixte : tous les niveaux (absent si la base n'a pas reçu la mise à jour « niveaux ») */
+  grades?: Array<'cp' | 'ce1' | 'ce2' | 'cm1' | 'cm2'> | null;
 }
 export interface ClassWeek {
   games: number;

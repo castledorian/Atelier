@@ -14,7 +14,7 @@ import { serverEnabled } from '../server/api';
 import { fetchSessionsInfo } from '../server/student';
 import type { StudentAccount } from '../server/types';
 import { loadCourseStamps } from '../game/course/scores';
-import { isAvailable, loadClassGrade, loadGrade, loadPracticeGrade, saveClassGrade, saveGrade, savePracticeGrade } from '../game/grade';
+import { isAvailable, loadClassGrade, loadClassGrades, loadGrade, loadPracticeGrade, saveClassGrade, saveGrade, savePracticeGrade } from '../game/grade';
 import GradePicker from '../components/GradePicker';
 import type { Grade } from '../game/grade';
 import { loadSettings, loadTypingStamps } from '../game/storage';
@@ -80,17 +80,22 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
   const studentId = student?.student.id ?? null;
   /** niveau fixé par l'enseignant pour la classe de l'élève connecté */
   const [classGrade, setClassGradeState] = useState<Grade | null>(() => loadClassGrade(studentId));
+  /** tous les niveaux de sa classe (plusieurs si la classe est mixte) */
+  const [classGrades, setClassGradesState] = useState<Grade[]>(() => loadClassGrades(studentId));
   /** niveau d'entraînement choisi par l'élève (révision ou avance) ; null = celui de sa classe */
   const [practice, setPractice] = useState<Grade | null>(() => loadPracticeGrade(studentId));
   const grade = (classGrade ? practice : null) ?? classGrade ?? ownGrade;
   useEffect(() => {
     setClassGradeState(loadClassGrade(studentId));
+    setClassGradesState(loadClassGrades(studentId));
     setPractice(loadPracticeGrade(studentId));
   }, [studentId]);
   const pick = (g: Grade | null) => {
     if (classGrade && studentId) {
-      savePracticeGrade(studentId, g);
-      setPractice(g);
+      // classe mixte : le choix est toujours gardé (même le niveau par défaut), pour ne pas redemander
+      const kept = classGrades.length > 1 ? (g ?? classGrade) : g;
+      savePracticeGrade(studentId, kept);
+      setPractice(kept);
       return;
     }
     if (!g) return;
@@ -106,8 +111,9 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
       .then((r) => {
         if (!alive) return;
         setTodo(r.sessions.filter((s) => s.active && s.attempts_used < s.max_attempts).length);
-        if (studentId) saveClassGrade(studentId, r.grade);
+        if (studentId) saveClassGrade(studentId, r.grade, r.grades);
         setClassGradeState(r.grade);
+        setClassGradesState(r.grades);
       })
       .catch(() => alive && setTodo(null));
     return () => {
@@ -184,7 +190,7 @@ export default function Home({ student, teacher, onPlay, onSessions, onLogin, on
       )}
       {!student && !teacher && !online && <p className="mt-3 text-[14px] leading-snug text-ink/75">Tes scores restent sur cet appareil.</p>}
 
-      <GradePicker grade={grade} home={classGrade} onPick={pick} />
+      <GradePicker grade={grade} homes={classGrades} ask={classGrades.length > 1 && practice === null} onPick={pick} />
       {grade === null && (
         <>
           <p className="mt-2 text-[15px] leading-snug">Choisis ton niveau pour voir tes jeux.</p>

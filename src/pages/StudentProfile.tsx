@@ -6,6 +6,9 @@ import { gameSummaries, metricOf, missedItems, progressSeries, strengthsAndWeakn
 import type { StudentDetail } from '../game/studentView';
 import * as T from '../server/teacher';
 import { Tip } from '../components/Tip';
+import { PrintPanel, PrintSheet } from './StudentPrint';
+import { loadOpts, saveOpts } from '../game/printSheet';
+import type { PrintOpts } from '../game/printSheet';
 
 const day = (ms: number) => new Date(ms).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 const when = (ms: number) => new Date(ms).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -21,6 +24,15 @@ export default function StudentProfile({ id, name, onBack, act, onScreen }: { id
   const [d, setD] = useState<StudentDetail | null>(null);
   const [failed, setFailed] = useState(false);
   const [game, setGame] = useState<string | null>(null);
+  const [printing, setPrinting] = useState(false);
+  const [opts, setOpts] = useState<PrintOpts>(loadOpts);
+  const [comment, setComment] = useState('');
+  const change = (patch: Partial<PrintOpts>) =>
+    setOpts((o) => {
+      const next = { ...o, ...patch };
+      saveOpts(next);
+      return next;
+    });
 
   useEffect(() => {
     let live = true;
@@ -53,14 +65,15 @@ export default function StudentProfile({ id, name, onBack, act, onScreen }: { id
 
   return (
     <div className="u-page u-print" data-observe-ok>
-      <div className="u-hero no-print">
+      <div className="u-page no-print">
+      <div className="u-hero">
         <button type="button" className="u-back" onClick={onBack}>
           <span aria-hidden="true">←</span> Retour à la classe
         </button>
         <div className="flex flex-wrap gap-2">
           {d && (
-            <button type="button" className="btn btn-ghost" onClick={() => window.print()}>
-              Imprimer la fiche
+            <button type="button" className="btn btn-ghost" aria-expanded={printing} onClick={() => setPrinting((v) => !v)}>
+              Imprimer la fiche…
             </button>
           )}
           {onScreen && (
@@ -70,12 +83,12 @@ export default function StudentProfile({ id, name, onBack, act, onScreen }: { id
           )}
         </div>
       </div>
+      {printing && d && (
+        <PrintPanel opts={opts} onChange={change} comment={comment} onComment={setComment} games={summaries.map((s) => s.game)} onPrint={() => window.print()} onClose={() => setPrinting(false)} />
+      )}
       <header className="u-hero">
         <div>
-          <p className="u-eyebrow">
-            Fiche élève{d ? ` · ${d.student.class_name}` : ''}
-            <span className="u-print-date"> · imprimée le {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-          </p>
+          <p className="u-eyebrow">Fiche élève{d ? ` · ${d.student.class_name}` : ''}</p>
           <h1 className="u-h1">{name}</h1>
         </div>
         {d && gameRuns.length > 0 && <Pill tone={trendTone}>{current ? `${gameName(current)} : ` : ''}{trendText}</Pill>}
@@ -227,7 +240,7 @@ export default function StudentProfile({ id, name, onBack, act, onScreen }: { id
             <Card title="Régularité" note="Parties par semaine, sur les 8 dernières semaines.">
               <WeekBars label="Parties par semaine" weeks={weeks.map((w) => ({ label: `semaine du ${day(w.start)}`, value: w.runs }))} />
             </Card>
-            <Card title="Dernières parties" className="print-skip">
+            <Card title="Dernières parties">
               {recent.length === 0 ? (
                 <p className="u-empty">Aucune partie.</p>
               ) : (
@@ -248,6 +261,8 @@ export default function StudentProfile({ id, name, onBack, act, onScreen }: { id
           </div>
         </>
       )}
+      </div>
+      {d && <PrintSheet d={d} name={name} opts={opts} comment={comment} now={now} />}
     </div>
   );
 }

@@ -67,9 +67,31 @@ export function loadClassGrade(studentId: string | null): Grade | null {
   }
 }
 
-export function saveClassGrade(studentId: string, grade: Grade | null) {
+/**
+ * Niveaux d'une classe, du plus bas au plus haut. Une classe mixte en a plusieurs (ex. CM1 et CM2) ; une classe d'un seul niveau,
+ * ou une base pas encore mise à jour, n'en a qu'un ; aucun si l'enseignant n'a rien fixé.
+ */
+export function classGrades(grade: unknown, grades: unknown): Grade[] {
+  const set = new Set<Grade>(Array.isArray(grades) ? grades.filter(isGrade) : []);
+  if (set.size === 0 && isGrade(grade)) set.add(grade);
+  return ALL.filter((g) => set.has(g));
+}
+
+/** Niveaux de la classe de cet élève, tels que l'enseignant les a fixés (gardés pour jouer sans réseau). */
+export function loadClassGrades(studentId: string | null): Grade[] {
+  if (!studentId) return [];
   try {
-    if (grade) localStorage.setItem(CLASS_KEY, JSON.stringify({ id: studentId, grade }));
+    const v = JSON.parse(localStorage.getItem(CLASS_KEY) ?? 'null') as { id?: unknown; grade?: unknown; grades?: unknown } | null;
+    return v && v.id === studentId ? classGrades(v.grade, v.grades) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** `grades` : tous les niveaux d'une classe mixte ; `grade` reste le plus bas, valeur par défaut. */
+export function saveClassGrade(studentId: string, grade: Grade | null, grades?: Grade[]) {
+  try {
+    if (grade) localStorage.setItem(CLASS_KEY, JSON.stringify({ id: studentId, grade, grades: grades && grades.length ? grades : [grade] }));
     else localStorage.removeItem(CLASS_KEY);
   } catch {
     /* ignoré */
@@ -106,6 +128,13 @@ export function savePracticeGrade(studentId: string, grade: Grade | null) {
 
 /** Écart entre le niveau joué et celui de la classe : négatif = révision, positif = avance. */
 export const gradeShift = (played: Grade, home: Grade): number => ALL.indexOf(played) - ALL.indexOf(home);
+
+/** Place d'un niveau joué par rapport à ceux de la classe : -1 en dessous de tous (révision), +1 au-dessus (avance), 0 dans la classe. */
+export function gradeSide(played: Grade, homes: Grade[]): -1 | 0 | 1 {
+  if (homes.length === 0 || homes.includes(played)) return 0;
+  const i = ALL.indexOf(played);
+  return i < ALL.indexOf(homes[0]) ? -1 : i > ALL.indexOf(homes[homes.length - 1]) ? 1 : 0;
+}
 
 /**
  * Classe à utiliser pour le jeu libre : le choix d'entraînement de l'élève, sinon celle fixée par l'enseignant (valeur par défaut),

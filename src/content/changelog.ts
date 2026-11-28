@@ -24,6 +24,17 @@ export const KIND_LABEL: Record<ChangeKind, string> = {
 
 export const RELEASES: Release[] = [
   {
+    version: '1.35',
+    date: '28 novembre 2026',
+    iso: '2026-11-28',
+    title: 'Classes mixtes et fiche élève à imprimer',
+    changes: [
+      { kind: 'new', text: 'Classes mixtes : l’enseignant coche plusieurs niveaux (ex. CM1 et CM2) ; chaque élève choisit le sien parmi ceux de sa classe.' },
+      { kind: 'new', text: 'Fiche élève : « Imprimer la fiche… » ouvre un choix de ce qui sort (période, repères, graphique de chaque jeu, listes d’exercices, appréciation).' },
+      { kind: 'better', text: 'Sur papier : une page A4 compacte en noir et blanc, avec un graphique par jeu (et plus seulement celui affiché), des lignes pour l’appréciation et les signatures.' },
+    ],
+  },
+  {
     version: '1.34',
     date: '28 novembre 2026',
     iso: '2026-11-28',

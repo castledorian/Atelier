@@ -292,6 +292,19 @@ select pg_temp.as_admin();
 select pg_temp.eq('un autre enseignant ne change pas le niveau', (select grade from public.classes where id = (select v::uuid from ctx where k='classA')), 'cm2');
 select pg_temp.fails($$update public.classes set grade = 'terminale' where id = (select v::uuid from ctx where k='classA')$$, 'check');
 
+-- classe mixte : plusieurs niveaux
+select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
+update public.classes set grade = 'cm1', grades = array['cm1', 'cm2'] where id = (select v::uuid from ctx where k='classA');
+select pg_temp.as_anon();
+select pg_temp.eq('l''élève reçoit tous les niveaux de sa classe mixte', public.my_sessions((select v from ctx where k='tok_lea'))->'grades', '["cm1", "cm2"]'::jsonb);
+select pg_temp.eq('le niveau par défaut reste le plus bas', public.my_sessions((select v from ctx where k='tok_lea'))->>'grade', 'cm1');
+select pg_temp.as_user('bbbbbbbb-0000-0000-0000-000000000002');
+update public.classes set grades = array['cp'] where id = (select v::uuid from ctx where k='classA');
+select pg_temp.as_admin();
+select pg_temp.eq('un autre enseignant ne change pas les niveaux', (select grades from public.classes where id = (select v::uuid from ctx where k='classA')), array['cm1', 'cm2']);
+select pg_temp.fails($$update public.classes set grades = array['cm1', 'terminale'] where id = (select v::uuid from ctx where k='classA')$$, 'check');
+update public.classes set grade = 'cm2', grades = array['cm2'] where id = (select v::uuid from ctx where k='classA');
+
 -- suppression d'une séance : ses essais disparaissent avec elle
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-000000000001');
 select public.delete_class_session((select v::uuid from ctx where k='sess'));

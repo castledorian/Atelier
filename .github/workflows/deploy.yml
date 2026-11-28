@@ -53,7 +53,8 @@ jobs:
           -f serveur/tests/prelude.sql
           -f serveur/schema.sql
           -f serveur/mise-a-jour-eleves.sql
-          -f serveur/mise-a-jour-eleves.sql
+          -f serveur/mise-a-jour-niveaux.sql
+          -f serveur/mise-a-jour-niveaux.sql
           -f serveur/tests/dbtest.sql
           | tee sql.log
       - run: grep -q "TOUS LES TESTS SQL PASSENT" sql.log

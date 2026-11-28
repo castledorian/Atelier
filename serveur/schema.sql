@@ -44,6 +44,8 @@ create table public.classes (
   hide_board      boolean not null default false,
   -- niveau de la classe fixé par l'enseignant (les élèves de la classe n'ont pas à le choisir)
   grade           text check (grade is null or grade in ('cp', 'ce1', 'ce2', 'cm1', 'cm2')),
+  -- classe mixte : plusieurs niveaux (le plus bas est aussi copié dans « grade », valeur par défaut des élèves)
+  grades          text[] check (grades is null or grades <@ array['cp', 'ce1', 'ce2', 'cm1', 'cm2']::text[]),
   created_at      timestamptz not null default now()
 );
 create index on public.classes (school_id);
@@ -735,6 +737,7 @@ begin
   select * into v_s from public.students where id = v_sid;
   return jsonb_build_object('ok', true,
     'grade', (select c.grade from public.classes c where c.id = v_s.class_id),
+    'grades', (select c.grades from public.classes c where c.id = v_s.class_id),
     'sessions', coalesce((
     select jsonb_agg(to_jsonb(t) order by t.created desc) from (
       select x.id, x.title, x.game, x.config, x.max_attempts, x.active,
@@ -974,7 +977,7 @@ begin
     ),
     'classes', (
       select coalesce(jsonb_agg(jsonb_build_object(
-               'id', c.id, 'name', c.name, 'grade', c.grade, 'hide_board', c.hide_board,
+               'id', c.id, 'name', c.name, 'grade', c.grade, 'grades', c.grades, 'hide_board', c.hide_board,
                'created', (extract(epoch from c.created_at) * 1000)::bigint,
                'students', (
                  select coalesce(jsonb_agg(jsonb_build_object(
@@ -1600,7 +1603,7 @@ grant execute on function public.delete_my_account(text)         to authenticate
 grant select on public.schools, public.school_members, public.classes, public.runs to authenticated;
 grant select (id, school_id, class_id, name, created_at) on public.students to authenticated;
 grant update (name) on public.schools to authenticated;
-grant update (name, session_config, hide_board, grade), delete on public.classes  to authenticated;
+grant update (name, session_config, hide_board, grade, grades), delete on public.classes  to authenticated;
 grant update (name), delete on public.students                 to authenticated;
 grant delete on public.runs                                    to authenticated;
 

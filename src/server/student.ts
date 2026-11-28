@@ -1,4 +1,4 @@
-import { isGrade } from '../game/grade';
+import { classGrades, isGrade } from '../game/grade';
 import type { Grade } from '../game/grade';
 import { ITEM_STATS_VERSION } from '../game/itemstats';
 import type { ItemEntry } from '../game/itemstats';
@@ -206,11 +206,12 @@ export async function sendRun(token: string, r: RunPayload): Promise<'ok' | 'inv
 }
 
 /** Les séances de la classe, avec les essais déjà utilisés par l'élève. */
-/** Séances de l'élève et niveau de sa classe (null tant que l'enseignant ne l'a pas fixé). */
-export async function fetchSessionsInfo(token: string): Promise<{ sessions: SessionInfo[]; grade: Grade | null }> {
-  const r = await rpc<{ ok?: boolean; sessions?: SessionInfo[]; grade?: unknown; error?: string }>('my_sessions', { p_token: token });
+/** Séances de l'élève, niveau de sa classe (null tant que l'enseignant ne l'a pas fixé : le plus bas si la classe est mixte) et tous ses niveaux. */
+export async function fetchSessionsInfo(token: string): Promise<{ sessions: SessionInfo[]; grade: Grade | null; grades: Grade[] }> {
+  const r = await rpc<{ ok?: boolean; sessions?: SessionInfo[]; grade?: unknown; grades?: unknown; error?: string }>('my_sessions', { p_token: token });
   if (!r.ok || !Array.isArray(r.sessions)) throw new ApiError(r.error ?? 'invalid_session');
-  return { sessions: r.sessions, grade: isGrade(r.grade) ? r.grade : null };
+  const grades = classGrades(r.grade, r.grades);
+  return { sessions: r.sessions, grade: isGrade(r.grade) ? r.grade : (grades[0] ?? null), grades };
 }
 
 export async function fetchSessions(token: string): Promise<SessionInfo[]> {

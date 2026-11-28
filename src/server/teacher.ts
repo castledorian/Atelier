@@ -166,7 +166,7 @@ export const listClasses = (school: string) =>
   authed(async (t) => {
     const q = (cols: string) => select<ClassRow[]>('classes', `select=${cols}&school_id=eq.${school}&order=name`, t);
     // base pas encore mise à jour (colonne absente) : on lit sans elle ; la case « masquer » ou le niveau ne s'affichent pas
-    for (const cols of ['id,school_id,name,session_config,hide_board,grade', 'id,school_id,name,session_config,hide_board']) {
+    for (const cols of ['id,school_id,name,session_config,hide_board,grade,grades', 'id,school_id,name,session_config,hide_board,grade', 'id,school_id,name,session_config,hide_board']) {
       try {
         return await q(cols);
       } catch (e) {
@@ -181,6 +181,10 @@ export const setBoardHidden = (cls: string, hidden: boolean) =>
 
 export const setClassGrade = (cls: string, grade: string | null) =>
   authed((t) => patch('classes', `id=eq.${cls}`, { grade }, t));
+
+/** Niveaux d'une classe (classe mixte possible). `grade` garde le plus bas : c'est la valeur par défaut des élèves. */
+export const setClassGrades = (cls: string, grades: string[]) =>
+  authed((t) => patch('classes', `id=eq.${cls}`, { grade: grades[0] ?? null, grades: grades.length ? grades : null }, t));
 
 export const createClass = (school: string, name: string) =>
   authed((t) => rpc<ClassRow>('create_class', { p_school: school, p_name: name }, t));
