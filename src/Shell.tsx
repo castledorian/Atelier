@@ -24,7 +24,6 @@ import Sessions from './pages/Sessions';
 import { About, Accessibility, Contact, Credits, News, isInfoView } from './pages/Info';
 import type { InfoView } from './pages/Info';
 import Privacy from './pages/Privacy';
-import { PageTurn } from './components/PageTurn';
 import { armPageSound, turnPage } from './game/pageTurn';
 import { isAdmin } from './server/admin';
 import { serverEnabled } from './server/api';
@@ -44,7 +43,6 @@ export default function Shell() {
   return (
     <>
       <Pages />
-      <PageTurn />
       <CheatNotice />
       {GOUTTE_ON && <GainToast />}
     </>
@@ -75,13 +73,13 @@ function Pages() {
   /** séance de classe en cours de jeu (null = jeu libre) */
   const [active, setActive] = useState<SessionInfo | null>(null);
 
-  // page qui se tourne à chaque changement d'écran (pas au premier affichage)
+  // bruit de page à chaque changement d'écran (pas au premier affichage)
   const lastView = useRef(view);
   useEffect(() => {
     armPageSound();
     if (lastView.current === view) return;
     lastView.current = view;
-    turnPage(view === 'home');
+    turnPage();
   }, [view]);
 
   const install = useInstall();

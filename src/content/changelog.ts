@@ -27,9 +27,9 @@ export const RELEASES: Release[] = [
     version: '1.39',
     date: '28 novembre 2026',
     iso: '2026-11-28',
-    title: 'Pages qui se tournent',
+    title: 'Bruit de page',
     changes: [
-      { kind: 'new', text: 'Quand on change d’écran (accueil, jeux, espaces), une page se tourne avec un léger bruit de papier. Le son suit le réglage « son » des jeux ; l’animation s’efface si l’appareil demande moins de mouvement.' },
+      { kind: 'new', text: 'Quand on change d’écran (accueil, jeux, espaces), un léger bruit de page qu’on tourne se fait entendre (sans animation). Il suit le réglage « son » des jeux.' },
       { kind: 'better', text: 'Administration : l’avertissement de mise à jour du serveur signale aussi la mise à jour « classes mixtes ».' },
     ],
   },
